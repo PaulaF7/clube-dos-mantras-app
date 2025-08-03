@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext, useRef, createRef } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
     getAuth,
@@ -26,7 +26,7 @@ import {
     Timestamp
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, XCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Wind, Flame, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2 } from 'lucide-react';
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, XCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame } from 'lucide-react';
 
 // --- ESTILOS GLOBAIS MODERNOS (VERSÃO FINAL) ---
 const GlobalStyles = () => (
@@ -205,7 +205,7 @@ const MANTRAS_DATA = [
     { id: 6, nome: "Proteção Divina", texto: "Jey Sita Ram", finalidade: "Protege você e sua família contra energias negativas.", repeticoes: 24, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Protec%CC%A7a%CC%83o%20divina.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Jey%20Sita%20Ram.%20jey%20jey%20hanuman.mp3", imageSrc: "https://i.postimg.cc/ZR2rZvgY/protection.png", imagePrompt: "A sphere of brilliant blue and golden light forming a protective shield. Abstract art of divine protection, safe, serene, powerful energy, high resolution." },
     { id: 7, nome: "Remoção de Obstáculos", texto: "Om Shri Ganesha Namaha", finalidade: "Remove obstáculos e favorece novos começos.", repeticoes: 108, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Remoc%CC%A7a%CC%83o%20de%20obsta%CC%81culos.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Shiri%20Ganeschai%20Namara%CC%81.mp3", imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png", imagePrompt: "A powerful stream of light breaking through a dark, geometric barrier. Abstract art of overcoming obstacles, new pathways opening, success, high resolution." },
     { id: 8, nome: "Tornar Tudo Possível", texto: "Ganesha Sharanam, Sharanam Ganesha", finalidade: "Ajuda a tornar o impossível, possível.", repeticoes: 48, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Tornar%20tudo%20possi%CC%81vel.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Gane%CC%82cha%20charana%CC%83%2C%20charana%CC%83%20Gane%CC%82cha%20.mp3", imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png", imagePrompt: "A swirling galaxy of possibilities and starlight, with new worlds forming. Abstract art of infinite potential, miracles, creative power, high resolution, cosmic." },
-    { id: 9, nome: "Cura e Prosperidade", texto: "Om Kala Vidê Namaha", finalidade: "Ativa cura, paz interior e prosperidade.", repeticoes: 108, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Cura%20e%20prosperidade.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/om%20kala%20vide%CC%82%20namara%CC%81%20novo.mp3", imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png", imagePrompt: "A gentle, flowing river of emerald green and golden light. Abstract art representing healing energy and abundance, peaceful, prosperous, high resolution." },
+    { id: 9, nome: "Cura e Prosperidade", texto: "Om Kala Vidê Namaha", finalidade: "Ativa cura, paz interior e prosperidade.", repeticoes: 108, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Cura%20e%20prosperidade.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/om%20kala%20vide%CC%82%20namara%CC%81.mp3", imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png", imagePrompt: "A gentle, flowing river of emerald green and golden light. Abstract art representing healing energy and abundance, peaceful, prosperous, high resolution." },
     { id: 10, nome: "Foco e Memória", texto: "Om Mará Patchá Na Dhi", finalidade: "Melhora o foco, a memória e o aprendizado.", repeticoes: 24, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Foco%20e%20memo%CC%81ria.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Mara%CC%81%20Patcha%CC%81%20Nadi%CC%81.mp3", imageSrc: "https://i.postimg.cc/3NfFkbdh/focus.png", imagePrompt: "A clear, focused beam of light illuminating intricate geometric patterns. Abstract art representing mental clarity, focus, and knowledge, intelligent design, high resolution." },
     { id: 11, nome: "Atrair Riquezas", texto: "Om Zambalá Za Len Dhra Ye Soha", finalidade: "Atrai riqueza, abundância e segurança financeira.", repeticoes: 36, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Atrair%20riquezas.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Zambala%CC%81.%20Za%20Len.%20Draie%CC%82.%20Soha%CC%81.mp3", imageSrc: "https://i.postimg.cc/mgfFmsxq/wealth.png", imagePrompt: "A shower of golden coins and jewels falling like rain into a beautiful landscape. Abstract art representing abundance, wealth, and prosperity, high resolution." },
     { id: 12, nome: "Calma e Leveza", texto: "Hare Krishna Hare Krishna Krishna Krishna Hare Hare — Hare Rama Hare Rama Rama Rama Hare Hare", finalidade: "Acalma a ansiedade e traz leveza emocional.", repeticoes: 24, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Calma%20e%20leveza.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/rare%CC%82%20Kri%CC%81shina.%20rare%CC%82%20Kri%CC%81shina.%20Kri%CC%81shina%20K.MP3", imageSrc: "https://i.postimg.cc/KzH1BXr0/calm.png", imagePrompt: "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful." }
@@ -1481,7 +1481,7 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
     }, []);
 
     const handleSetSleepTimer = useCallback((seconds) => {
-        clearTimeout(sleepTimer.id);
+        clearTimeout(sleepTimer?.id);
         if (seconds > 0) {
             const timerId = setTimeout(() => {
                 if(audioRef.current) audioRef.current.pause();
@@ -1494,7 +1494,7 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
         }
         setShowTimerModal(false);
         setIsOptionsMenuOpen(false);
-    }, [sleepTimer.id]);
+    }, [sleepTimer]);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -1533,9 +1533,9 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
             audio.removeEventListener('loadedmetadata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', handleAudioEnd);
-            clearTimeout(sleepTimer.id);
+            clearTimeout(sleepTimer?.id);
         };
-    }, [audioSrc, totalRepetitions, isSpokenPractice]);
+    }, [audioSrc, totalRepetitions, isSpokenPractice, sleepTimer]);
 
     const togglePlayPause = useCallback(() => {
         if (isPlaying) {
@@ -1986,8 +1986,6 @@ const AppContent = () => {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isDayDetailOpen, setIsDayDetailOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
-
-    const navOrder = ['home', 'spokenMantras', 'diary', 'mantras', 'history', 'oracle'];
 
     const handlePlayMantra = (mantra, repetitions, audioType) => {
         setPlayerData({ mantra, repetitions, audioType });
