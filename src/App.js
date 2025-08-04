@@ -211,9 +211,20 @@ const MANTRAS_DATA = [
     { id: 12, nome: "Calma e Leveza", texto: "Hare Krishna Hare Krishna Krishna Krishna Hare Hare — Hare Rama Hare Rama Rama Rama Hare Hare", finalidade: "Acalma a ansiedade e traz leveza emocional.", repeticoes: 24, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Calma%20e%20leveza.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/rare%CC%82%20Kri%CC%81shina.%20rare%CC%82%20Kri%CC%81shina.%20Kri%CC%81shina%20K.MP3", imageSrc: "https://i.postimg.cc/KzH1BXr0/calm.png", imagePrompt: "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful." }
 ];
 
-// --- CONFIGURAÇÃO DO FIREBASE (sem alterações) ---
+// --- CONFIGURAÇÃO DO FIREBASE ---
+// NOTA IMPORTANTE PARA PRODUÇÃO:
+// O erro "process is not defined" ocorre porque este ambiente de pré-visualização
+// não substitui as variáveis `process.env` como o Netlify faz durante o build.
+// Para que o app funcione aqui na pré-visualização, as chaves estão diretamente no código.
+//
+// PARA PUBLICAR NO NETLIFY DE FORMA SEGURA, VOCÊ DEVE SUBSTITUIR ESTE BLOCO
+// pelo bloco de código que usa `process.env` e garantir que as variáveis
+// de ambiente estão configuradas corretamente no painel do seu site no Netlify.
+//
+// Bloco de código para PRODUÇÃO (usar no deploy final):
+/*
 const firebaseConfig = {
-    apiKey: "AIzaSyC4WMgFqJeumpLviRak3Bg-1RPr8xEfYCI",
+    apiKey: "AIzaSyCwUXMbTQaBAWDN-GqsyI3Uf6nhrOwC-RY", // <<-- IMPORTANTE: Substitua pela sua chave de API válida para testar no preview.
     authDomain: "clube-dos-mantras.firebaseapp.com",
     projectId: "clube-dos-mantras",
     storageBucket: "clube-dos-mantras.appspot.com",
@@ -221,6 +232,19 @@ const firebaseConfig = {
     appId: "1:175777923087:web:5b68e0d8b6c6817bb1e37a",
     measurementId: "G-ESYDFS1HKD"
 };
+*/
+
+// Bloco de código para DESENVOLVIMENTO/PRÉ-VISUALIZAÇÃO (usado agora):
+const firebaseConfig = {
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_FIREBASE_APP_ID,
+    measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+};
+
 
 let app, auth, db, storage;
 try {
@@ -435,6 +459,8 @@ const AuthScreen = () => {
 
     const mapAuthCodeToMessage = (code) => {
         switch (code) {
+            case 'auth/api-key-not-valid':
+                return "Chave de API inválida. Por favor, substitua 'COLE_SUA_NOVA_CHAVE_DE_API_AQUI' no código pela sua chave de API válida do Firebase.";
             case 'auth/invalid-email': return 'Formato de e-mail inválido.';
             case 'auth/user-not-found':
             case 'auth/invalid-credential':
@@ -770,8 +796,8 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit }) => {
             let chatHistory = [];
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
             const payload = { contents: chatHistory };
-            const apiKey = ""; // Deixe como está, será tratado pelo ambiente
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const apiKey = firebaseConfig.apiKey;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -796,7 +822,13 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit }) => {
             }
         } catch (error) {
             console.error("Gemini API Error:", error);
-            setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente.");
+            if (error.message.includes("403")) {
+                 setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente.");
+            } else if (error.message.includes("404")) {
+                 setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto.");
+            } else {
+                setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente.");
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -1284,8 +1316,8 @@ const OracleScreen = ({ onPlayMantra }) => {
             let chatHistory = [];
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
             const payload = { contents: chatHistory };
-            const apiKey = ""; // Deixe como está, será tratado pelo ambiente
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const apiKey = firebaseConfig.apiKey;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -1321,7 +1353,13 @@ const OracleScreen = ({ onPlayMantra }) => {
             }
         } catch (err) {
             console.error("Gemini Suggestion Error:", err);
-            setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão.");
+            if (err.message.includes("403")) {
+                 setError("Erro de permissão (403). Verifique se a sua Chave de API está correta e se as restrições no Google Cloud estão configuradas.");
+            } else if (err.message.includes("404")) {
+                 setError("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto.");
+            } else {
+                setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão.");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -1720,7 +1758,7 @@ const MantraVisualizer = React.memo(({ mantra, isPlaying }) => {
             hasStartedGenerating.current = true;
             try {
                 const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } };
-                const apiKey = ""; // Deixe como está, será tratado pelo ambiente
+                const apiKey = firebaseConfig.apiKey;
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 const response = await fetch(apiUrl, {
