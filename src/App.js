@@ -212,29 +212,6 @@ const MANTRAS_DATA = [
 ];
 
 // --- CONFIGURAÇÃO DO FIREBASE ---
-// NOTA IMPORTANTE PARA PRODUÇÃO:
-// O erro "process is not defined" ocorre porque este ambiente de pré-visualização
-// não substitui as variáveis `process.env` como o Netlify faz durante o build.
-// Para que o app funcione aqui na pré-visualização, as chaves estão diretamente no código.
-//
-// PARA PUBLICAR NO NETLIFY DE FORMA SEGURA, VOCÊ DEVE SUBSTITUIR ESTE BLOCO
-// pelo bloco de código que usa `process.env` e garantir que as variáveis
-// de ambiente estão configuradas corretamente no painel do seu site no Netlify.
-//
-// Bloco de código para PRODUÇÃO (usar no deploy final):
-/*
-const firebaseConfig = {
-    apiKey: "AIzaSyCwUXMbTQaBAWDN-GqsyI3Uf6nhrOwC-RY", // <<-- IMPORTANTE: Substitua pela sua chave de API válida para testar no preview.
-    authDomain: "clube-dos-mantras.firebaseapp.com",
-    projectId: "clube-dos-mantras",
-    storageBucket: "clube-dos-mantras.appspot.com",
-    messagingSenderId: "175777923087",
-    appId: "1:175777923087:web:5b68e0d8b6c6817bb1e37a",
-    measurementId: "G-ESYDFS1HKD"
-};
-*/
-
-// Bloco de código para DESENVOLVIMENTO/PRÉ-VISUALIZAÇÃO (usado agora):
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
     authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -1433,12 +1410,17 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
     const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
     const [showSpeedModal, setShowSpeedModal] = useState(false);
     const [showTimerModal, setShowTimerModal] = useState(false);
-    const [sleepTimer, setSleepTimer] = useState({ duration: null, id: null, remaining: null });
+    const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null });
     const [repetitionCount, setRepetitionCount] = useState(1);
 
     const audioRef = useRef(null);
     const hideControlsTimeoutRef = useRef(null);
     const repetitionCountRef = useRef(1);
+    const practiceTimerRef = useRef(practiceTimer);
+
+    useEffect(() => {
+        practiceTimerRef.current = practiceTimer;
+    }, [practiceTimer]);
     
     const isSpokenPractice = audioType === 'spoken';
     const isFavorite = favorites.includes(currentMantra.id);
@@ -1518,21 +1500,16 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
         setIsOptionsMenuOpen(false);
     }, []);
 
-    const handleSetSleepTimer = useCallback((seconds) => {
-        clearTimeout(sleepTimer?.id);
+    const handleSetPracticeDuration = useCallback((seconds) => {
         if (seconds > 0) {
-            const timerId = setTimeout(() => {
-                if(audioRef.current) audioRef.current.pause();
-                setIsPlaying(false);
-                setSleepTimer({ duration: null, id: null, remaining: null });
-            }, seconds * 1000);
-            setSleepTimer({ duration: seconds, id: timerId, remaining: seconds });
+            const endTime = Date.now() + seconds * 1000;
+            setPracticeTimer({ endTime, duration: seconds });
         } else {
-            setSleepTimer({ duration: null, id: null, remaining: null });
+            setPracticeTimer({ endTime: null, duration: null });
         }
         setShowTimerModal(false);
         setIsOptionsMenuOpen(false);
-    }, [sleepTimer]);
+    }, []);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -1545,21 +1522,41 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
         repetitionCountRef.current = 1;
 
         const setAudioData = () => setDuration(audio.duration);
-        const setAudioTime = () => setCurrentTime(audio.currentTime);
+        
+        const handleTimeUpdate = () => {
+            const timer = practiceTimerRef.current;
+            if (timer.endTime && Date.now() >= timer.endTime) {
+                audio.pause();
+                setIsPlaying(false);
+                setPracticeTimer({ endTime: null, duration: null });
+            } else {
+                setCurrentTime(audio.currentTime);
+            }
+        };
         
         const handleAudioEnd = () => {
+            const timer = practiceTimerRef.current;
+
             if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) {
                 repetitionCountRef.current += 1;
                 setRepetitionCount(repetitionCountRef.current);
                 audio.currentTime = 0;
                 audio.play();
-            } else {
+            } 
+            else if (timer.endTime && Date.now() < timer.endTime) {
+                audio.currentTime = 0;
+                audio.play();
+            } 
+            else {
                 setIsPlaying(false);
+                if (timer.endTime) {
+                    setPracticeTimer({ endTime: null, duration: null });
+                }
             }
         };
 
         audio.addEventListener('loadedmetadata', setAudioData);
-        audio.addEventListener('timeupdate', setAudioTime);
+        audio.addEventListener('timeupdate', handleTimeUpdate);
         audio.addEventListener('ended', handleAudioEnd);
 
         audio.play().catch(e => {
@@ -1569,11 +1566,10 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
 
         return () => {
             audio.removeEventListener('loadedmetadata', setAudioData);
-            audio.removeEventListener('timeupdate', setAudioTime);
+            audio.removeEventListener('timeupdate', handleTimeUpdate);
             audio.removeEventListener('ended', handleAudioEnd);
-            clearTimeout(sleepTimer?.id);
         };
-    }, [audioSrc, totalRepetitions, isSpokenPractice, sleepTimer]);
+    }, [audioSrc, totalRepetitions, isSpokenPractice]);
 
     const togglePlayPause = useCallback(() => {
         if (isPlaying) {
@@ -1597,7 +1593,6 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
     
-    // Callbacks para os modais
     const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []);
     const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]);
     const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []);
@@ -1630,36 +1625,40 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
                     </button>
                 </div>
                 
-                <div className="flex-grow flex flex-col items-center justify-center -mt-8" style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}>
-                    <h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2>
-                    <p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>
-                    {isSpokenPractice && (
-                        <div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center gap-2">
-                           <Repeat size={14} />
-                           <span>{repetitionCount} / {totalRepetitions}</span>
+                <div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}>
+                    <div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}>
+                        <h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2>
+                        <p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>
+                        {isSpokenPractice && (
+                            <div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto">
+                               <Repeat size={14} />
+                               <span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="w-full max-w-sm flex flex-col items-center gap-3">
+                        <div className="w-full">
+                            <input
+                                type="range"
+                                min="0"
+                                max={duration || 0}
+                                value={currentTime}
+                                onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }}
+                                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div className="flex justify-between text-xs font-light text-white/70 mt-1">
+                                <span>{formatTime(currentTime)}</span>
+                                <span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span>
+                            </div>
                         </div>
-                    )}
+                        <button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">
+                            {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="w-full flex flex-col items-center gap-4">
-                    <div className="w-full max-w-sm">
-                        <input
-                            type="range"
-                            min="0"
-                            max={duration || 0}
-                            value={currentTime}
-                            onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }}
-                            className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex justify-between text-xs font-light text-white/70 mt-1">
-                            <span>{formatTime(currentTime)}</span>
-                            <span>{formatTime(duration)}</span>
-                        </div>
-                    </div>
-                    <button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">
-                        {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
-                    </button>
-                </div>
+                <div />
             </div>
 
             <audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} />
@@ -1673,12 +1672,12 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
                 onTimer={openTimerModal}
             />
             {showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}
-            {showTimerModal && <SleepTimerModal activeTimer={sleepTimer} onSetTimer={handleSetSleepTimer} onClose={closeTimerModal} />}
+            {showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}
         </div>
     );
 };
 
-// --- COMPONENTES DO PLAYER (MODIFICADOS/NOVOS E MEMOIZADOS) ---
+// --- COMPONENTES DO PLAYER (TEXTOS AJUSTADOS) ---
 const OptionsMenu = React.memo(({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => {
     if (!isOpen) return null;
 
@@ -1695,7 +1694,7 @@ const OptionsMenu = React.memo(({ isOpen, onClose, isFavorite, onFavorite, onSpe
                 <div className="space-y-1">
                     <OptionButton icon={Heart} text="Favoritar" onClick={onFavorite} active={isFavorite} />
                     <OptionButton icon={GaugeCircle} text="Velocidade" onClick={onSpeed} />
-                    <OptionButton icon={Clock} text="Timer" onClick={onTimer} />
+                    <OptionButton icon={Clock} text="Definir Duração" onClick={onTimer} />
                 </div>
             </div>
         </div>
@@ -1721,18 +1720,18 @@ const PlaybackSpeedModal = React.memo(({ currentRate, onSelectRate, onClose }) =
     );
 });
 
-const SleepTimerModal = React.memo(({ activeTimer, onSetTimer, onClose }) => {
+const PracticeTimerModal = React.memo(({ activeTimer, onSetTimer, onClose }) => {
     const timers = [
         { label: "5 Minutos", seconds: 300 }, { label: "15 Minutos", seconds: 900 }, { label: "30 Minutos", seconds: 1800 }, { label: "60 Minutos", seconds: 3600 },
     ];
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}>
             <div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}>
-                <h3 className="text-lg text-center mb-4 text-white">Temporizador</h3>
+                <h3 className="text-lg text-center mb-4 text-white">Definir Duração</h3>
                 <ul className="space-y-2">
                      {activeTimer.duration && (
                         <li onClick={() => onSetTimer(null)} className="p-4 bg-red-500/30 text-red-300 rounded-lg hover:bg-red-500/40 cursor-pointer text-center font-light">
-                            Cancelar Timer ({Math.ceil(activeTimer.remaining / 60)} min)
+                            Cancelar Timer
                         </li>
                     )}
                     {timers.map(timer => (
