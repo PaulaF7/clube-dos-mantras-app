@@ -26,9 +26,9 @@ import {
     Timestamp
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame } from 'lucide-react';
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock } from 'lucide-react';
 
-// --- ESTILOS GLOBAIS MODERNOS (VERSÃO FINAL) ---
+// --- ESTILOS GLOBAIS MODERNOS (COM EFEITOS PREMIUM) ---
 const GlobalStyles = () => (
     <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
@@ -47,10 +47,43 @@ const GlobalStyles = () => (
         .modern-body {
             background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57);
             background-size: 200% 200%;
-            animation: gradient-animation 25s ease-in-out infinite; /* Animação mais lenta */
+            animation: gradient-animation 25s ease-in-out infinite;
             color: #F3E5F5;
-            overflow-x: hidden; /* Prevenir scroll horizontal indesejado */
+            overflow-x: hidden;
+            position: relative;
         }
+        
+        /* NOVO FUNDO PREMIUM */
+        .premium-body {
+            background: linear-gradient(220deg, #2c0b4d, #4a148c, #3a1b57); /* Tons mais vibrantes */
+            background-size: 200% 200%;
+            animation: gradient-animation 20s ease-in-out infinite;
+        }
+        
+        /* Partículas para o fundo premium */
+        .sparkles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .sparkle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: rgba(255, 213, 79, 0.7);
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(255, 213, 79, 0.8);
+            animation: sparkle-animation 15s linear infinite;
+        }
+        @keyframes sparkle-animation {
+            from { transform: translateY(100vh) scale(1); opacity: 1; }
+            to { transform: translateY(-10vh) scale(0.5); opacity: 0; }
+        }
+
 
         @keyframes gradient-animation {
             0% { background-position: 0% 50%; }
@@ -59,22 +92,35 @@ const GlobalStyles = () => (
         }
 
         .glass-card, .glass-modal {
-            background: rgba(255, 255, 255, 0.04); /* Mais sutil */
-            backdrop-filter: blur(25px); /* Desfoque mais suave */
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
             border-radius: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); /* Sombra final */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
             padding: 2rem; 
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
         }
+        
+        /* NOVO EFEITO DE BRILHO PARA CARDS PREMIUM */
+        .premium-card-glow {
+            border-color: rgba(255, 213, 79, 0.3);
+            animation: premium-glow 3s ease-in-out infinite;
+        }
+        @keyframes premium-glow {
+            0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); }
+            100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); }
+        }
+
         .glass-card.clickable:hover {
-            transform: translateY(-5px); /* Efeito sutil */
+            transform: translateY(-5px);
             box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15);
             transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
         }
 
         .glass-nav, .glass-bottom-nav {
-            background: rgba(26, 9, 51, 0.6); /* Cor base mais escura */
+            background: rgba(26, 9, 51, 0.6);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border-color: rgba(255, 255, 255, 0.08);
@@ -88,14 +134,16 @@ const GlobalStyles = () => (
             padding-bottom: 8rem; 
             max-width: 700px; margin: 0 auto; 
             min-height: 100vh; display: flex; flex-direction: column; 
-            gap: 1.5rem; /* Ajustado o gap */
+            gap: 1.5rem;
+            position: relative;
+            z-index: 2;
         }
 
         .page-title {
             font-family: var(--font-display);
             font-size: 1.8rem; 
             color: #FFFFFF;
-            margin-bottom: 0.25rem; /* Ajustado */
+            margin-bottom: 0.25rem;
             line-height: 1.2;
             font-weight: 400;
             text-align: center; 
@@ -103,10 +151,10 @@ const GlobalStyles = () => (
 
         .page-subtitle {
             text-align: center;
-            color: #D1C4E9; /* Cor mais suave */
+            color: #D1C4E9;
             opacity: 0.8;
-            margin-top: 0.25rem; /* AJUSTE SUTIL APLICADO AQUI */
-            margin-bottom: 1rem; /* Espaço antes do conteúdo */
+            margin-top: 0.25rem;
+            margin-bottom: 1rem;
             font-weight: 300;
             max-width: 90%;
             margin-left: auto;
@@ -128,7 +176,7 @@ const GlobalStyles = () => (
         }
         .modern-btn-primary:hover {
             transform: translateY(-3px);
-            filter: brightness(1.1); /* Efeito de brilho */
+            filter: brightness(1.1);
             box-shadow: 0 7px 20px -5px rgba(255, 213, 79, 0.6);
         }
         .modern-btn-primary:disabled {
@@ -195,7 +243,7 @@ const GlobalStyles = () => (
     </style>
 );
 
-// --- DADOS DOS MANTRAS (LINKS DA BIBLIOTECA ATUALIZADOS) ---
+// --- DADOS DOS MANTRAS (sem alterações) ---
 const MANTRAS_DATA = [
     { id: 1, nome: "Afirmação da Paz", texto: "Eu sou, Eu sou, Eu sou a luz que emana paz", finalidade: "Acalma a mente e afasta pensamentos negativos.", repeticoes: 12, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Afirmac%CC%A7a%CC%83o%20da%20paz.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz.MP3", imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", imagePrompt: "A serene and ethereal visual representation of inner peace. Abstract art, soft glowing light, calming energy, spiritual, high resolution, beautiful." },
     { id: 2, nome: "Chama Violeta", texto: "Eu sou um ser de fogo violeta, eu sou a pureza que Deus deseja", finalidade: "Limpa culpas, libera o passado e eleva a vibração.", repeticoes: 36, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Chama%20Violeta.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Chama%20Violeta.MP3", imageSrc: "https://i.postimg.cc/BvJ4vhDt/violet.png", imagePrompt: "An abstract representation of the violet flame of transmutation. Swirls of purple, magenta, and indigo light, cleansing energy, spiritual fire, high resolution, ethereal." },
@@ -233,7 +281,7 @@ try {
     console.error("Firebase initialization error:", error);
 }
 
-// --- CONTEXTO COMPLETO (sem alterações na lógica) ---
+// --- CONTEXTO COMPLETO (sem alterações) ---
 const AppContext = createContext(null);
 
 const AppProvider = ({ children }) => {
@@ -246,6 +294,7 @@ const AppProvider = ({ children }) => {
     const [photoURL, setPhotoURL] = useState(null);
     const [allEntries, setAllEntries] = useState([]);
     const [permissionError, setPermissionError] = useState(null);
+    const [isSubscribed, setIsSubscribed] = useState(false);
 
     const fetchAllEntries = useCallback(async (uid) => {
         if (!db || !uid) return [];
@@ -281,8 +330,11 @@ const AppProvider = ({ children }) => {
             if (practiceEntries.length === 0) {
                 const newStreakData = { currentStreak: 0, lastPracticedDate: null };
                 setStreakData(newStreakData);
-                const userRef = doc(db, `users/${currentUserId}/profile`, 'userInfo');
-                await setDoc(userRef, newStreakData, { merge: true });
+                const userRef = doc(db, `users/${currentUserId}`);
+                await updateDoc(userRef, { 
+                    currentStreak: newStreakData.currentStreak, 
+                    lastPracticedDate: null 
+                });
                 return;
             }
 
@@ -330,11 +382,11 @@ const AppProvider = ({ children }) => {
             };
 
             setStreakData(newStreakData);
-            const userRef = doc(db, `users/${currentUserId}/profile`, 'userInfo');
-            await setDoc(userRef, { 
+            const userRef = doc(db, `users/${currentUserId}`);
+            await updateDoc(userRef, { 
                 currentStreak: newStreakData.currentStreak, 
                 lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) 
-            }, { merge: true });
+            });
         } catch (error) {
             console.error("Error recalculating streak:", error);
             if (error.code === 'permission-denied') {
@@ -346,25 +398,30 @@ const AppProvider = ({ children }) => {
     const fetchUserData = useCallback(async (uid) => {
         if (!db || !uid) return;
         try {
-            const userRef = doc(db, `users/${uid}/profile`, 'userInfo');
+            const userRef = doc(db, `users/${uid}`);
             const docSnap = await getDoc(userRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setUserName(data.name);
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
+                setIsSubscribed(data.assinatura_ativa || false);
+                setStreakData({
+                    currentStreak: data.currentStreak || 0,
+                    lastPracticedDate: data.lastPracticedDate?.toDate() || null
+                });
             } else if (auth.currentUser?.displayName) {
                 setUserName(auth.currentUser.displayName);
+                setIsSubscribed(false);
             }
-            const entries = await fetchAllEntries(uid);
-            await recalculateAndSetStreak(entries, uid);
+            await fetchAllEntries(uid);
         } catch (error) {
             console.error("Error fetching user data:", error);
             if (error.code === 'permission-denied') {
                 setPermissionError("Firestore");
             }
         }
-    }, [fetchAllEntries, recalculateAndSetStreak]);
+    }, [fetchAllEntries]);
 
     useEffect(() => {
         if (!auth) {
@@ -386,6 +443,7 @@ const AppProvider = ({ children }) => {
                     setStreakData({ currentStreak: 0, lastPracticedDate: null });
                     setPhotoURL(null);
                     setAllEntries([]);
+                    setIsSubscribed(false);
                 }
             } catch (error) {
                 console.error("Error during auth state change:", error);
@@ -402,12 +460,12 @@ const AppProvider = ({ children }) => {
     const updateFavorites = async (newFavorites) => {
         setFavorites(newFavorites);
         if (userId && db) {
-            const userRef = doc(db, `users/${userId}/profile`, 'userInfo');
-            await setDoc(userRef, { favorites: newFavorites }, { merge: true });
+            const userRef = doc(db, `users/${userId}`);
+            await updateDoc(userRef, { favorites: newFavorites });
         }
     };
 
-    const value = { user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError };
+    const value = { user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed };
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
@@ -470,8 +528,17 @@ const AuthScreen = () => {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 await updateProfile(user, { displayName: name });
-                const userRef = doc(db, `users/${user.uid}/profile`, 'userInfo');
-                await setDoc(userRef, { name: name, email: user.email, currentStreak: 0, lastPracticedDate: null });
+                
+                const userRef = doc(db, `users/${user.uid}`);
+                await setDoc(userRef, {
+                    name: name,
+                    email: user.email,
+                    assinatura_ativa: false,
+                    favorites: [],
+                    currentStreak: 0,
+                    lastPracticedDate: null,
+                    createdAt: Timestamp.now()
+                });
             }
         } catch (err) {
             console.error("Firebase Auth Error:", err);
@@ -545,7 +612,7 @@ const AuthScreen = () => {
 };
 
 
-// --- COMPONENTES DE UI (REFINADOS) ---
+// --- COMPONENTES DE UI (sem alterações) ---
 const ScreenAnimator = ({ children, screenKey }) => (<div key={screenKey} className="screen-animation">{children}</div>);
 
 const PageTitle = ({ children, subtitle }) => (
@@ -554,6 +621,18 @@ const PageTitle = ({ children, subtitle }) => (
         {subtitle && <p className="page-subtitle">{subtitle}</p>}
     </div>
 );
+
+const PremiumButton = ({ onClick, children, className = '' }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={`w-full modern-btn-primary !py-2 !px-4 !text-sm !font-normal !bg-white/10 !text-white/70 cursor-pointer ${className}`}
+    >
+        <Lock className="h-4 w-4" />
+        {children}
+    </button>
+);
+
 
 const Header = ({ setActiveScreen }) => {
     const LOGO_URL = "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png";
@@ -640,22 +719,60 @@ const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubm
     );
 };
 
-// --- TELAS DO APLICATIVO (REFINADAS) ---
+const PremiumLockModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    const handleSubscribe = () => {
+        window.open('https://hotmart.com/', '_blank');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <Sparkles className="mx-auto h-12 w-12 text-[#FFD54F]" style={{filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))'}} />
+                <h2 className="text-2xl text-white mt-4" style={{ fontFamily: "var(--font-display)" }}>Função Premium</h2>
+                <p className="text-white/70 my-4 font-light">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p>
+                <div className="flex flex-col gap-4">
+                    <button onClick={handleSubscribe} className="modern-btn-primary h-14">
+                        Assinar Agora
+                    </button>
+                    <button onClick={onClose} className="text-sm text-white/60 hover:underline">
+                        Agora não
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- TELA INICIAL (COM MENSAGEM SUBSTITUÍDA) ---
 const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => {
-    const { userName, streakData, allEntries } = useContext(AppContext);
+    const { userName, streakData, allEntries, isSubscribed } = useContext(AppContext);
     
     const dailyMessages = [
-        "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", // Domingo
-        "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", // Segunda
-        "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", // Terça
-        "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", // Quarta
-        "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", // Quinta
-        "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", // Sexta
-        "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." // Sábado
+        "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.",
+        "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.",
+        "Coragem para agir com alma. A terça-feira pede passos verdadeiros.",
+        "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.",
+        "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.",
+        "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!",
+        "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado."
+    ];
+    
+    const premiumMessages = [
+        "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.",
+        "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.",
+        "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.",
+        "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.",
+        "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.",
+        "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.",
+        "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria."
     ];
 
     const todayIndex = new Date().getDay();
-    const inspirationalMessage = dailyMessages[todayIndex];
+    const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex];
+    const messageColor = isSubscribed ? 'text-[#FFD54F]/80' : 'text-white/60';
 
     const WeekView = () => {
         const today = new Date();
@@ -669,7 +786,7 @@ const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => {
         const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString()));
 
         return (
-            <div className="w-full glass-card p-4 space-y-3">
+            <div className={`w-full glass-card p-4 space-y-3 ${isSubscribed ? 'premium-card-glow' : ''}`}>
                 <div className="flex justify-around">
                     {days.map((day, index) => {
                         const isPracticed = practicedDays.has(day.toDateString());
@@ -677,12 +794,12 @@ const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => {
                         
                         const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${
                             isToday && isPracticed
-                                ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' // HOJE E PRATICADO
+                                ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]'
                                 : isToday
-                                ? 'ring-2 ring-[#FFD54F] bg-white/10' // APENAS HOJE
+                                ? 'ring-2 ring-[#FFD54F] bg-white/10'
                                 : isPracticed
-                                ? 'bg-white/10 border-2 border-[#FFD54F]' // APENAS PRATICADO
-                                : 'bg-white/10' // PADRÃO
+                                ? 'bg-white/10 border-2 border-[#FFD54F]'
+                                : 'bg-white/10'
                         }`;
 
                         return (
@@ -707,12 +824,21 @@ const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => {
     return (
         <div className="page-container text-center">
             <div>
-                <h1 className="page-title !text-3xl !text-white !mb-0">Olá, {userName || "Ser de Luz"}</h1>
-                <p className="text-white/60 mt-1 mb-4 text-base italic font-light">"{inspirationalMessage}"</p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <h1 className="page-title !text-3xl !mb-0">
+                        Olá, {userName || "Ser de Luz"}
+                    </h1>
+                    {isSubscribed && (
+                        <div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]">
+                            <span>MANTRA+</span>
+                        </div>
+                    )}
+                </div>
+                <p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p>
             </div>
             
             {streakData && streakData.currentStreak > 0 && (
-                 <div className="glass-card p-6 flex items-center justify-center gap-5 text-center">
+                 <div className={`glass-card p-6 flex items-center justify-center gap-5 text-center ${isSubscribed ? 'premium-card-glow' : ''}`}>
                     <Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} />
                     <div>
                         <p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p>
@@ -732,8 +858,9 @@ const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => {
     );
 };
 
-const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit }) => {
-    const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext);
+// --- DEMAIS TELAS (sem alterações na lógica principal, apenas passando props) ---
+const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => {
+    const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext);
     const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id);
     const [repetitions, setRepetitions] = useState('');
     const [timeOfDay, setTimeOfDay] = useState([]);
@@ -891,10 +1018,16 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit }) => {
 
                     {feelings && (
                         <div className="text-center">
-                            <button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-normal" disabled={isGenerating}>
-                                <Sparkles className="h-5 w-5" />
-                                {isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}
-                            </button>
+                             {isSubscribed ? (
+                                <button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-normal" disabled={isGenerating}>
+                                    <Sparkles className="h-5 w-5" />
+                                    {isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}
+                                </button>
+                            ) : (
+                                <PremiumButton onClick={openPremiumModal}>
+                                    Gerar Reflexão com IA (Premium)
+                                </PremiumButton>
+                            )}
                         </div>
                     )}
 
@@ -947,61 +1080,88 @@ const MantraSelectionModal = ({ isOpen, onClose, onSelectMantra, currentMantraId
     );
 };
 
-const MantrasScreen = ({ onPlayMantra }) => (
-    <div className="page-container">
-        <PageTitle 
-            subtitle="Uma biblioteca sonora para relaxar e meditar."
-        >
-            Ouvir Mantras
-        </PageTitle>
-        <div className="grid grid-cols-2 gap-4 md:gap-6">
-            {MANTRAS_DATA.map((mantra) => (
-                <div
-                    key={mantra.id}
-                    className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable"
-                    onClick={() => onPlayMantra(mantra, 1, 'library')}
-                >
-                    <img
-                        src={mantra.imageSrc}
-                        alt={`Visual para ${mantra.nome}`}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 p-4">
-                        <h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3>
-                    </div>
-                </div>
-            ))}
-        </div>
-    </div>
-);
+const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
+    const { isSubscribed } = useContext(AppContext);
+    const FREE_MANTRA_IDS = [1, 2];
 
-const SpokenMantrasScreen = ({ onSelectMantra }) => (
-    <div className="page-container">
-        <PageTitle 
-            subtitle="Escolha um mantra para focar e iniciar sua prática de repetição."
-        >
-            Praticar Mantras
-        </PageTitle>
-        <div className="space-y-4">
-            {MANTRAS_DATA.map((mantra) => (
-                <div key={mantra.id} className="glass-card !p-5 text-left">
-                    <h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3>
-                    <p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p>
-                    <div className="mt-4 text-right">
-                         <button
-                            onClick={() => onSelectMantra(mantra)}
-                            className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"
+    return (
+        <div className="page-container">
+            <PageTitle 
+                subtitle="Uma biblioteca sonora para relaxar e meditar."
+            >
+                Ouvir Mantras
+            </PageTitle>
+            <div className="grid grid-cols-2 gap-4 md:gap-6">
+                {MANTRAS_DATA.map((mantra) => {
+                    const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id);
+                    return (
+                        <div
+                            key={mantra.id}
+                            className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable"
+                            onClick={() => isLocked ? openPremiumModal() : onPlayMantra(mantra, 1, 'library')}
                         >
-                            <Mic2 className="h-4 w-4" />
-                            Praticar
-                        </button>
-                    </div>
-                </div>
-            ))}
+                            <img
+                                src={mantra.imageSrc}
+                                alt={`Visual para ${mantra.nome}`}
+                                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'filter grayscale brightness-50' : ''}`}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            {isLocked && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <Lock className="h-10 w-10 text-white/70" />
+                                </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 p-4">
+                                <h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
-    </div>
-);
+    );
+};
+
+const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => {
+    const { isSubscribed } = useContext(AppContext);
+    const FREE_MANTRA_IDS = [1, 2];
+
+    return (
+        <div className="page-container">
+            <PageTitle 
+                subtitle="Escolha um mantra para focar e iniciar sua prática de repetição."
+            >
+                Praticar Mantras
+            </PageTitle>
+            <div className="space-y-4">
+                {MANTRAS_DATA.map((mantra) => {
+                    const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id);
+                    return (
+                        <div key={mantra.id} className="glass-card !p-5 text-left">
+                            <h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3>
+                            <p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p>
+                            <div className="mt-4 text-right">
+                                {isLocked ? (
+                                    <PremiumButton onClick={openPremiumModal} className="!w-auto !py-2 !px-5 !text-sm !font-semibold">
+                                        Praticar
+                                    </PremiumButton>
+                                ) : (
+                                    <button
+                                        onClick={() => onSelectMantra(mantra)}
+                                        className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"
+                                    >
+                                        <Mic2 className="h-4 w-4" />
+                                        Praticar
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 
 const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
@@ -1100,8 +1260,8 @@ const SettingsScreen = ({ setActiveScreen }) => {
         setIsSubmitting(true);
         setMessage({ type: '', text: '' });
         try {
-            const userRef = doc(db, `users/${user.uid}/profile`, 'userInfo');
-            await setDoc(userRef, { name: newName }, { merge: true });
+            const userRef = doc(db, `users/${user.uid}`);
+            await updateDoc(userRef, { name: newName });
             await fetchUserData(user.uid);
             setMessage({ type: 'success', text: 'Nome atualizado!' });
         } catch (error) {
@@ -1124,8 +1284,8 @@ const SettingsScreen = ({ setActiveScreen }) => {
             await uploadBytes(storageRef, file);
             const url = await getDownloadURL(storageRef);
             await updateProfile(user, { photoURL: url });
-            const userDocRef = doc(db, `users/${user.uid}/profile`, 'userInfo');
-            await setDoc(userDocRef, { photoURL: url }, { merge: true });
+            const userDocRef = doc(db, `users/${user.uid}`);
+            await updateDoc(userDocRef, { photoURL: url });
             setPhotoURL(url);
             setMessage({ type: 'success', text: 'Foto atualizada!' });
         } catch (error) {
@@ -1145,7 +1305,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
         if (!auth || !user) return;
         setIsSubmitting(true);
         try {
-            auth.languageCode = 'pt-BR'; // Define o idioma para Português do Brasil
+            auth.languageCode = 'pt-BR';
             await sendPasswordResetEmail(auth, user.email);
             setMessage({ type: 'success', text: `E-mail de redefinição enviado.` });
         } catch (error) {
@@ -1275,7 +1435,8 @@ const SettingsScreen = ({ setActiveScreen }) => {
 };
 
 
-const OracleScreen = ({ onPlayMantra }) => {
+const OracleScreen = ({ onPlayMantra, openPremiumModal }) => {
+    const { isSubscribed } = useContext(AppContext);
     const [userInput, setUserInput] = useState('');
     const [suggestedMantra, setSuggestedMantra] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -1283,6 +1444,12 @@ const OracleScreen = ({ onPlayMantra }) => {
 
     const handleSuggestMantra = async () => {
         if (!userInput) return;
+        
+        if (!isSubscribed) {
+            openPremiumModal();
+            return;
+        }
+
         setIsLoading(true);
         setSuggestedMantra(null);
         setError('');
@@ -1351,10 +1518,18 @@ const OracleScreen = ({ onPlayMantra }) => {
             </PageTitle>
             <div className="w-full max-w-lg mx-auto space-y-6 glass-card">
                 <textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} className="textarea-field" rows="4" placeholder="Descreva como você está se sentindo hoje..." />
-                <button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}>
-                    <BrainCircuit className="h-6 w-6" />
-                    {isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}
-                </button>
+                
+                {isSubscribed ? (
+                    <button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}>
+                        <BrainCircuit className="h-6 w-6" />
+                        {isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}
+                    </button>
+                ) : (
+                    <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
+                        Revelar o meu Mantra
+                    </PremiumButton>
+                )}
+
                 {error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}
                 {suggestedMantra && (
                     <div className="pt-4 border-t border-white/10">
@@ -1677,7 +1852,7 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
     );
 };
 
-// --- COMPONENTES DO PLAYER (TEXTOS AJUSTADOS) ---
+// --- COMPONENTES DO PLAYER (sem alterações) ---
 const OptionsMenu = React.memo(({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => {
     if (!isOpen) return null;
 
@@ -1747,13 +1922,14 @@ const PracticeTimerModal = React.memo(({ activeTimer, onSetTimer, onClose }) => 
 });
 
 const MantraVisualizer = React.memo(({ mantra, isPlaying }) => {
+    const { isSubscribed } = useContext(AppContext);
     const [images, setImages] = useState([mantra.imageSrc]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const hasStartedGenerating = useRef(false);
 
     useEffect(() => {
         const generateImages = async () => {
-            if (hasStartedGenerating.current || !mantra.imagePrompt) return;
+            if (hasStartedGenerating.current || !mantra.imagePrompt || !isSubscribed) return;
             hasStartedGenerating.current = true;
             try {
                 const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } };
@@ -1780,14 +1956,14 @@ const MantraVisualizer = React.memo(({ mantra, isPlaying }) => {
         if (isPlaying) {
             generateImages();
         }
-    }, [isPlaying, mantra.imagePrompt]);
+    }, [isPlaying, mantra.imagePrompt, isSubscribed]);
 
     useEffect(() => {
         let interval;
         if (isPlaying && images.length > 1) {
             interval = setInterval(() => {
                 setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-            }, 8000); // Muda imagem a cada 8 segundos
+            }, 8000);
         }
         return () => clearInterval(interval);
     }, [isPlaying, images]);
@@ -1803,7 +1979,7 @@ const MantraVisualizer = React.memo(({ mantra, isPlaying }) => {
                         className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-[3000ms] ease-in-out"
                         style={{ 
                             backgroundImage: `url(${src})`,
-                            opacity: index === currentIndex ? 0.35 : 0, // Opacidade reduzida
+                            opacity: index === currentIndex ? 0.35 : 0,
                         }}
                     />
                 ))}
@@ -1823,7 +1999,7 @@ const MantraVisualizer = React.memo(({ mantra, isPlaying }) => {
     );
 });
 
-// --- MODAIS DE CALENDÁRIO E DETALHES (MODIFICADO)---
+// --- MODAIS DE CALENDÁRIO E DETALHES (sem alterações) ---
 const CalendarModal = ({ isOpen, onClose, onDayClick }) => {
     const { allEntries } = useContext(AppContext);
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -1860,12 +2036,12 @@ const CalendarModal = ({ isOpen, onClose, onDayClick }) => {
 
                         const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm hover:bg-white/20 ${
                             isToday && isPracticed
-                                ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' // HOJE E PRATICADO
+                                ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]'
                                 : isToday
-                                ? 'ring-2 ring-[#FFD54F] bg-white/10' // APENAS HOJE
+                                ? 'ring-2 ring-[#FFD54F] bg-white/10'
                                 : isPracticed
-                                ? 'bg-white/10 border-2 border-[#FFD54F]' // APENAS PRATICADO
-                                : 'bg-white/10' // PADRÃO
+                                ? 'bg-white/10 border-2 border-[#FFD54F]'
+                                : 'bg-white/10'
                         }`;
 
                         return (
@@ -1912,7 +2088,6 @@ const DayDetailModal = ({ isOpen, onClose, date, onAddNote }) => {
     );
 };
 
-// --- NOVA TELA: EDITOR DE ANOTAÇÕES ---
 const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => {
     const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext);
     const [note, setNote] = useState('');
@@ -1984,7 +2159,6 @@ const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => {
     );
 };
 
-// --- NOVO MODAL: SELEÇÃO DE REPETIÇÕES ---
 const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => {
     if (!isOpen) return null;
 
@@ -2011,8 +2185,9 @@ const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => {
 };
 
 
-// --- COMPONENTE PRINCIPAL DO APP (LÓGICA ATUALIZADA) ---
+// --- COMPONENTE PRINCIPAL (COM LÓGICA DE FUNDO PREMIUM) ---
 const AppContent = () => {
+    const { isSubscribed } = useContext(AppContext); // Pega o status da assinatura
     const [activeScreen, setActiveScreen] = useState('home');
     const [playerData, setPlayerData] = useState({ mantra: null, repetitions: 1, audioType: 'library' });
     const [repetitionModalData, setRepetitionModalData] = useState({ isOpen: false, mantra: null });
@@ -2023,6 +2198,7 @@ const AppContent = () => {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isDayDetailOpen, setIsDayDetailOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
     const handlePlayMantra = (mantra, repetitions, audioType) => {
         setPlayerData({ mantra, repetitions, audioType });
@@ -2067,26 +2243,49 @@ const AppContent = () => {
         if (entryToEdit && activeScreen !== 'diary') setEntryToEdit(null);
         if (noteToEdit && activeScreen !== 'noteEditor') setNoteToEdit(null);
 
+        const openPremiumModal = () => setIsPremiumModalOpen(true);
+
         switch (activeScreen) {
             case 'home': return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
-            case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancelEdit={() => { setEntryToEdit(null); setActiveScreen('history'); }} />;
+            case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancelEdit={() => { setEntryToEdit(null); setActiveScreen('history'); }} openPremiumModal={openPremiumModal} />;
             case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen('history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;
-            case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} />;
-            case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} />;
+            case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
+            case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} openPremiumModal={openPremiumModal} />;
             case 'history': return <HistoryScreen 
                                         onEditMantra={(entry) => { setEntryToEdit(entry); setActiveScreen('diary'); }} 
                                         onEditNote={(note) => { setNoteToEdit(note); setActiveScreen('noteEditor'); }}
                                         onDelete={(entry) => setEntryToDelete(entry)} 
                                     />;
             case 'settings': return <SettingsScreen setActiveScreen={setActiveScreen} />;
-            case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} />;
+            case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
             default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
         }
     };
+    
+    // Componente para as partículas de fundo
+    const SparklesBackground = () => {
+        const sparkles = Array.from({ length: 20 }); // Número de partículas
+        return (
+            <div className="sparkles">
+                {sparkles.map((_, i) => (
+                    <div
+                        key={i}
+                        className="sparkle"
+                        style={{
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 15}s`,
+                            animationDuration: `${5 + Math.random() * 10}s`
+                        }}
+                    />
+                ))}
+            </div>
+        );
+    };
 
     return (
-        <div className="modern-body">
+        <div className={`modern-body ${isSubscribed ? 'premium-body' : ''}`}>
+            {isSubscribed && <SparklesBackground />}
             <Header setActiveScreen={setActiveScreen} />
             <ScreenAnimator screenKey={activeScreen}>
                 {renderScreen()}
@@ -2110,6 +2309,7 @@ const AppContent = () => {
             <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={handleDeleteEntry} title="Apagar Registro" message="Tem certeza que deseja apagar este registro? Esta ação não pode ser desfeita." />
             <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} onDayClick={handleDayClick} />
             <DayDetailModal isOpen={isDayDetailOpen} onClose={() => setIsDayDetailOpen(false)} date={selectedDate} onAddNote={handleAddNoteForDate} />
+            <PremiumLockModal isOpen={isPremiumModalOpen} onClose={() => setIsPremiumModalOpen(false)} />
         </div>
     );
 };
