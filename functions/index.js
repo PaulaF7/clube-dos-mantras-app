@@ -1,68 +1,131 @@
-// --- SEÇÃO DE IMPORTAÇÕES ---
-const { setGlobalOptions } = require("firebase-functions/v2");
-const { onRequest } = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+/**
+ * =================================================================
+ * Clube dos Mantras - Backend com Firebase Functions
+ * =================================================================
+ *
+ * Este arquivo contém a lógica do servidor para o aplicativo.
+ * A principal função é o `hotmartWebhookHandler`, que recebe
+ * notificações de pagamento da Hotmart para automatizar a
+ * liberação de acesso premium aos usuários.
+ *
+ * Para configurar as variáveis de ambiente (como o hottok):
+ * Use o comando da Firebase CLI no seu terminal:
+ * firebase functions:config:set hotmart.hottok="SEU_TOKEN_SECRETO_DA_HOTMART"
+ *
+ * Depois de configurar, faça o deploy das suas funções com:
+ * firebase deploy --only functions
+ *
+ */
+
+// Importações dos módulos do Firebase
+const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { defineString } = require("firebase-functions/v2/params");
 
-// --- INICIALIZAÇÃO E CONFIGURAÇÕES GLOBAIS ---
+// Inicializa o SDK do Firebase Admin para permitir acesso ao Firestore
 admin.initializeApp();
-setGlobalOptions({ maxInstances: 10 });
+const db = admin.firestore();
 
-// Define o nosso token secreto da Hotmart de forma segura.
-const hotmartSecretToken = defineString("HOTMART_HOTTOK");
+/**
+ * =================================================================
+ * Webhook Handler para a Hotmart
+ * =================================================================
+ * Endpoint: /hotmartWebhookHandler
+ *
+ * Esta função é acionada sempre que a Hotmart envia um evento para
+ * o URL do webhook configurado.
+ *
+ * Fluxo:
+ * 1. Validação de Segurança: Verifica se o `hottok` recebido no
+ * header corresponde ao token configurado, garantindo que a
+ * requisição é legítima e veio da Hotmart.
+ *
+ * 2. Processamento do Evento: Filtra apenas eventos de compra
+ * aprovada (`PURCHASE_APPROVED`) ou assinatura ativada
+ * (`SUBSCRIPTION_ACTIVATED`).
+ *
+ * 3. Busca de Usuário: Procura no banco de dados (`users`) por um
+ * usuário com o mesmo e-mail do comprador.
+ *
+ * 4. Lógica de Ativação:
+ * - Se o usuário JÁ EXISTE: O campo `assinatura_ativa` do
+ * documento do usuário é atualizado para `true`.
+ * - Se o usuário NÃO EXISTE: Um novo documento é criado na
+ * coleção `pending_users` com o e-mail do comprador. Este
+ * registro será usado para ativar a assinatura quando o
+ * usuário criar sua conta no aplicativo.
+ */
+exports.hotmartWebhookHandler = functions
+  .region("southamerica-east1") // Recomendado definir a região para menor latência
+  .https.onRequest(async (request, response) => {
+    // Log para registrar o recebimento do webhook (útil para depuração)
+    functions.logger.info("Webhook da Hotmart recebido!", {
+      headers: request.headers,
+      body: request.body,
+    });
 
-
-// ===================================================================
-// A SUA FUNÇÃO DE WEBHOOK (VERSÃO FINAL E SEGURA)
-// ===================================================================
-exports.hotmartWebhookHandler = onRequest(
-  { secrets: [hotmartSecretToken] }, // Informa à função que ela precisa do segredo para rodar.
-  async (request, response) => {
-    logger.info("Webhook v2 da Hotmart recebido!", { body: request.body });
-
-    // 1. VERIFICAÇÃO DE SEGURANÇA BÁSICA
-    if (request.method !== "POST") {
-      logger.warn("Requisição recebida com método não permitido:", request.method);
-      response.status(405).send("Método não permitido. Use POST.");
-      return;
-    }
-
-    // 2. VERIFICAÇÃO DO TOKEN DA HOTMART (hottok)
-    const hottokRecebido = request.headers["x-hotmart-hottok"];
-    if (hottokRecebido !== hotmartSecretToken.value()) {
-      logger.error("Falha na autenticação do Webhook. Hottok inválido.", { hottok: hottokRecebido });
-      response.status(401).send("Não autorizado.");
-      return;
-    }
-
-    // 3. PROCESSAMENTO DOS DADOS
-    const eventData = request.body;
-
+    // 1. Validação de Segurança com o Hottok
     try {
-      if (eventData.event === "PURCHASE_APPROVED" || eventData.event === "SUBSCRIPTION_ACTIVATED") {
-        const userEmail = eventData.data.buyer.email;
+      const hottokRecebido = request.headers["x-hotmart-hottok"];
+      // Pega o token configurado nas variáveis de ambiente do Firebase
+      const tokenConfigurado = functions.config().hotmart.hottok;
 
-        // TODO: Sua lógica para atualizar o Firestore vai aqui.
-        // Exemplo:
-        // const userQuery = await admin.firestore().collection('users').where('email', '==', userEmail).get();
-        // if (!userQuery.empty) {
-        //   const userId = userQuery.docs[0].id;
-        //   await admin.firestore().collection('users').doc(userId).update({ assinatura_ativa: true });
-        //   logger.info(`Assinatura ativada para o usuário ${userEmail} (ID: ${userId})`);
-        // } else {
-        //   logger.warn(`Usuário com e-mail ${userEmail} não encontrado no Firestore.`);
-        // }
-         logger.info(`Lógica de ativação para o usuário ${userEmail} a ser implementada.`);
+      if (!hottokRecebido || hottokRecebido !== tokenConfigurado) {
+        functions.logger.error("Falha na autenticação do Webhook: Hottok inválido ou ausente.", {
+            recebido: hottokRecebido,
+        });
+        // Retorna status 401 (Não Autorizado) se o token for inválido
+        return response.status(401).send("Acesso não autorizado.");
       }
-      
-      // ... você pode adicionar outros 'if' para outros eventos aqui (ex: CANCELAMENTO)
 
-      // 4. ENVIAR RESPOSTA DE SUCESSO
-      response.status(200).send("Webhook recebido e processado com sucesso.");
+      // 2. Processamento do Evento
+      const eventData = request.body;
+
+      // Verifica se o evento é de compra aprovada ou assinatura ativada
+      if (eventData && (eventData.event === "PURCHASE_APPROVED" || eventData.event === "SUBSCRIPTION_ACTIVATED")) {
+        // Extrai o e-mail do comprador dos dados do evento
+        const userEmail = eventData.data?.buyer?.email;
+
+        if (!userEmail) {
+            functions.logger.warn("Webhook recebido sem e-mail do comprador.", { body: eventData });
+            return response.status(400).send("E-mail do comprador não encontrado no payload.");
+        }
+        
+        const emailNormalizado = userEmail.toLowerCase().trim();
+
+        // 3. Busca de Usuário no Firestore
+        const usersRef = db.collection("users");
+        const userQuery = usersRef.where("email", "==", emailNormalizado);
+        const snapshot = await userQuery.get();
+
+        // 4. Lógica de Ativação
+        if (!snapshot.empty) {
+          // Cenário 1: Usuário já tem conta no app.
+          const userDoc = snapshot.docs[0];
+          await userDoc.ref.update({ assinatura_ativa: true });
+          functions.logger.info(`Assinatura premium ativada com sucesso para o usuário existente: ${emailNormalizado} (UID: ${userDoc.id})`);
+        } else {
+          // Cenário 2: Usuário ainda não tem conta.
+          // Salva o e-mail na coleção de usuários pendentes.
+          // O ID do documento será o próprio e-mail para facilitar a busca no lado do cliente.
+          const pendingUserRef = db.collection("pending_users").doc(emailNormalizado);
+          await pendingUserRef.set({
+            email: emailNormalizado,
+            status: "pending_activation",
+            purchase_event: eventData.event,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          functions.logger.info(`Assinatura pendente registrada para o novo usuário: ${emailNormalizado}`);
+        }
+      } else {
+        functions.logger.info("Evento recebido não requer ação.", { event: eventData.event });
+      }
+
+      // Responde à Hotmart com status 200 para confirmar o recebimento
+      return response.status(200).send("Webhook processado com sucesso.");
+
     } catch (error) {
-      logger.error("Erro ao processar o webhook:", error);
-      response.status(500).send("Erro interno ao processar o webhook.");
+      functions.logger.error("Erro crítico ao processar o webhook da Hotmart:", error);
+      // Retorna um erro 500 em caso de falha interna
+      return response.status(500).send("Erro interno no servidor.");
     }
-  }
-);
+  });
