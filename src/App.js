@@ -7,10 +7,7 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * Observação: O código original parece ser de um aplicativo React para a web,
- * não React Native. As correções foram aplicadas seguindo essa estrutura web.
- * A lógica de interação com o Firebase é facilmente adaptável para React Native
- * se necessário.
+ * Versão atualizada com automação de assinatura premium.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -130,65 +127,7 @@ try {
     console.error("Erro na inicialização do Firebase. Verifique suas credenciais no .env:", error);
 }
 
-/**
- * =================================================================
- * FUNÇÃO DE VERIFICAÇÃO DE ASSINATURA PENDENTE (LÓGICA PRINCIPAL)
- * =================================================================
- *
- * Esta função é o coração da ativação da assinatura no lado do cliente.
- * Ela é chamada após o login ou registro bem-sucedido.
- *
- * @param {string} email O e-mail do usuário que acabou de se autenticar.
- * @param {string} uid O ID único (UID) do usuário no Firebase Authentication.
- * @returns {Promise<boolean>} Retorna `true` se a assinatura foi ativada,
- * caso contrário, retorna `false`.
- */
-async function checkAndActivatePendingSubscription(email, uid) {
-    if (!db || !email || !uid) {
-        console.error("checkAndActivatePendingSubscription: Instância do DB, email ou UID ausente.");
-        return false;
-    }
-
-    try {
-        // 1. Normaliza o e-mail para garantir consistência com o backend.
-        const normalizedEmail = email.toLowerCase().trim();
-
-        // 2. Cria uma referência para o documento na coleção `pending_users`.
-        //    O ID do documento é o próprio e-mail do usuário.
-        const pendingUserRef = doc(db, "pending_users", normalizedEmail);
-        const pendingUserSnap = await getDoc(pendingUserRef);
-
-        // 3. Verifica se o documento de assinatura pendente existe.
-        if (pendingUserSnap.exists()) {
-            console.log(`Assinatura pendente encontrada para o e-mail: ${normalizedEmail}. Ativando...`);
-
-            // 4. Se existe, atualiza o documento do usuário na coleção `users`.
-            const userRef = doc(db, "users", uid);
-            await updateDoc(userRef, {
-                assinatura_ativa: true
-            });
-
-            // 5. (MUITO IMPORTANTE) Remove o registro da lista de pendências.
-            //    Isso evita que a verificação seja executada desnecessariamente
-            //    em futuros logins e mantém a base de dados limpa.
-            await deleteDoc(pendingUserRef);
-
-            console.log(`Assinatura premium ativada com sucesso para o usuário ${uid} e registro pendente removido.`);
-            return true; // Sucesso! A assinatura foi ativada.
-        }
-
-        // 6. Se não houver registro pendente, não faz nada.
-        console.log(`Nenhuma assinatura pendente encontrada para: ${normalizedEmail}.`);
-        return false;
-
-    } catch (error) {
-        console.error("Erro crítico ao verificar e ativar assinatura pendente:", error);
-        return false;
-    }
-}
-
-
-// --- CONTEXTO DA APLICAÇÃO (sem alterações na estrutura, apenas na chamada da função) ---
+// --- CONTEXTO DA APLICAÇÃO (com lógica premium atualizada) ---
 const AppContext = createContext(null);
 
 const AppProvider = ({ children }) => {
@@ -302,7 +241,7 @@ const AppProvider = ({ children }) => {
         }
     }, []);
 
-    const fetchUserData = useCallback(async (uid, forceRefresh = false) => {
+    const fetchUserData = useCallback(async (uid) => {
         if (!db || !uid) return;
         try {
             const userRef = doc(db, `users/${uid}`);
@@ -312,10 +251,12 @@ const AppProvider = ({ children }) => {
                 setUserName(data.name);
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
-                // Se a assinatura foi ativada, o `forceRefresh` garante que o estado `isSubscribed` seja atualizado.
-                if (forceRefresh || isSubscribed !== (data.assinatura_ativa || false)) {
-                    setIsSubscribed(data.assinatura_ativa || false);
-                }
+                
+                // PREMIUM AUTOMATION START
+                // Atualizado para buscar o campo 'isPremium'
+                setIsSubscribed(data.isPremium || false);
+                // PREMIUM AUTOMATION END
+
                 setStreakData({
                     currentStreak: data.currentStreak || 0,
                     lastPracticedDate: data.lastPracticedDate?.toDate() || null
@@ -331,7 +272,7 @@ const AppProvider = ({ children }) => {
                 setPermissionError("Firestore");
             }
         }
-    }, [fetchAllEntries, isSubscribed]);
+    }, [fetchAllEntries]);
 
     useEffect(() => {
         if (!auth) {
@@ -429,53 +370,61 @@ const AuthScreen = () => {
 
         try {
             if (isLogin) {
-                // --- LÓGICA DE LOGIN ---
+                // --- LÓGICA DE LOGIN (permanece inalterada) ---
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                // **NOVA IMPLEMENTAÇÃO**
-                // Chama a função para verificar se há uma assinatura pendente para este e-mail.
-                const foiAtivado = await checkAndActivatePendingSubscription(user.email, user.uid);
-                if (foiAtivado) {
-                    setMessage("Sua assinatura premium foi ativada com sucesso!");
-                    // Força a atualização do estado global de assinatura
-                    setIsSubscribed(true);
-                    // Recarrega os dados do usuário para refletir o status de premium
-                    await fetchUserData(user.uid, true);
-                }
-                // Se não houver pendência, o onAuthStateChanged cuidará do resto.
-
+                // A lógica de `onAuthStateChanged` vai carregar os dados do usuário,
+                // incluindo o status `isPremium` que pode ter sido atualizado pelo backend.
             } else {
-                // --- LÓGICA DE CADASTRO ---
+                // --- LÓGICA DE CADASTRO (atualizada) ---
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 await updateProfile(user, { displayName: name });
 
-                // **NOVA IMPLEMENTAÇÃO**
-                // Primeiro, verifica se há uma assinatura pendente.
-                const foiAtivado = await checkAndActivatePendingSubscription(user.email, user.uid);
+                // PREMIUM AUTOMATION START
+                // Lógica para verificar se existe uma assinatura pendente para este e-mail.
+                let isPremium = false;
+                try {
+                    const pendingRef = collection(db, "pendingPremium");
+                    const q = query(pendingRef, where("email", "==", user.email));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        // Cenário 2: Assinatura pendente encontrada para o novo usuário.
+                        isPremium = true;
+                        const pendingDoc = querySnapshot.docs[0];
+                        
+                        // Exclui o documento da coleção de pendências para não ser usado novamente.
+                        await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
+                        console.log(`Assinatura pendente para ${user.email} ativada e registro removido.`);
+                    }
+                } catch (checkError) {
+                    console.error("Erro ao verificar assinatura pendente:", checkError);
+                    // Em caso de erro na verificação, o registro continua como não-premium por segurança.
+                    isPremium = false; 
+                }
+                // PREMIUM AUTOMATION END
 
                 // Cria o documento do usuário na coleção "users".
-                // O valor de `assinatura_ativa` será `true` se foi ativado, ou `false` caso contrário.
+                // O valor de `isPremium` será `true` se a pendência foi encontrada, ou `false` caso contrário.
                 const userRef = doc(db, `users/${user.uid}`);
                 await setDoc(userRef, {
                     name: name,
                     email: user.email,
-                    assinatura_ativa: foiAtivado, // Define o status da assinatura aqui!
+                    isPremium: isPremium, // Define o status premium aqui!
                     favorites: [],
                     currentStreak: 0,
                     lastPracticedDate: null,
                     createdAt: Timestamp.now()
                 });
                 
-                if (foiAtivado) {
+                if (isPremium) {
                     setMessage("Sua conta foi criada e sua assinatura premium ativada automaticamente!");
-                    // Atualiza o estado global de assinatura
-                    setIsSubscribed(true);
+                    // Atualiza o estado global para refletir o status premium imediatamente.
+                    setIsSubscribed(true); 
                 } else {
                     setMessage("Conta criada com sucesso!");
                 }
-                 // O onAuthStateChanged vai carregar os dados do usuário recém-criado.
+                 // O onAuthStateChanged cuidará de carregar os dados do usuário recém-criado.
             }
         } catch (err) {
             console.error("Firebase Auth Error:", err);
