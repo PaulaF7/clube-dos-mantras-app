@@ -5,7 +5,9 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-// Função para tratar o webhook da Kiwify
+//---------------------------------------------------------------------
+// Função 1: Trata o webhook da Kiwify quando uma compra é feita.
+//---------------------------------------------------------------------
 exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
   // Validação básica para garantir que o corpo da requisição é um POST
   if (req.method !== 'POST') {
@@ -75,3 +77,45 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
     return res.status(500).json({ error: "Erro interno" });
   }
 });
+
+
+//--------------------------------------------------------------------------------------------------
+// Função 2: É acionada quando um novo usuário é criado para ativar o premium se houver compra pendente.
+//--------------------------------------------------------------------------------------------------
+exports.activatePremiumOnUserCreation = functions.firestore
+  .document('users/{userId}')
+  .onCreate(async (snap, context) => {
+    // 1. Pega os dados do usuário recém-criado, incluindo o email.
+    const newUser = snap.data();
+    const userEmail = newUser.email;
+    const userId = context.params.userId;
+
+    if (!userEmail) {
+      functions.logger.log(`Novo usuário ${userId} criado sem email.`);
+      return null;
+    }
+
+    functions.logger.log(`Novo usuário criado: ${userEmail}. Verificando compras pendentes.`);
+
+    // 2. Procura na coleção 'pendingPremium' por um registro com o mesmo email.
+    const pendingPremiumRef = db.collection("pendingPremium");
+    const pendingQuery = await pendingPremiumRef.where("email", "==", userEmail).get();
+
+    // 3. Se encontrar uma compra pendente, ativa o premium.
+    if (!pendingQuery.empty) {
+      functions.logger.log(`Compra pendente encontrada para ${userEmail}. Ativando premium.`);
+      
+      const pendingDoc = pendingQuery.docs[0];
+
+      await snap.ref.update({ isPremium: true });
+
+      // 4. (Opcional, mas recomendado) Remove o registro de 'pendingPremium' para não ser usado novamente.
+      await pendingDoc.ref.delete();
+      
+      functions.logger.log(`Usuário ${userId} atualizado para premium e registro pendente removido.`);
+      return null;
+    } else {
+      functions.logger.log(`Nenhuma compra pendente encontrada para ${userEmail}.`);
+      return null;
+    }
+  });
