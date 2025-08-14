@@ -252,8 +252,10 @@ const AppProvider = ({ children }) => {
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
                 
-                // CORREÇÃO: Usando o campo 'assinatura_ativa'
-                setIsSubscribed(data.assinatura_ativa || false);
+                // PREMIUM AUTOMATION START
+                // Atualizado para buscar o campo 'isPremium'
+                setIsSubscribed(data.isPremium || false);
+                // PREMIUM AUTOMATION END
 
                 setStreakData({
                     currentStreak: data.currentStreak || 0,
@@ -371,7 +373,7 @@ const AuthScreen = () => {
                 // --- LÓGICA DE LOGIN (permanece inalterada) ---
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 // A lógica de `onAuthStateChanged` vai carregar os dados do usuário,
-                // incluindo o status `assinatura_ativa` que pode ter sido atualizado pelo backend.
+                // incluindo o status `isPremium` que pode ter sido atualizado pelo backend.
             } else {
                 // --- LÓGICA DE CADASTRO (atualizada) ---
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -380,7 +382,7 @@ const AuthScreen = () => {
 
                 // PREMIUM AUTOMATION START
                 // Lógica para verificar se existe uma assinatura pendente para este e-mail.
-                let assinaturaAtivada = false;
+                let isPremium = false;
                 try {
                     const pendingRef = collection(db, "pendingPremium");
                     const q = query(pendingRef, where("email", "==", user.email));
@@ -388,7 +390,7 @@ const AuthScreen = () => {
 
                     if (!querySnapshot.empty) {
                         // Cenário 2: Assinatura pendente encontrada para o novo usuário.
-                        assinaturaAtivada = true;
+                        isPremium = true;
                         const pendingDoc = querySnapshot.docs[0];
                         
                         // Exclui o documento da coleção de pendências para não ser usado novamente.
@@ -398,24 +400,24 @@ const AuthScreen = () => {
                 } catch (checkError) {
                     console.error("Erro ao verificar assinatura pendente:", checkError);
                     // Em caso de erro na verificação, o registro continua como não-premium por segurança.
-                    assinaturaAtivada = false; 
+                    isPremium = false; 
                 }
                 // PREMIUM AUTOMATION END
 
                 // Cria o documento do usuário na coleção "users".
-                // O valor de `assinatura_ativa` será `true` se a pendência foi encontrada, ou `false` caso contrário.
+                // O valor de `isPremium` será `true` se a pendência foi encontrada, ou `false` caso contrário.
                 const userRef = doc(db, `users/${user.uid}`);
                 await setDoc(userRef, {
                     name: name,
                     email: user.email,
-                    assinatura_ativa: assinaturaAtivada, // CORREÇÃO: Usando o campo 'assinatura_ativa'
+                    isPremium: isPremium, // Define o status premium aqui!
                     favorites: [],
                     currentStreak: 0,
                     lastPracticedDate: null,
                     createdAt: Timestamp.now()
                 });
                 
-                if (assinaturaAtivada) {
+                if (isPremium) {
                     setMessage("Sua conta foi criada e sua assinatura premium ativada automaticamente!");
                     // Atualiza o estado global para refletir o status premium imediatamente.
                     setIsSubscribed(true); 
