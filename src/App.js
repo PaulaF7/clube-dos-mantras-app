@@ -7,8 +7,8 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.5: Correção de bug de travamento (tela branca) ao pressionar
- * e segurar para reorganizar áudios em dispositivos de toque.
+ * v2.7: Implementação dos limites de assinatura para a
+ * funcionalidade "Meu Santuário" (2 áudios e 1 playlist gratuitos).
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -45,7 +45,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical } from 'lucide-react';
 
 
-// --- ESTILOS GLOBAIS (sem alterações) ---
+// --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER) ---
 const GlobalStyles = () => (
     <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
@@ -84,6 +84,24 @@ const GlobalStyles = () => (
         @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
         .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
+
+        /* ================================================================= */
+        /* INÍCIO DA SOLUÇÃO: GRADIENTE ANIMADO PARA O PLAYER                */
+        /* ================================================================= */
+        .player-background-gradient {
+            background: linear-gradient(-45deg, #1a0933, #2c0b4d, #4a148c, #3a1b57);
+            background-size: 400% 400%;
+            animation: player-gradient-animation 15s ease infinite;
+        }
+
+        @keyframes player-gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* ================================================================= */
+        /* FIM DA SOLUÇÃO                                                    */
+        /* ================================================================= */
     `}
     </style>
 );
@@ -524,12 +542,11 @@ const PageTitle = ({ children, subtitle }) => (<div><h1 className="page-title">{
 const PremiumButton = ({ onClick, children, className = '' }) => (<button type="button" onClick={onClick} className={`w-full modern-btn-primary !py-2 !px-4 !text-sm !font-normal !bg-white/10 !text-white/70 cursor-pointer ${className}`}><Lock className="h-4 w-4" />{children}</button>);
 const Header = ({ setActiveScreen }) => { const LOGO_URL = "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png"; return (<header className="fixed top-0 left-0 right-0 z-30 p-4 glass-nav"><div className="max-w-4xl mx-auto flex justify-between items-center"><div className="flex items-center gap-3"><img src={LOGO_URL} alt="Logo Clube dos Mantras" className="w-10 h-10" /><span className="text-lg text-white/90" style={{fontFamily: 'var(--font-display)'}}>Mantras+</span></div><button onClick={() => setActiveScreen('settings')} className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors"><Settings className="h-6 w-6" /></button></div></header>); };
 
-// --- BOTTOMNAV (ATUALIZADO) ---
+// --- BOTTOMNAV (sem alterações) ---
 const BottomNav = ({ activeScreen, setActiveScreen }) => { 
     const navItems = [ 
         { id: 'home', icon: Home, label: 'Início' }, 
         { id: 'spokenMantras', icon: Mic2, label: 'Praticar' }, 
-        // NOVO ITEM DE NAVEGAÇÃO
         { id: 'meuSantuario', icon: Heart, label: 'Santuário' },
         { id: 'mantras', icon: Music, label: 'Ouvir' }, 
         { id: 'history', icon: History, label: 'Histórico' }, 
@@ -553,7 +570,7 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => { const { allE
 const SettingsScreen = ({ setActiveScreen }) => { const { user, userName, photoURL, setPhotoURL, fetchUserData, isSubscribed } = useContext(AppContext); const [newName, setNewName] = useState(userName); const [message, setMessage] = useState({ type: '', text: '' }); const [isSubmitting, setIsSubmitting] = useState(false); const [isUploadingPhoto, setIsUploadingPhoto] = useState(false); const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); const [isReauthModalOpen, setIsReauthModalOpen] = useState(false); const [reauthPassword, setReauthPassword] = useState(''); const [reauthError, setReauthError] = useState(''); const fileInputRef = useRef(null); const handleNameUpdate = async (e) => { e.preventDefault(); if (newName === userName || !newName.trim() || !user || !db) return; setIsSubmitting(true); setMessage({ type: '', text: '' }); try { const userRef = doc(db, `users/${user.uid}`); await updateDoc(userRef, { name: newName }); await fetchUserData(user.uid); setMessage({ type: 'success', text: 'Nome atualizado!' }); } catch (error) { setMessage({ type: 'error', text: 'Erro ao atualizar o nome.' }); } finally { setIsSubmitting(false); setTimeout(() => setMessage({ type: '', text: '' }), 3000); } }; const handlePhotoUpload = async (e) => { const file = e.target.files[0]; if (!file || !user || !storage || !db) return; setIsUploadingPhoto(true); setMessage({ type: '', text: '' }); try { const storageRef = ref(storage, `profilePictures/${user.uid}`); await uploadBytes(storageRef, file); const url = await getDownloadURL(storageRef); await updateProfile(user, { photoURL: url }); const userDocRef = doc(db, `users/${user.uid}`); await updateDoc(userDocRef, { photoURL: url }); setPhotoURL(url); setMessage({ type: 'success', text: 'Foto atualizada!' }); } catch (error) { console.error("Photo Upload Error:", error); if (error.code === 'storage/unauthorized') { setMessage({ type: 'error', text: 'Erro de permissão. Verifique as regras do Firebase Storage.' }); } else { setMessage({ type: 'error', text: 'Erro ao enviar a foto.' }); } } finally { setIsUploadingPhoto(false); setTimeout(() => setMessage({ type: '', text: '' }), 4000); } }; const handlePasswordReset = async () => { if (!auth || !user) return; setIsSubmitting(true); try { auth.languageCode = 'pt-BR'; await sendPasswordResetEmail(auth, user.email); setMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); } catch (error) { setMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); } finally { setIsSubmitting(false); setTimeout(() => setMessage({ type: '', text: '' }), 4000); } }; const handleDeleteAccount = async () => { setIsDeleteModalOpen(false); if (!auth.currentUser) return; try { await deleteUser(auth.currentUser); } catch (error) { if (error.code === 'auth/requires-recent-login') { setIsReauthModalOpen(true); } else { setMessage({ type: 'error', text: 'Erro ao deletar conta.' }); } } }; const handleReauthenticateAndDelete = async (e) => { e.preventDefault(); const currentUser = auth.currentUser; if (!currentUser || !reauthPassword) return; setIsSubmitting(true); setReauthError(''); try { const credential = EmailAuthProvider.credential(currentUser.email, reauthPassword); await reauthenticateWithCredential(currentUser, credential); await deleteUser(currentUser); setIsReauthModalOpen(false); } catch (error) { setReauthError('Senha incorreta ou falha na reautenticação.'); } finally { setIsSubmitting(false); } }; return ( <> <div className="page-container"> <PageTitle subtitle="Personalize seu perfil, gerencie sua conta e entre em contato conosco.">Configurações</PageTitle> <div className="glass-card space-y-8"> <div className="flex items-center gap-5"> <div className="relative"> <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=2c0b4d&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" /> {isUploadingPhoto && (<div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/50 border-t-white rounded-full animate-spin"></div></div>)} <button onClick={() => fileInputRef.current.click()} className="absolute bottom-0 right-0 bg-[#FFD54F] text-[#3A1B57] p-1.5 rounded-full" disabled={isUploadingPhoto}><Camera size={16} /></button> <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" /> </div> <div> <h2 className="text-white text-xl">{userName}</h2> <p className="text-sm text-white/60 font-light">{user.email}</p> </div> </div> <form onSubmit={handleNameUpdate} className="space-y-3"> <label className="text-sm text-white/80 font-light">Nome de Usuário</label> <div className="flex gap-2"> <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="input-field flex-1" /> <button type="submit" className="btn-secondary" disabled={isSubmitting || newName === userName}>Salvar</button> </div> </form> {isSubscribed && ( <div className="space-y-3"> <label className="text-sm text-white/80 font-light">Assinatura</label> <button onClick={() => window.open('https://kiwify.com.br/purchases', '_blank')} className="w-full btn-secondary text-left flex items-center justify-between" > <div className="flex items-center gap-3"> <Star /> <span>Gerenciar Assinatura</span> </div> <ChevronLeft className="transform rotate-180" /> </button> </div> )} <div className="space-y-3"> <label className="text-sm text-white/80 font-light">Segurança</label> <button onClick={handlePasswordReset} className="w-full btn-secondary text-left" disabled={isSubmitting}>Alterar senha</button> </div> <div className="space-y-3"> <label className="text-sm text-white/80 font-light">Entre em contato</label> <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between"> <div className="flex items-center gap-3"> <MessageSquare /> <span>Dar feedback</span> </div> <ChevronLeft className="transform rotate-180" /> </button> </div> <div className="space-y-4 pt-6 border-t border-white/10"> <button onClick={() => signOut(auth)} className="w-full btn-secondary flex items-center justify-center gap-2"><LogOut className="h-5 w-5" /> Sair da Conta</button> <button onClick={() => setIsDeleteModalOpen(true)} className="w-full btn-danger-outline flex items-center justify-center gap-2"><Trash2 className="h-5 w-5" /> Deletar Conta</button> </div> </div> {message.text && <p className={`mt-4 p-3 rounded-lg text-center text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{message.text}</p>} </div> <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteAccount} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." /> <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handleReauthenticateAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} /> </>); };
 const OracleScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const [userInput, setUserInput] = useState(''); const [suggestedMantra, setSuggestedMantra] = useState(null); const [isLoading, setIsLoading] = useState(false); const [error, setError] = useState(''); const handleSuggestMantra = async () => { if (!userInput) return; if (!isSubscribed) { openPremiumModal(); return; } setIsLoading(true); setSuggestedMantra(null); setError(''); try { const mantraListForPrompt = MANTRAS_DATA.map(m => `ID ${m.id}: ${m.nome} - ${m.finalidade}`).join('\n'); const prompt = `Um usuário está sentindo: "${userInput}". Baseado nisso, qual dos seguintes mantras é o mais adequado? Por favor, responda APENAS com o número do ID do melhor mantra. \n\nMantras:\n${mantraListForPrompt}`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; const match = text?.match(/\d+/); if (match) { const mantraId = parseInt(match[0], 10); const foundMantra = MANTRAS_DATA.find(m => m.id === mantraId); if (foundMantra) { setSuggestedMantra(foundMantra); } else { setError("O oráculo não encontrou uma sugestão. Tente descrever seu sentimento de outra forma."); } } else { setError("Não foi possível interpretar a sugestão do oráculo. Tente novamente."); } } else { console.error("Unexpected API response structure:", result); setError("O oráculo está em silêncio no momento. Por favor, tente mais tarde."); } } catch (err) { console.error("Gemini Suggestion Error:", err); if (err.message.includes("403")) { setError("Erro de permissão (403). Verifique se a sua Chave de API está correta e se as restrições no Google Cloud estão configuradas."); } else if (err.message.includes("404")) { setError("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão."); } } finally { setIsLoading(false); } }; return (<div className="page-container"><PageTitle subtitle="Não sabe qual mantra escolher? Descreva seu sentimento e deixe a sabedoria interior guiá-lo.">Oráculo dos Mantras</PageTitle><div className="w-full max-w-lg mx-auto space-y-6 glass-card"><textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} className="textarea-field" rows="4" placeholder="Descreva como você está se sentindo hoje..." />{isSubscribed ? (<button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}><BrainCircuit className="h-6 w-6" />{isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}</button>) : (<PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">Revelar o meu Mantra</PremiumButton>)}{error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}{suggestedMantra && (<div className="pt-4 border-t border-white/10"><p className="text-center text-white/70 mb-2 font-light">O oráculo sugere:</p><div className="bg-black/20 p-4 rounded-lg clickable cursor-pointer" onClick={() => onPlayMantra(suggestedMantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{suggestedMantra.nome}</h3><p className="italic text-white/90 my-2 font-light">"{suggestedMantra.texto}"</p></div></div>)}</div></div>); };
 const FavoritesScreen = ({ onPlayMantra }) => { const { favorites } = useContext(AppContext); const favoriteMantras = MANTRAS_DATA.filter(mantra => favorites.includes(mantra.id)); return (<div className="page-container"><PageTitle subtitle="Acesse rapidamente os mantras que mais ressoam com você.">Meus Favoritos</PageTitle><div className="space-y-4">{favoriteMantras.length === 0 ? (<div className="glass-card text-center"><Heart className="mx-auto h-12 w-12 text-white/50" /><p className="mt-4 text-white/70">Clique no coração no player para adicionar um mantra aqui.</p></div>) : (favoriteMantras.map((mantra) => (<div key={mantra.id} className="glass-card clickable cursor-pointer" onClick={() => onPlayMantra(mantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h3><p className="italic text-white/80 my-2 font-light">"{mantra.texto}"</p></div>)))}</div></div>); };
-const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions = 1, audioType }) => { const { favorites, updateFavorites } = useContext(AppContext); const [isPlaying, setIsPlaying] = useState(false); const [currentTime, setCurrentTime] = useState(0); const [duration, setDuration] = useState(0); const [playbackRate, setPlaybackRate] = useState(1); const [areControlsVisible, setAreControlsVisible] = useState(true); const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false); const [showSpeedModal, setShowSpeedModal] = useState(false); const [showTimerModal, setShowTimerModal] = useState(false); const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null }); const [repetitionCount, setRepetitionCount] = useState(1); const audioRef = useRef(null); const hideControlsTimeoutRef = useRef(null); const repetitionCountRef = useRef(1); const practiceTimerRef = useRef(practiceTimer); useEffect(() => { practiceTimerRef.current = practiceTimer; }, [practiceTimer]); const isSpokenPractice = audioType === 'spoken'; const isFavorite = favorites.includes(currentMantra.id); const audioSrc = audioType === 'spoken' ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc; const touchStartX = useRef(null); const touchStartY = useRef(null); const touchEndX = useRef(null); const touchEndY = useRef(null); const minSwipeDistance = 50; const handleTouchStart = (e) => { if (e.target.type === 'range') return; touchStartX.current = e.targetTouches[0].clientX; touchStartY.current = e.targetTouches[0].clientY; touchEndX.current = null; touchEndY.current = null; }; const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; }; const handleTouchEnd = () => { if (!touchStartX.current || !touchEndX.current) return; const distanceX = touchStartX.current - touchEndX.current; const distanceY = touchStartY.current - touchEndY.current; if (Math.abs(distanceX) < Math.abs(distanceY)) return; const isLeftSwipe = distanceX > minSwipeDistance; const isRightSwipe = distanceX < -minSwipeDistance; const currentIndex = MANTRAS_DATA.findIndex(m => m.id === currentMantra.id); if (isLeftSwipe) { const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[nextIndex]); } else if (isRightSwipe) { const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[prevIndex]); } touchStartX.current = null; touchEndX.current = null; touchStartY.current = null; touchEndY.current = null; }; const showControls = useCallback(() => { clearTimeout(hideControlsTimeoutRef.current); setAreControlsVisible(true); if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) { hideControlsTimeoutRef.current = setTimeout(() => { setAreControlsVisible(false); }, 4000); } }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]); useEffect(() => { showControls(); return () => clearTimeout(hideControlsTimeoutRef.current); }, [showControls]); const toggleFavorite = useCallback(() => { const newFavorites = isFavorite ? favorites.filter(id => id !== currentMantra.id) : [...favorites, currentMantra.id]; updateFavorites(newFavorites); }, [isFavorite, favorites, currentMantra.id, updateFavorites]); const changePlaybackRate = useCallback((rate) => { if(audioRef.current) audioRef.current.playbackRate = rate; setPlaybackRate(rate); setShowSpeedModal(false); setIsOptionsMenuOpen(false); }, []); const handleSetPracticeDuration = useCallback((seconds) => { if (seconds > 0) { const endTime = Date.now() + seconds * 1000; setPracticeTimer({ endTime, duration: seconds }); } else { setPracticeTimer({ endTime: null, duration: null }); } setShowTimerModal(false); setIsOptionsMenuOpen(false); }, []); useEffect(() => { const audio = audioRef.current; if (!audio) return; setCurrentTime(0); setDuration(0); setIsPlaying(true); setRepetitionCount(1); repetitionCountRef.current = 1; const setAudioData = () => setDuration(audio.duration); const handleTimeUpdate = () => { const timer = practiceTimerRef.current; if (timer.endTime && Date.now() >= timer.endTime) { audio.pause(); setIsPlaying(false); setPracticeTimer({ endTime: null, duration: null }); } else { setCurrentTime(audio.currentTime); } }; const handleAudioEnd = () => { const timer = practiceTimerRef.current; if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) { repetitionCountRef.current += 1; setRepetitionCount(repetitionCountRef.current); audio.currentTime = 0; audio.play(); } else if (timer.endTime && Date.now() < timer.endTime) { audio.currentTime = 0; audio.play(); } else { setIsPlaying(false); if (timer.endTime) { setPracticeTimer({ endTime: null, duration: null }); } } }; audio.addEventListener('loadedmetadata', setAudioData); audio.addEventListener('timeupdate', handleTimeUpdate); audio.addEventListener('ended', handleAudioEnd); audio.play().catch(e => { console.error("Audio play failed:", e); setIsPlaying(false); }); return () => { audio.removeEventListener('loadedmetadata', setAudioData); audio.removeEventListener('timeupdate', handleTimeUpdate); audio.removeEventListener('ended', handleAudioEnd); }; }, [audioSrc, totalRepetitions, isSpokenPractice]); const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]); const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }; const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []); const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]); const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []); const openSpeedModal = useCallback(() => setShowSpeedModal(true), []); const closeTimerModal = useCallback(() => setShowTimerModal(false), []); const openTimerModal = useCallback(() => setShowTimerModal(true), []); if (!currentMantra) return null; return (<div className="fixed inset-0 z-40 bg-[#1a0933] flex flex-col items-center justify-center screen-animation" onClick={showControls} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}><MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} /><div className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${areControlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}><div className="w-full flex justify-between items-start"><button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><MoreHorizontal size={22} /></button><button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button></div><div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}><div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}><h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2><p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>{isSpokenPractice && (<div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto"><Repeat size={14} /><span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span></div>)}</div><div className="w-full max-w-sm flex flex-col items-center gap-3"><div className="w-full"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" /><div className="flex justify-between text-xs font-light text-white/70 mt-1"><span>{formatTime(currentTime)}</span><span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span></div></div><button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">{isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}</button></div></div><div /></div><audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} /><OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />{showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}{showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}</div>); };
+const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions = 1, audioType }) => { const { favorites, updateFavorites } = useContext(AppContext); const [isPlaying, setIsPlaying] = useState(false); const [currentTime, setCurrentTime] = useState(0); const [duration, setDuration] = useState(0); const [playbackRate, setPlaybackRate] = useState(1); const [areControlsVisible, setAreControlsVisible] = useState(true); const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false); const [showSpeedModal, setShowSpeedModal] = useState(false); const [showTimerModal, setShowTimerModal] = useState(false); const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null }); const [repetitionCount, setRepetitionCount] = useState(1); const audioRef = useRef(null); const hideControlsTimeoutRef = useRef(null); const repetitionCountRef = useRef(1); const practiceTimerRef = useRef(practiceTimer); useEffect(() => { practiceTimerRef.current = practiceTimer; }, [practiceTimer]); const isSpokenPractice = audioType === 'spoken'; const isFavorite = favorites.includes(currentMantra.id); const audioSrc = audioType === 'spoken' ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc; const touchStartX = useRef(null); const touchStartY = useRef(null); const touchEndX = useRef(null); const touchEndY = useRef(null); const minSwipeDistance = 50; const handleTouchStart = (e) => { if (e.target.type === 'range') return; touchStartX.current = e.targetTouches[0].clientX; touchStartY.current = e.targetTouches[0].clientY; touchEndX.current = null; touchEndY.current = null; }; const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; }; const handleTouchEnd = () => { if (!touchStartX.current || !touchEndX.current) return; const distanceX = touchStartX.current - touchEndX.current; const distanceY = touchStartY.current - touchEndY.current; if (Math.abs(distanceX) < Math.abs(distanceY)) return; const isLeftSwipe = distanceX > minSwipeDistance; const isRightSwipe = distanceX < -minSwipeDistance; const currentIndex = MANTRAS_DATA.findIndex(m => m.id === currentMantra.id); if (isLeftSwipe) { const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[nextIndex]); } else if (isRightSwipe) { const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[prevIndex]); } touchStartX.current = null; touchEndX.current = null; touchStartY.current = null; touchEndY.current = null; }; const showControls = useCallback(() => { clearTimeout(hideControlsTimeoutRef.current); setAreControlsVisible(true); if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) { hideControlsTimeoutRef.current = setTimeout(() => { setAreControlsVisible(false); }, 4000); } }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]); useEffect(() => { showControls(); return () => clearTimeout(hideControlsTimeoutRef.current); }, [showControls]); const toggleFavorite = useCallback(() => { const newFavorites = isFavorite ? favorites.filter(id => id !== currentMantra.id) : [...favorites, currentMantra.id]; updateFavorites(newFavorites); }, [isFavorite, favorites, currentMantra.id, updateFavorites]); const changePlaybackRate = useCallback((rate) => { if(audioRef.current) audioRef.current.playbackRate = rate; setPlaybackRate(rate); setShowSpeedModal(false); setIsOptionsMenuOpen(false); }, []); const handleSetPracticeDuration = useCallback((seconds) => { if (seconds > 0) { const endTime = Date.now() + seconds * 1000; setPracticeTimer({ endTime, duration: seconds }); } else { setPracticeTimer({ endTime: null, duration: null }); } setShowTimerModal(false); setIsOptionsMenuOpen(false); }, []); useEffect(() => { const audio = audioRef.current; if (!audio) return; setCurrentTime(0); setDuration(0); setIsPlaying(true); setRepetitionCount(1); repetitionCountRef.current = 1; const setAudioData = () => setDuration(audio.duration); const handleTimeUpdate = () => { const timer = practiceTimerRef.current; if (timer.endTime && Date.now() >= timer.endTime) { audio.pause(); setIsPlaying(false); setPracticeTimer({ endTime: null, duration: null }); } else { setCurrentTime(audio.currentTime); } }; const handleAudioEnd = () => { const timer = practiceTimerRef.current; if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) { repetitionCountRef.current += 1; setRepetitionCount(repetitionCountRef.current); audio.currentTime = 0; audio.play(); } else if (timer.endTime && Date.now() < timer.endTime) { audio.currentTime = 0; audio.play(); } else { setIsPlaying(false); if (timer.endTime) { setPracticeTimer({ endTime: null, duration: null }); } } }; audio.addEventListener('loadedmetadata', setAudioData); audio.addEventListener('timeupdate', handleTimeUpdate); audio.addEventListener('ended', handleAudioEnd); audio.play().catch(e => { console.error("Audio play failed:", e); setIsPlaying(false); }); return () => { audio.removeEventListener('loadedmetadata', setAudioData); audio.removeEventListener('timeupdate', handleTimeUpdate); audio.removeEventListener('ended', handleAudioEnd); }; }, [audioSrc, totalRepetitions, isSpokenPractice]); const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]); const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }; const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []); const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]); const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []); const openSpeedModal = useCallback(() => setShowSpeedModal(true), []); const closeTimerModal = useCallback(() => setShowTimerModal(false), []); const openTimerModal = useCallback(() => setShowTimerModal(true), []); if (!currentMantra) return null; return (<div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation player-background-gradient" onClick={showControls} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}><MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} /><div className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${areControlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}><div className="w-full flex justify-between items-start"><button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><MoreHorizontal size={22} /></button><button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button></div><div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}><div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}><h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2><p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>{isSpokenPractice && (<div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto"><Repeat size={14} /><span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span></div>)}</div><div className="w-full max-w-sm flex flex-col items-center gap-3"><div className="w-full"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" /><div className="flex justify-between text-xs font-light text-white/70 mt-1"><span>{formatTime(currentTime)}</span><span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span></div></div><button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">{isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}</button></div></div><div /></div><audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} /><OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />{showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}{showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}</div>); };
 const OptionsMenu = memo(({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => { if (!isOpen) return null; const OptionButton = ({ icon: Icon, text, onClick, active = false }) => (<button onClick={onClick} className={`w-full flex items-center gap-4 text-left p-4 rounded-lg transition-colors ${active ? 'text-[#FFD54F]' : 'text-white'} hover:bg-white/10`}><Icon size={20} className={active ? 'text-[#FFD54F]' : 'text-white/70'} /><span className="font-light">{text}</span></button>); return (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}><div className="glass-modal w-full max-w-xs" onClick={e => e.stopPropagation()}><div className="space-y-1"><OptionButton icon={Heart} text="Favoritar" onClick={onFavorite} active={isFavorite} /><OptionButton icon={GaugeCircle} text="Velocidade" onClick={onSpeed} /><OptionButton icon={Clock} text="Definir Duração" onClick={onTimer} /></div></div></div>); });
 const PlaybackSpeedModal = memo(({ currentRate, onSelectRate, onClose }) => { const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Velocidade de Reprodução</h3><ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">{speeds.map(speed => (<li key={speed} onClick={() => onSelectRate(speed)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${currentRate === speed ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{speed}x</span>{currentRate === speed && <CheckCircle />}</li>))}</ul></div></div>); });
 const PracticeTimerModal = memo(({ activeTimer, onSetTimer, onClose }) => { const timers = [ { label: "5 Minutos", seconds: 300 }, { label: "15 Minutos", seconds: 900 }, { label: "30 Minutos", seconds: 1800 }, { label: "60 Minutos", seconds: 3600 }, ]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Definir Duração</h3><ul className="space-y-2">{activeTimer.duration && (<li onClick={() => onSetTimer(null)} className="p-4 bg-red-500/30 text-red-300 rounded-lg hover:bg-red-500/40 cursor-pointer text-center font-light">Cancelar Timer</li>)}{timers.map(timer => (<li key={timer.label} onClick={() => onSetTimer(timer.seconds)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${activeTimer.duration === timer.seconds ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{timer.label}</span>{activeTimer.duration === timer.seconds && <CheckCircle />}</li>))}</ul></div></div>); });
@@ -569,8 +586,8 @@ const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen)
  * Tela Principal do "Meu Santuário"
  * Mostra as listas de áudios e playlists do usuário.
  */
-const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onAddAudio, onAddPlaylist }) => {
-    const { meusAudios, playlists } = useContext(AppContext);
+const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onAddAudio, onAddPlaylist, openPremiumModal }) => {
+    const { isSubscribed, meusAudios, playlists } = useContext(AppContext);
     const [itemToDelete, setItemToDelete] = useState(null); // { type: 'audio' | 'playlist', item: {} }
     const { userId, fetchMeusAudios, fetchPlaylists } = useContext(AppContext);
 
@@ -580,19 +597,14 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
         
         try {
             if (type === 'audio') {
-                // Deletar do Firestore
                 await deleteDoc(doc(db, `users/${userId}/meusAudios`, item.id));
-                // Deletar do Storage, se houver um storagePath
                 if (item.storagePath) {
                     const storageRef = ref(storage, item.storagePath);
                     await deleteObject(storageRef);
                 }
-                // Atualizar estado local
                 await fetchMeusAudios(userId);
             } else if (type === 'playlist') {
-                // Deletar do Firestore
                 await deleteDoc(doc(db, `users/${userId}/playlists`, item.id));
-                // Atualizar estado local
                 await fetchPlaylists(userId);
             }
         } catch (error) {
@@ -602,23 +614,37 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
         }
     };
     
-    // =================================================================
-    // INÍCIO DA SOLUÇÃO: LÓGICA PARA TOCAR A PLAYLIST
-    // =================================================================
     const handleStartPlaylist = (playlist) => {
-        // "Hidrata" a playlist: substitui os audioIds pelos objetos de áudio completos
         const hydratedSequencia = playlist.sequencia
             .map(item => {
                 const audio = meusAudios.find(a => a.id === item.audioId);
                 return audio ? { audio, repeticoes: item.repeticoes } : null;
             })
-            .filter(Boolean); // Remove itens nulos se o áudio original foi deletado
+            .filter(Boolean);
 
         if (hydratedSequencia.length > 0) {
             onStartPlaylist({ ...playlist, sequencia: hydratedSequencia });
         } else {
-            // Idealmente, mostrar uma mensagem para o usuário aqui
             console.error("Playlist está vazia ou os áudios não foram encontrados.");
+        }
+    };
+
+    // =================================================================
+    // INÍCIO DA SOLUÇÃO: LÓGICA DE LIMITES DE ASSINATURA
+    // =================================================================
+    const handleAddAudioClick = () => {
+        if (!isSubscribed && meusAudios.length >= 2) {
+            openPremiumModal();
+        } else {
+            onAddAudio();
+        }
+    };
+
+    const handleAddPlaylistClick = () => {
+        if (!isSubscribed && playlists.length >= 1) {
+            openPremiumModal();
+        } else {
+            onAddPlaylist();
         }
     };
     // =================================================================
@@ -634,7 +660,7 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Meus Áudios</h2>
-                        <button onClick={onAddAudio} className="modern-btn-primary !p-2.5 rounded-full"><Plus size={20} /></button>
+                        <button onClick={handleAddAudioClick} className="modern-btn-primary !p-2.5 rounded-full"><Plus size={20} /></button>
                     </div>
                     {meusAudios.length > 0 ? (
                         meusAudios.map(audio => (
@@ -659,7 +685,7 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
                 <div className="space-y-4 pt-8">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Minhas Playlists</h2>
-                        <button onClick={onAddPlaylist} className="modern-btn-primary !p-2.5 rounded-full"><Plus size={20} /></button>
+                        <button onClick={handleAddPlaylistClick} className="modern-btn-primary !p-2.5 rounded-full"><Plus size={20} /></button>
                     </div>
                     {playlists.length > 0 ? (
                          playlists.map(playlist => (
@@ -728,9 +754,6 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 
-                // =================================================================
-                // INÍCIO DA SOLUÇÃO: GRAVAÇÃO DE ÁUDIO NO CELULAR
-                // =================================================================
                 const options = {};
                 const supportedTypes = ['audio/mp4', 'audio/webm', 'audio/ogg'];
                 const supportedType = supportedTypes.find(type => MediaRecorder.isTypeSupported(type));
@@ -738,9 +761,6 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
                 if (supportedType) {
                     options.mimeType = supportedType;
                 }
-                // =================================================================
-                // FIM DA SOLUÇÃO
-                // =================================================================
 
                 mediaRecorderRef.current = new MediaRecorder(stream, options);
                 audioChunksRef.current = [];
@@ -755,7 +775,6 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
                     setAudioBlob(blob);
                     setAudioUrl(url);
                     setStatus('recorded');
-                    // Para o stream para desligar o indicador de microfone
                     stream.getTracks().forEach(track => track.stop());
                 };
 
@@ -781,11 +800,11 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
     const handleFileImport = (event) => {
         const file = event.target.files[0];
         if (file) {
-            if (audioUrl) URL.revokeObjectURL(audioUrl); // Limpa URL anterior se houver
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
             const url = URL.createObjectURL(file);
             setAudioBlob(file);
             setAudioUrl(url);
-            if (!nome) setNome(file.name.replace(/\.[^/.]+$/, "")); // Preenche o nome com o do arquivo
+            if (!nome) setNome(file.name.replace(/\.[^/.]+$/, ""));
             setStatus('recorded');
         }
     };
@@ -809,7 +828,7 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
         setError('');
 
         try {
-            const fileExtension = audioBlob.type.split('/')[1];
+            const fileExtension = audioBlob.type.split('/')[1].split(';')[0];
             const fileName = `${Date.now()}_${nome.replace(/\s+/g, '_')}.${fileExtension}`;
             const storagePath = `userAudios/${userId}/${fileName}`;
             const audioRef = ref(storage, storagePath);
@@ -864,9 +883,6 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
                                 <UploadCloud />
                                 <span>Importar do Dispositivo</span>
                             </button>
-                            {/* ================================================================= */}
-                            {/* INÍCIO DA SOLUÇÃO: IMPORTAÇÃO DE ÁUDIO NO CELULAR                  */}
-                            {/* ================================================================= */}
                             <input 
                                 type="file" 
                                 ref={fileInputRef} 
@@ -874,9 +890,6 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
                                 accept="audio/*,.mp3,.m4a,.wav,.ogg" 
                                 className="hidden" 
                             />
-                            {/* ================================================================= */}
-                            {/* FIM DA SOLUÇÃO                                                    */}
-                            {/* ================================================================= */}
                         </div>
                     )}
 
@@ -1035,7 +1048,7 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
     if (!audioSrc) return null; // Garante que o player não renderize sem uma fonte de áudio válida.
 
     return (
-        <div className="fixed inset-0 z-40 bg-[#1a0933] flex flex-col items-center justify-center screen-animation p-6">
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation p-6 player-background-gradient">
             <div className="absolute top-6 right-6">
                 <button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button>
             </div>
@@ -1278,13 +1291,7 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
                                         onDragOver={(e) => e.preventDefault()}
                                         onTouchStart={(e) => handleDragStart(e, index)}
                                         onTouchMove={(e) => {
-                                            // =================================================================
-                                            // INÍCIO DA SOLUÇÃO: PREVENIR COMPORTAMENTO PADRÃO DO TOQUE
-                                            // =================================================================
                                             e.preventDefault();
-                                            // =================================================================
-                                            // FIM DA SOLUÇÃO
-                                            // =================================================================
                                             const touch = e.touches[0];
                                             const target = document.elementFromPoint(touch.clientX, touch.clientY);
                                             const targetIndex = target?.closest('[data-index]')?.dataset.index;
@@ -1413,6 +1420,7 @@ const AppContent = () => {
                 onStartAudio={handleStartCustomAudio}
                 onAddAudio={() => setIsAudioCreatorOpen(true)}
                 onAddPlaylist={handleAddPlaylist}
+                openPremiumModal={openPremiumModal}
             />;
             case 'playlistEditor': return <PlaylistEditorScreen 
                 playlistToEdit={playlistToEdit}
