@@ -693,7 +693,7 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
             setAudioUrl(null);
             if (audioUrl) URL.revokeObjectURL(audioUrl);
         }
-    }, [isOpen]);
+    }, [isOpen, audioUrl]);
 
     const handleStartRecording = async () => {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -895,20 +895,33 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
     const currentTrack = isPlaylist ? playlist.sequencia[currentTrackIndex] : { audio: singleAudio, repeticoes: repetitions };
     const audioSrc = currentTrack.audio.downloadURL;
 
-    const advanceTrack = () => {
+    // =================================================================
+    // INÍCIO DA CORREÇÃO DO BUG DE REPETIÇÃO
+    // =================================================================
+
+    // 1. A função `advanceTrack` é envolvida com `useCallback` para estabilizá-la.
+    // Isso evita que ela seja recriada em cada renderização, o que é importante
+    // para o `useEffect` que a utiliza como dependência.
+    const advanceTrack = useCallback(() => {
         if (isPlaylist && currentTrackIndex < playlist.sequencia.length - 1) {
             setCurrentTrackIndex(prev => prev + 1);
             setRepetitionCount(1);
         } else {
             onClose(); // Fim da playlist ou do áudio único
         }
-    };
+    }, [isPlaylist, currentTrackIndex, playlist, onClose]);
 
+    // 2. O `useEffect` principal agora inclui `repetitionCount`, `currentTrack.repeticoes`,
+    // e `advanceTrack` em seu array de dependências.
+    // Isso garante que a função `handleAudioEnd` dentro do efeito seja recriada
+    // com os valores mais recentes sempre que o contador de repetições mudar,
+    // resolvendo o problema de "stale state" (estado obsoleto).
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
 
         const handleAudioEnd = () => {
+            // Agora esta verificação sempre usa o valor atual de `repetitionCount`
             if (repetitionCount < currentTrack.repeticoes) {
                 setRepetitionCount(prev => prev + 1);
                 audio.currentTime = 0;
@@ -925,6 +938,9 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
         audio.addEventListener('timeupdate', updateTime);
         audio.addEventListener('loadedmetadata', setAudioDuration);
         
+        // Reinicia o contador e o player quando a faixa muda
+        setRepetitionCount(1);
+        setCurrentTime(0);
         audio.play().catch(e => console.error("Audio play failed:", e));
 
         return () => {
@@ -932,7 +948,11 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
             audio.removeEventListener('timeupdate', updateTime);
             audio.removeEventListener('loadedmetadata', setAudioDuration);
         };
-    }, [currentTrackIndex, audioSrc]); // Roda quando a faixa muda
+    }, [currentTrackIndex, audioSrc, repetitionCount, currentTrack.repeticoes, advanceTrack]);
+
+    // =================================================================
+    // FIM DA CORREÇÃO
+    // =================================================================
 
     const togglePlayPause = () => {
         if (isPlaying) audioRef.current.pause();
