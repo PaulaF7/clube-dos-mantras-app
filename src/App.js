@@ -7,10 +7,8 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.4: Correções de compatibilidade para dispositivos móveis:
- * - Gravação de áudio em formato compatível (MP4).
- * - Importação de áudio com tipos de arquivo explícitos.
- * - Implementação de drag-and-drop com eventos de toque.
+ * v2.5: Correção de bug de travamento (tela branca) ao pressionar
+ * e segurar para reorganizar áudios em dispositivos de toque.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -127,7 +125,7 @@ try {
     console.error("Erro na inicialização do Firebase. Verifique suas credenciais no .env:", error);
 }
 
-// --- CONTEXTO DA APLICAÇÃO (ATUALIZADO com Meu Santuário) ---
+// --- CONTEXTO DA APLICAÇÃO (sem alterações) ---
 const AppContext = createContext(null);
 
 const AppProvider = ({ children }) => {
@@ -1280,6 +1278,13 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
                                         onDragOver={(e) => e.preventDefault()}
                                         onTouchStart={(e) => handleDragStart(e, index)}
                                         onTouchMove={(e) => {
+                                            // =================================================================
+                                            // INÍCIO DA SOLUÇÃO: PREVENIR COMPORTAMENTO PADRÃO DO TOQUE
+                                            // =================================================================
+                                            e.preventDefault();
+                                            // =================================================================
+                                            // FIM DA SOLUÇÃO
+                                            // =================================================================
                                             const touch = e.touches[0];
                                             const target = document.elementFromPoint(touch.clientX, touch.clientY);
                                             const targetIndex = target?.closest('[data-index]')?.dataset.index;
@@ -1288,6 +1293,7 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
                                             }
                                         }}
                                         onTouchEnd={handleDragEnd}
+                                        onContextMenu={(e) => e.preventDefault()}
                                         data-index={index}
                                     >
                                         <GripVertical className="text-white/40 cursor-grab" />
