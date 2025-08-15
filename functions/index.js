@@ -62,6 +62,41 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
       }
     }
     // PREMIUM AUTOMATION END
+    
+    // --- INÍCIO DA NOVA IMPLEMENTAÇÃO: LÓGICA DE CANCELAMENTO ---
+    // Verifica se o evento é de cancelamento ou expiração de assinatura.
+    // Os nomes dos eventos podem variar (ex: "subscription_canceled", "subscription_expired").
+    // Verifique a documentação da Kiwify para os nomes exatos.
+    if (event.webhook_event_type === "subscription_canceled" || event.webhook_event_type === "subscription_expired") {
+        const customerEmail = event.Customer?.email;
+
+        if (!customerEmail) {
+            functions.logger.warn("Webhook de cancelamento recebido sem e-mail do cliente.", { orderId: event.order_id });
+            return res.status(400).json({ error: "E-mail do cliente ausente no evento de cancelamento." });
+        }
+
+        functions.logger.info(`Processando cancelamento de assinatura para o e-mail: ${customerEmail}`);
+        
+        try {
+            // Procura pelo usuário no Firestore usando o e-mail.
+            const usersRef = db.collection("users");
+            const userQuery = await usersRef.where("email", "==", customerEmail).limit(1).get();
+
+            if (!userQuery.empty) {
+                // Se o usuário for encontrado, atualiza o campo isPremium para false.
+                const userDoc = userQuery.docs[0];
+                await userDoc.ref.update({ isPremium: false });
+                functions.logger.info(`Assinatura do usuário ${userDoc.id} (${customerEmail}) foi cancelada. Status premium atualizado para false.`);
+            } else {
+                functions.logger.warn(`Tentativa de cancelamento para um usuário não encontrado com o e-mail: ${customerEmail}`);
+            }
+        } catch (dbError) {
+            functions.logger.error("Erro de banco de dados ao processar cancelamento.", { email: customerEmail, error: dbError });
+            return res.status(500).json({ error: "Erro ao processar o cancelamento no banco de dados." });
+        }
+    }
+    // --- FIM DA NOVA IMPLEMENTAÇÃO ---
+
 
     // Exemplo: tratar pedido reembolsado (lógica original mantida)
     if (event.webhook_event_type === "order_refunded") {
