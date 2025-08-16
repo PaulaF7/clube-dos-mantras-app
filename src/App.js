@@ -573,7 +573,7 @@ const SubscriptionManagementModal = ({ isOpen, onClose }) => {
     };
 
     const handleManageSubscription = () => {
-        window.open('https://kiwify.com.br/purchases', '_blank');
+        window.open('https://subscription.kiwify.com/subscription/manage', '_blank');
         onClose();
     };
 
