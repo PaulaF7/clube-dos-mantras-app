@@ -45,6 +45,9 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 // Ícones adicionados para a nova funcionalidade
 import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical } from 'lucide-react';
 
+// ... (outros imports)
+import ReactGA from 'react-ga4'; // <-- ADICIONE ESTA LINHA
+// Ícones adicionados para a nova funcionalidade
 
 // --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER) ---
 const GlobalStyles = () => (
@@ -142,6 +145,19 @@ try {
     storage = getStorage(app);
 } catch (error) {
     console.error("Erro na inicialização do Firebase. Verifique suas credenciais no .env:", error);
+}
+
+// --- CONFIGURAÇÃO DO GOOGLE ANALYTICS ---
+try {
+    const measurementId = process.env.REACT_APP_GA_MEASUREMENT_ID;
+    if (measurementId) {
+        ReactGA.initialize(measurementId);
+        console.log("Google Analytics inicializado com sucesso.");
+    } else {
+        console.warn("ID de Métricas do Google Analytics (REACT_APP_GA_MEASUREMENT_ID) não encontrado no .env");
+    }
+} catch (error) {
+    console.error("Erro na inicialização do Google Analytics:", error);
 }
 
 // --- CONTEXTO DA APLICAÇÃO (sem alterações) ---
@@ -1552,6 +1568,20 @@ const AppContent = () => {
     const [isCustomRepModalOpen, setIsCustomRepModalOpen] = useState(false);
     const [playlistToPlay, setPlaylistToPlay] = useState(null);
     const [playlistToEdit, setPlaylistToEdit] = useState(null); // Pode ser um objeto de playlist ou `{}` para nova
+
+    // =========================================================================
+    // RASTREADOR DE NAVEGAÇÃO DO GOOGLE ANALYTICS
+    // =========================================================================
+    useEffect(() => {
+        // Envia um evento de pageview para o Google Analytics toda vez que a tela ativa muda.
+        // Usamos a barra '/' para simular um caminho de URL, ex: "/home", "/settings".
+        ReactGA.send({ hitType: "pageview", page: `/${activeScreen}` });
+
+        // A linha abaixo é opcional, mas ajuda você a ver no console do navegador se está funcionando.
+        console.log(`GA Pageview Enviado: /${activeScreen}`);
+
+    }, [activeScreen]); // A mágica acontece aqui: este efeito roda toda vez que 'activeScreen' muda.
+    // =========================================================================
 
     const handlePlayMantra = (mantra, repetitions, audioType) => { setPlayerData({ mantra, repetitions, audioType }); setRepetitionModalData({ isOpen: false, mantra: null }); };
     const handleSelectSpokenMantra = (mantra) => { setRepetitionModalData({ isOpen: true, mantra: mantra }); };
