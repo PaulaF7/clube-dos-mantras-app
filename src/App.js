@@ -1846,14 +1846,14 @@ const ChakraScreen = () => {
     
     // Posições verticais dos chakras ajustadas manualmente
     const chakraPositions = {
-        1: '17%', // Muladhara
-        2: '27%', // Svadhisthana
-        3: '37%', // Manipura
-        4: '47%', // Anahata
-        5: '57%', // Vishuddha
-        6: '67%', // Ajna
-        7: '77%'  // Sahasrara
-    };
+    1: '17%', // Muladhara
+    2: '27%', // Svadhisthana
+    3: '37%', // Manipura
+    4: '47%', // Anahata
+    5: '57%', // Vishuddha
+    6: '67%', // Ajna
+    7: '77%'  // Sahasrara
+};
 
     // Música de fundo
     useEffect(() => {
@@ -1912,7 +1912,7 @@ const ChakraScreen = () => {
             <div className="flex flex-col items-center justify-center flex-1">
                 <div className="flex w-full items-center justify-center space-x-4 md:space-x-8">
                     {/* Visualização da Figura Humana (Placeholder) */}
-                    <div className="relative w-full max-w-[150px] md:max-w-[200px] flex items-center justify-center flex-shrink-0">
+                    <div className="relative w-full max-w-[150px] md:max-w-[200px] h-96 flex items-center justify-center flex-shrink-0">
                         <img 
                             src="https://i.postimg.cc/fkQNDZH4/mente.png" 
                             alt="Figura humana com chakras" 
