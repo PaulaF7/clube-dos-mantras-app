@@ -1890,9 +1890,11 @@ const ChakraScreen = () => {
                 mantraAudioRef.current.src = selectedChakra.audioSrc;
                 mantraAudioRef.current.load();
             }
+            backgroundAudioRef.current.pause(); // PAUSA O SOM AMBIENTE
             mantraAudioRef.current.play().catch(e => console.error("Erro ao tocar áudio do chakra:", e));
         } else {
             mantraAudioRef.current.pause();
+            backgroundAudioRef.current.play().catch(e => console.error("Erro ao retomar som de fundo:", e)); // RETOMA O SOM AMBIENTE
         }
 
         return () => {
