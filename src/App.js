@@ -7,10 +7,12 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.13: Ajustes de Interface do Usuário.
- * - Uniformização dos botões da tela inicial.
- * - Padronização do posicionamento de notificações de status.
- * - Adição de notificação de feedback para alteração de nome.
+ * v2.17: Implementação Final - Meditação de Chakras
+ * - Círculos da figura humana sempre visíveis, mas a cor só aparece na seleção.
+ * - Efeito de ondas pulsantes aplicado nos círculos da figura humana ao selecionar.
+ * - Lista de chakras ajustada em tamanho para exibir todos os itens sem rolagem.
+ * - Efeito de seleção da lista de chakras corrigido para uma borda e sombra estática.
+ * - Posição dos elementos ajustada para melhor alinhamento.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -44,10 +46,9 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 // Ícones adicionados para a nova funcionalidade
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical } from 'lucide-react';
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle } from 'lucide-react';
 
-// ... (outros imports)
-import ReactGA from 'react-ga4'; // <-- ADICIONE ESTA LINHA
+import ReactGA from 'react-ga4';
 // Ícones adicionados para a nova funcionalidade
 
 // --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER) ---
@@ -107,6 +108,21 @@ const GlobalStyles = () => (
         /* ================================================================= */
         /* FIM DA SOLUÇÃO                                                    */
         /* ================================================================= */
+
+        /* ================================================================= */
+        /* INÍCIO DA SOLUÇÃO: ANIMAÇÃO DE ONDAS PARA OS CHAKRAS              */
+        /* ================================================================= */
+        @keyframes chakra-pulse {
+            0% { transform: scale(1.0); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1.0); opacity: 0.5; }
+        }
+        .chakra-pulse-effect {
+            animation: chakra-pulse 2s ease-in-out infinite;
+        }
+        /* ================================================================= */
+        /* FIM DA SOLUÇÃO                                                    */
+        /* ================================================================= */
     `}
     </style>
 );
@@ -127,6 +143,73 @@ const MANTRAS_DATA = [
     { id: 12, nome: "Calma e Leveza", texto: "Hare Krishna Hare Krishna Krishna Krishna Hare Hare — Hare Rama Hare Rama Rama Rama Hare Hare", finalidade: "Acalma a ansiedade e traz leveza emocional.", repeticoes: 24, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Calma%20e%20leveza.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/rare%CC%82%20Kri%CC%81shina.%20rare%CC%82%20Kri%CC%81shina.%20Kri%CC%81shina%20K.MP3", imageSrc: "https://i.postimg.cc/KzH1BXr0/calm.png", imagePrompt: "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful." }
 ];
 
+// --- NOVOS DADOS: CHAKRAS (MOVIDO PARA DENTRO DO CÓDIGO PARA SIMPLIFICAR) ---
+// A ordem dos chakras foi invertida para corresponder à ordem de baixo para cima.
+const CHAKRAS_DATA = [
+    {
+        id: 1,
+        name: "Muladhara",
+        color: "#E22E2E",
+        mantra: "LAM",
+        mudra: "Gyan Mudra",
+        desc: "A base, o alicerce. O chakra da raiz nos conecta com a terra, a segurança e a sobrevivência.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/LAM1.MP3"
+    },
+    {
+        id: 2,
+        name: "Svadhisthana",
+        color: "#E57723",
+        mantra: "VAM",
+        mudra: "Shakti Mudra",
+        desc: "O centro da criatividade, da sexualidade e das emoções. Relacionado com a fluidez e a adaptabilidade.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/VAM.MP3"
+    },
+    {
+        id: 3,
+        name: "Manipura",
+        color: "#F6F65C",
+        mantra: "RAM",
+        mudra: "Hakini Mudra",
+        desc: "O centro do poder pessoal, da força de vontade e do metabolismo. A 'cidade das joias'.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/RAM.MP3"
+    },
+    {
+        id: 4,
+        name: "Anahata",
+        color: "#46A66C",
+        mantra: "YAM",
+        mudra: "Hridaya Mudra",
+        desc: "O chakra do coração, o centro do amor, da compaixão e da cura.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/YAM.MP3"
+    },
+    {
+        id: 5,
+        name: "Vishuddha",
+        color: "#37A2D4",
+        mantra: "HAM",
+        mudra: "Granthi Mudra",
+        desc: "O centro da comunicação e da expressão. A garganta é o canal para a verdade interior.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/HAM.MP3"
+    },
+    {
+        id: 6,
+        name: "Ajna",
+        color: "#314594",
+        mantra: "OM",
+        mudra: "Shambhavi Mudra",
+        desc: "O terceiro olho. Símbolo da intuição, da sabedoria e da percepção extrasensorial.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/OM.MP3"
+    },
+    {
+        id: 7,
+        name: "Sahasrara",
+        color: "#9759B3",
+        mantra: "AUM",
+        mudra: "Dhyana Mudra",
+        desc: "O lótus de mil pétalas. Conecta-nos com o universo, a iluminação e a consciência pura.",
+        audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/AUM.MP3"
+    }
+];
 // --- CONFIGURAÇÃO DO FIREBASE (sem alterações) ---
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -391,7 +474,6 @@ const AppProvider = ({ children }) => {
     };
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
-
 // --- TELAS E COMPONENTES EXISTENTES (sem alterações, exceto onde indicado) ---
 
 const SplashScreen = () => (
@@ -560,11 +642,12 @@ const PageTitle = ({ children, subtitle }) => (<div><h1 className="page-title">{
 const PremiumButton = ({ onClick, children, className = '' }) => (<button type="button" onClick={onClick} className={`w-full modern-btn-primary !py-2 !px-4 !text-sm !font-normal !bg-white/10 !text-white/70 cursor-pointer ${className}`}><Lock className="h-4 w-4" />{children}</button>);
 const Header = ({ setActiveScreen }) => { const LOGO_URL = "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png"; return (<header className="fixed top-0 left-0 right-0 z-30 p-4 glass-nav"><div className="max-w-4xl mx-auto flex justify-between items-center"><div className="flex items-center gap-3"><img src={LOGO_URL} alt="Logo Clube dos Mantras" className="w-10 h-10" /><span className="text-lg text-white/90" style={{fontFamily: 'var(--font-display)'}}>Mantras+</span></div><button onClick={() => setActiveScreen('settings')} className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors"><Settings className="h-6 w-6" /></button></div></header>); };
 
-// --- BOTTOMNAV (sem alterações) ---
+// --- BOTTOMNAV (ATUALIZADO COM O ÍCONE DE CHAKRAS) ---
 const BottomNav = ({ activeScreen, setActiveScreen }) => { 
     const navItems = [ 
         { id: 'home', icon: Home, label: 'Início' }, 
-        { id: 'spokenMantras', icon: Mic2, label: 'Praticar' }, 
+        { id: 'spokenMantras', icon: Mic2, label: 'Praticar' },
+        { id: 'chakras', icon: Circle, label: 'Chakras' }, // Novo item de navegação
         { id: 'meuSantuario', icon: Heart, label: 'Santuário' },
         { id: 'mantras', icon: Music, label: 'Ouvir' }, 
         { id: 'history', icon: History, label: 'Histórico' }, 
@@ -878,7 +961,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
 
 const OracleScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const [userInput, setUserInput] = useState(''); const [suggestedMantra, setSuggestedMantra] = useState(null); const [isLoading, setIsLoading] = useState(false); const [error, setError] = useState(''); const handleSuggestMantra = async () => { if (!userInput) return; if (!isSubscribed) { openPremiumModal(); return; } setIsLoading(true); setSuggestedMantra(null); setError(''); try { const mantraListForPrompt = MANTRAS_DATA.map(m => `ID ${m.id}: ${m.nome} - ${m.finalidade}`).join('\n'); const prompt = `Um usuário está sentindo: "${userInput}". Baseado nisso, qual dos seguintes mantras é o mais adequado? Por favor, responda APENAS com o número do ID do melhor mantra. \n\nMantras:\n${mantraListForPrompt}`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; const match = text?.match(/\d+/); if (match) { const mantraId = parseInt(match[0], 10); const foundMantra = MANTRAS_DATA.find(m => m.id === mantraId); if (foundMantra) { setSuggestedMantra(foundMantra); } else { setError("O oráculo não encontrou uma sugestão. Tente descrever seu sentimento de outra forma."); } } else { setError("Não foi possível interpretar a sugestão do oráculo. Tente novamente."); } } else { console.error("Unexpected API response structure:", result); setError("O oráculo está em silêncio no momento. Por favor, tente mais tarde."); } } catch (err) { console.error("Gemini Suggestion Error:", err); if (err.message.includes("403")) { setError("Erro de permissão (403). Verifique se a sua Chave de API está correta e se as restrições no Google Cloud estão configuradas."); } else if (err.message.includes("404")) { setError("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão."); } } finally { setIsLoading(false); } }; return (<div className="page-container"><PageTitle subtitle="Não sabe qual mantra escolher? Descreva seu sentimento e deixe a sabedoria interior guiá-lo.">Oráculo dos Mantras</PageTitle><div className="w-full max-w-lg mx-auto space-y-6 glass-card"><textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} className="textarea-field" rows="4" placeholder="Descreva como você está se sentindo hoje..." />{isSubscribed ? (<button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}><BrainCircuit className="h-6 w-6" />{isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}</button>) : (<PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">Revelar o meu Mantra</PremiumButton>)}{error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}{suggestedMantra && (<div className="pt-4 border-t border-white/10"><p className="text-center text-white/70 mb-2 font-light">O oráculo sugere:</p><div className="bg-black/20 p-4 rounded-lg clickable cursor-pointer" onClick={() => onPlayMantra(suggestedMantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{suggestedMantra.nome}</h3><p className="italic text-white/90 my-2 font-light">"{suggestedMantra.texto}"</p></div></div>)}</div></div>); };
 const FavoritesScreen = ({ onPlayMantra }) => { const { favorites } = useContext(AppContext); const favoriteMantras = MANTRAS_DATA.filter(mantra => favorites.includes(mantra.id)); return (<div className="page-container"><PageTitle subtitle="Acesse rapidamente os mantras que mais ressoam com você.">Meus Favoritos</PageTitle><div className="space-y-4">{favoriteMantras.length === 0 ? (<div className="glass-card text-center"><Heart className="mx-auto h-12 w-12 text-white/50" /><p className="mt-4 text-white/70">Clique no coração no player para adicionar um mantra aqui.</p></div>) : (favoriteMantras.map((mantra) => (<div key={mantra.id} className="glass-card clickable cursor-pointer" onClick={() => onPlayMantra(mantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h3><p className="italic text-white/80 my-2 font-light">"{mantra.texto}"</p></div>)))}</div></div>); };
-const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions = 1, audioType }) => { const { favorites, updateFavorites } = useContext(AppContext); const [isPlaying, setIsPlaying] = useState(false); const [currentTime, setCurrentTime] = useState(0); const [duration, setDuration] = useState(0); const [playbackRate, setPlaybackRate] = useState(1); const [areControlsVisible, setAreControlsVisible] = useState(true); const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false); const [showSpeedModal, setShowSpeedModal] = useState(false); const [showTimerModal, setShowTimerModal] = useState(false); const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null }); const [repetitionCount, setRepetitionCount] = useState(1); const audioRef = useRef(null); const hideControlsTimeoutRef = useRef(null); const repetitionCountRef = useRef(1); const practiceTimerRef = useRef(practiceTimer); useEffect(() => { practiceTimerRef.current = practiceTimer; }, [practiceTimer]); const isSpokenPractice = audioType === 'spoken'; const isFavorite = favorites.includes(currentMantra.id); const audioSrc = audioType === 'spoken' ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc; const touchStartX = useRef(null); const touchStartY = useRef(null); const touchEndX = useRef(null); const touchEndY = useRef(null); const minSwipeDistance = 50; const handleTouchStart = (e) => { if (e.target.type === 'range') return; touchStartX.current = e.targetTouches[0].clientX; touchStartY.current = e.targetTouches[0].clientY; touchEndX.current = null; touchEndY.current = null; }; const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; }; const handleTouchEnd = () => { if (!touchStartX.current || !touchEndX.current) return; const distanceX = touchStartX.current - touchEndX.current; const distanceY = touchStartY.current - touchEndY.current; if (Math.abs(distanceX) < Math.abs(distanceY)) return; const isLeftSwipe = distanceX > minSwipeDistance; const isRightSwipe = distanceX < -minSwipeDistance; const currentIndex = MANTRAS_DATA.findIndex(m => m.id === currentMantra.id); if (isLeftSwipe) { const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[nextIndex]); } else if (isRightSwipe) { const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[prevIndex]); } touchStartX.current = null; touchEndX.current = null; touchStartY.current = null; touchEndY.current = null; }; const showControls = useCallback(() => { clearTimeout(hideControlsTimeoutRef.current); setAreControlsVisible(true); if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) { hideControlsTimeoutRef.current = setTimeout(() => { setAreControlsVisible(false); }, 4000); } }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]); useEffect(() => { showControls(); return () => clearTimeout(hideControlsTimeoutRef.current); }, [showControls]); const toggleFavorite = useCallback(() => { const newFavorites = isFavorite ? favorites.filter(id => id !== currentMantra.id) : [...favorites, currentMantra.id]; updateFavorites(newFavorites); }, [isFavorite, favorites, currentMantra.id, updateFavorites]); const changePlaybackRate = useCallback((rate) => { if(audioRef.current) audioRef.current.playbackRate = rate; setPlaybackRate(rate); setShowSpeedModal(false); setIsOptionsMenuOpen(false); }, []); const handleSetPracticeDuration = useCallback((seconds) => { if (seconds > 0) { const endTime = Date.now() + seconds * 1000; setPracticeTimer({ endTime, duration: seconds }); } else { setPracticeTimer({ endTime: null, duration: null }); } setShowTimerModal(false); setIsOptionsMenuOpen(false); }, []); useEffect(() => { const audio = audioRef.current; if (!audio) return; setCurrentTime(0); setDuration(0); setIsPlaying(true); setRepetitionCount(1); repetitionCountRef.current = 1; const setAudioData = () => setDuration(audio.duration); const handleTimeUpdate = () => { const timer = practiceTimerRef.current; if (timer.endTime && Date.now() >= timer.endTime) { audio.pause(); setIsPlaying(false); setPracticeTimer({ endTime: null, duration: null }); } else { setCurrentTime(audio.currentTime); } }; const handleAudioEnd = () => { const timer = practiceTimerRef.current; if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) { repetitionCountRef.current += 1; setRepetitionCount(repetitionCountRef.current); audio.currentTime = 0; audio.play(); } else if (timer.endTime && Date.now() < timer.endTime) { audio.currentTime = 0; audio.play(); } else { setIsPlaying(false); if (timer.endTime) { setPracticeTimer({ endTime: null, duration: null }); } } }; audio.addEventListener('loadedmetadata', setAudioData); audio.addEventListener('timeupdate', handleTimeUpdate); audio.addEventListener('ended', handleAudioEnd); audio.play().catch(e => { console.error("Audio play failed:", e); setIsPlaying(false); }); return () => { audio.removeEventListener('loadedmetadata', setAudioData); audio.removeEventListener('timeupdate', handleTimeUpdate); audio.removeEventListener('ended', handleAudioEnd); }; }, [audioSrc, totalRepetitions, isSpokenPractice]); const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]); const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }; const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []); const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]); const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []); const openSpeedModal = useCallback(() => setShowSpeedModal(true), []); const closeTimerModal = useCallback(() => setShowTimerModal(false), []); const openTimerModal = useCallback(() => setShowTimerModal(true), []); if (!currentMantra) return null; return (<div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation player-background-gradient" onClick={showControls} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}><MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} /><div className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${areControlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}><div className="w-full flex justify-between items-start"><button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><MoreHorizontal size={22} /></button><button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button></div><div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}><div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}><h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2><p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>{isSpokenPractice && (<div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto"><Repeat size={14} /><span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span></div>)}</div><div className="w-full max-w-sm flex flex-col items-center gap-3"><div className="w-full"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" /><div className="flex justify-between text-xs font-light text-white/70 mt-1"><span>{formatTime(currentTime)}</span><span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span></div></div><button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">{isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}</button></div></div><div /></div><audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} /><OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />{showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}{showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}</div>); };
+const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions = 1, audioType }) => { const { favorites, updateFavorites } = useContext(AppContext); const [isPlaying, setIsPlaying] = useState(false); const [currentTime, setCurrentTime] = useState(0); const [duration, setDuration] = useState(0); const [playbackRate, setPlaybackRate] = useState(1); const [areControlsVisible, setAreControlsVisible] = useState(true); const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false); const [showSpeedModal, setShowSpeedModal] = useState(false); const [showTimerModal, setShowTimerModal] = useState(false); const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null }); const [repetitionCount, setRepetitionCount] = useState(1); const audioRef = useRef(null); const hideControlsTimeoutRef = useRef(null); const repetitionCountRef = useRef(1); const practiceTimerRef = useRef(practiceTimer); useEffect(() => { practiceTimerRef.current = practiceTimer; }, [practiceTimer]); const isSpokenPractice = audioType === 'spoken'; const isFavorite = favorites.includes(currentMantra.id); const audioSrc = audioType === 'spoken' ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc; const touchStartX = useRef(null); const touchStartY = useRef(null); const touchEndX = useRef(null); const touchEndY = useRef(null); const minSwipeDistance = 50; const handleTouchStart = (e) => { if (e.target.type === 'range') return; touchStartX.current = e.targetTouches[0].clientX; touchStartY.current = e.targetTouches[0].clientY; touchEndX.current = null; touchEndY.current = null; }; const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; }; const handleTouchEnd = () => { if (!touchStartX.current || !touchEndX.current) return; const distanceX = touchStartX.current - touchEndX.current; const distanceY = touchStartY.current - touchEndY.current; if (Math.abs(distanceX) < Math.abs(distanceY)) return; const isLeftSwipe = distanceX > minSwipeDistance; const isRightSwipe = distanceX < -minSwipeDistance; const currentIndex = MANTRAS_DATA.findIndex(m => m.id === currentMantra.id); if (isLeftSwipe) { const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[nextIndex]); } else if (isRightSwipe) { const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[prevIndex]); } touchStartX.current = null; touchEndX.current = null; touchStartY.current = null; touchEndY.current = null; }; const showControls = useCallback(() => { clearTimeout(hideControlsTimeoutRef.current); setAreControlsVisible(true); if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) { hideControlsTimeoutRef.current = setTimeout(() => { setAreControlsVisible(false); }, 4000); } }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]); useEffect(() => { showControls(); return () => clearTimeout(hideControlsTimeoutRef.current); }, [showControls]); const toggleFavorite = useCallback(() => { const newFavorites = isFavorite ? favorites.filter(id => id !== currentMantra.id) : [...favorites, currentMantra.id]; updateFavorites(newFavorites); }, [isFavorite, favorites, currentMantra.id, updateFavorites]); const changePlaybackRate = useCallback((rate) => { if(audioRef.current) audioRef.current.playbackRate = rate; setPlaybackRate(rate); setShowSpeedModal(false); setIsOptionsMenuOpen(false); }, []); const handleSetPracticeDuration = useCallback((seconds) => { if (seconds > 0) { const endTime = Date.now() + seconds * 1000; setPracticeTimer({ endTime, duration: seconds }); } else { setPracticeTimer({ endTime: null, duration: null }); } setShowTimerModal(false); setIsOptionsMenuOpen(false); }, []); useEffect(() => { const audio = audioRef.current; if (!audio) return; setCurrentTime(0); setDuration(0); setIsPlaying(true); setRepetitionCount(1); repetitionCountRef.current = 1; const setAudioData = () => setDuration(audio.duration); const handleTimeUpdate = () => { const timer = practiceTimerRef.current; if (timer.endTime && Date.now() >= timer.endTime) { audio.pause(); setIsPlaying(false); setPracticeTimer({ endTime: null, duration: null }); } else { setCurrentTime(audio.currentTime); } }; const handleAudioEnd = () => { const timer = practiceTimer.current; if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) { repetitionCountRef.current += 1; setRepetitionCount(repetitionCountRef.current); audio.currentTime = 0; audio.play(); } else if (timer.endTime && Date.now() < timer.endTime) { audio.currentTime = 0; audio.play(); } else { setIsPlaying(false); if (timer.endTime) { setPracticeTimer({ endTime: null, duration: null }); } } }; audio.addEventListener('loadedmetadata', setAudioData); audio.addEventListener('timeupdate', handleTimeUpdate); audio.addEventListener('ended', handleAudioEnd); audio.play().catch(e => { console.error("Audio play failed:", e); setIsPlaying(false); }); return () => { audio.removeEventListener('loadedmetadata', setAudioData); audio.removeEventListener('timeupdate', handleTimeUpdate); audio.removeEventListener('ended', handleAudioEnd); }; }, [audioSrc, totalRepetitions, isSpokenPractice]); const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]); const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }; const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []); const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]); const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []); const openSpeedModal = useCallback(() => setShowSpeedModal(true), []); const closeTimerModal = useCallback(() => setShowTimerModal(false), []); const openTimerModal = useCallback(() => setShowTimerModal(true), []); if (!currentMantra) return null; return (<div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation player-background-gradient" onClick={showControls} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}><MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} /><div className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${areControlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}><div className="w-full flex justify-between items-start"><button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><MoreHorizontal size={22} /></button><button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button></div><div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}><div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}><h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2><p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>{isSpokenPractice && (<div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto"><Repeat size={14} /><span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span></div>)}</div><div className="w-full max-w-sm flex flex-col items-center gap-3"><div className="w-full"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" /><div className="flex justify-between text-xs font-light text-white/70 mt-1"><span>{formatTime(currentTime)}</span><span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span></div></div><button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">{isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}</button></div></div><div /></div><audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} /><OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />{showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}{showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}</div>); };
 const OptionsMenu = memo(({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => { if (!isOpen) return null; const OptionButton = ({ icon: Icon, text, onClick, active = false }) => (<button onClick={onClick} className={`w-full flex items-center gap-4 text-left p-4 rounded-lg transition-colors ${active ? 'text-[#FFD54F]' : 'text-white'} hover:bg-white/10`}><Icon size={20} className={active ? 'text-[#FFD54F]' : 'text-white/70'} /><span className="font-light">{text}</span></button>); return (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}><div className="glass-modal w-full max-w-xs" onClick={e => e.stopPropagation()}><div className="space-y-1"><OptionButton icon={Heart} text="Favoritar" onClick={onFavorite} active={isFavorite} /><OptionButton icon={GaugeCircle} text="Velocidade" onClick={onSpeed} /><OptionButton icon={Clock} text="Definir Duração" onClick={onTimer} /></div></div></div>); });
 const PlaybackSpeedModal = memo(({ currentRate, onSelectRate, onClose }) => { const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Velocidade de Reprodução</h3><ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">{speeds.map(speed => (<li key={speed} onClick={() => onSelectRate(speed)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${currentRate === speed ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{speed}x</span>{currentRate === speed && <CheckCircle />}</li>))}</ul></div></div>); });
 const PracticeTimerModal = memo(({ activeTimer, onSetTimer, onClose }) => { const timers = [ { label: "5 Minutos", seconds: 300 }, { label: "15 Minutos", seconds: 900 }, { label: "30 Minutos", seconds: 1800 }, { label: "60 Minutos", seconds: 3600 }, ]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Definir Duração</h3><ul className="space-y-2">{activeTimer.duration && (<li onClick={() => onSetTimer(null)} className="p-4 bg-red-500/30 text-red-300 rounded-lg hover:bg-red-500/40 cursor-pointer text-center font-light">Cancelar Timer</li>)}{timers.map(timer => (<li key={timer.label} onClick={() => onSetTimer(timer.seconds)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${activeTimer.duration === timer.seconds ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{timer.label}</span>{activeTimer.duration === timer.seconds && <CheckCircle />}</li>))}</ul></div></div>); });
@@ -900,7 +983,7 @@ const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => {
     {/* FIM DA ALTERAÇÃO                                                */}
     {/* ================================================================= */}
     </form></div>); };
-const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen) return null; const repetitionOptions = [12, 24, 36, 48, 108]; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white text-center" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h2><p className="text-white/70 my-4 text-center font-light">Quantas vezes você gostaria de repetir este mantra?</p><div className="space-y-3">{repetitionOptions.map(reps => (<button key={reps} onClick={() => onStart(reps)} className="w-full btn-secondary">{reps} repetições</button>))}</div><div className="text-center mt-4"><button onClick={onClose} className="text-sm text-white/60 hover:underline">Cancelar</button></div></div></div>); };
+const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen) return null; const repetitionOptions = [12, 24, 36, 48, 108]; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white text-center" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h2><p className="text-white/70 my-4 text-center font-light">Quantas vezes você gostaria de repetir este mantra?</p><div className="space-y-3">{repetitionOptions.map(reps => (<button key={reps} onClick={() => onStart(reps)} className="w-full btn-secondary">{reps} repetições}</button>))}</div><div className="text-center mt-4"><button onClick={onClose} className="text-sm text-white/60 hover:underline">Cancelar</button></div></div></div>); };
 
 // --- INÍCIO: NOVOS COMPONENTES E TELAS PARA "MEU SANTUÁRIO" ---
 
@@ -1226,7 +1309,7 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
                         <div className="text-center space-y-4">
                             <p className="text-white/80 animate-pulse">Gravando...</p>
                             <button onClick={handleStopRecording} className="modern-btn-primary !bg-red-500 !text-white">
-                                <Pause /> Parar Gravação
+                                <Pause /> Pausar Gravação
                             </button>
                         </div>
                     )}
@@ -1752,6 +1835,153 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
 // =================================================================
 
 
+// =================================================================
+// INÍCIO DA NOVA FUNCIONALIDADE: TELA DE CHAKRAS
+// =================================================================
+const ChakraScreen = () => {
+    const [selectedChakra, setSelectedChakra] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const backgroundAudioRef = useRef(null);
+    const mantraAudioRef = useRef(null);
+    
+    // Posições verticais dos chakras ajustadas manualmente
+    const chakraPositions = {
+    1: '17%', // Muladhara
+    2: '27%', // Svadhisthana
+    3: '37%', // Manipura
+    4: '47%', // Anahata
+    5: '57%', // Vishuddha
+    6: '67%', // Ajna
+    7: '77%'  // Sahasrara
+};
+
+    // Música de fundo
+    useEffect(() => {
+        if (!backgroundAudioRef.current) {
+            backgroundAudioRef.current = new Audio('https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/som-fundo.mp3');
+            backgroundAudioRef.current.loop = true;
+            backgroundAudioRef.current.volume = 0.5;
+        }
+        backgroundAudioRef.current.play().catch(e => console.error("Erro ao tocar música de fundo:", e));
+        return () => {
+            backgroundAudioRef.current.pause();
+        };
+    }, []);
+
+    const handleSelectChakra = (chakra) => {
+        setSelectedChakra(chakra);
+        setIsPlaying(true);
+    };
+
+    const togglePlayPause = () => {
+        setIsPlaying(prev => !prev);
+    };
+    
+    // Efeito para o áudio do mantra
+    useEffect(() => {
+        if (!mantraAudioRef.current) {
+            mantraAudioRef.current = new Audio();
+            mantraAudioRef.current.loop = true;
+        }
+
+        if (isPlaying && selectedChakra) {
+            if (mantraAudioRef.current.src !== selectedChakra.audioSrc) {
+                mantraAudioRef.current.pause();
+                mantraAudioRef.current.src = selectedChakra.audioSrc;
+                mantraAudioRef.current.load();
+            }
+            mantraAudioRef.current.play().catch(e => console.error("Erro ao tocar áudio do chakra:", e));
+        } else {
+            mantraAudioRef.current.pause();
+        }
+
+        return () => {
+            mantraAudioRef.current.pause();
+        };
+    }, [isPlaying, selectedChakra]);
+
+    // Reordenar os dados dos chakras para exibir de baixo para cima
+    const orderedChakras = [...CHAKRAS_DATA].reverse();
+
+    return (
+        <div className="page-container" style={{backgroundColor: selectedChakra?.color ? `${selectedChakra.color}20` : 'transparent', transition: 'background-color 1s ease'}}>
+            <PageTitle subtitle="Conecte-se e equilibre seus centros de energia através da meditação sonora.">Meditação de Chakras</PageTitle>
+
+            <div className="flex flex-col items-center justify-center flex-1">
+                <div className="flex w-full items-center justify-center space-x-4 md:space-x-8">
+                    {/* Visualização da Figura Humana (Placeholder) */}
+                    <div className="relative w-full max-w-[150px] md:max-w-[200px] h-96 flex items-center justify-center flex-shrink-0">
+                        <img 
+                            src="https://i.postimg.cc/fkQNDZH4/mente.png" 
+                            alt="Figura humana com chakras" 
+                            className="h-full object-contain"
+                        />
+                        {/* Indicadores dos Chakras */}
+                        {CHAKRAS_DATA.map(chakra => (
+                            <div
+                                key={chakra.id}
+                                style={{
+                                    bottom: chakraPositions[chakra.id],
+                                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                                    backgroundColor: chakra.color,
+                                    filter: selectedChakra?.id === chakra.id ? `drop-shadow(0 0 8px ${chakra.color})` : 'none',
+                                    zIndex: 10 - chakra.id,
+                                    marginLeft: '-0.7rem'
+                                }}
+                                className={`absolute left-[50%] w-8 h-8 rounded-full border-2 cursor-pointer transition-all duration-500 ${
+                                    selectedChakra?.id === chakra.id ? 'chakra-pulse-effect' : ''
+                                }`}
+                                onClick={() => handleSelectChakra(chakra)}
+                            ></div>
+                        ))}
+                    </div>
+
+                    {/* Lista de Chakras à direita */}
+                    <div className="flex flex-col space-y-2 p-2 w-full max-w-[150px] flex-shrink-0" style={{ height: '384px' }}>
+                        {orderedChakras.map(chakra => (
+                            <div 
+                                key={chakra.id}
+                                onClick={() => handleSelectChakra(chakra)}
+                                className={`glass-card !p-3 flex flex-col items-center justify-center space-y-1 cursor-pointer transition-transform duration-300 ${
+                                    selectedChakra?.id === chakra.id ? 'bg-white/10 scale-105' : 'bg-white/5 hover:scale-[1.02]'
+                                }`}
+                                style={{
+                                    flex: '1 1 auto',
+                                    borderColor: selectedChakra?.id === chakra.id ? chakra.color : 'rgba(255, 255, 255, 0.08)',
+                                    boxShadow: selectedChakra?.id === chakra.id ? `0 0 10px ${chakra.color}` : 'none',
+                                    borderWidth: '2px',
+                                }}
+                            >
+                                <p className="text-sm font-light text-white/90 text-center">{chakra.name}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Controles de Reprodução */}
+                {selectedChakra && (
+                    <div className="glass-card w-full max-w-md text-center space-y-4 mt-8">
+                        <h3 className="text-xl text-white" style={{fontFamily: 'var(--font-display)'}}>{selectedChakra.name}</h3>
+                        <div className="flex justify-center items-center gap-4">
+                            <PlayCircle size={64} style={{color: selectedChakra.color}}/>
+                            <div>
+                                <p className="text-white/80 text-sm font-light">Mantra: <span className="font-medium">{selectedChakra.mantra}</span></p>
+                                <p className="text-white/80 text-sm font-light">Mudra: <span className="font-medium">{selectedChakra.mudra}</span></p>
+                            </div>
+                        </div>
+                        <p className="text-white/70 italic text-sm font-light">{selectedChakra.desc}</p>
+                        <button onClick={togglePlayPause} className="w-full modern-btn-primary !py-2 !px-4 !text-sm flex items-center justify-center">
+                            {isPlaying ? <><Pause size={20} /> Pausar Meditação</> : <><Play size={20} /> Iniciar Meditação</>}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+// =================================================================
+// FIM DA NOVA FUNCIONALIDADE
+// =================================================================
 // --- COMPONENTE PRINCIPAL (ATUALIZADO com navegação para Gratidão) ---
 const AppContent = () => {
     const { isSubscribed } = useContext(AppContext);
@@ -1844,6 +2074,7 @@ const AppContent = () => {
             case 'settings': return <SettingsScreen setActiveScreen={setActiveScreen} />;
             case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
+            case 'chakras': return <ChakraScreen />; // Nova tela de Chakras
             default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
         }
     };
