@@ -7,12 +7,10 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.17: Implementação Final - Meditação de Chakras
- * - Círculos da figura humana sempre visíveis, mas a cor só aparece na seleção.
- * - Efeito de ondas pulsantes aplicado nos círculos da figura humana ao selecionar.
- * - Lista de chakras ajustada em tamanho para exibir todos os itens sem rolagem.
- * - Efeito de seleção da lista de chakras corrigido para uma borda e sombra estática.
- * - Posição dos elementos ajustada para melhor alinhamento.
+ * v2.19: Refatoração de UX (Astrólogo e Histórico)
+ * - Correção do estado do perfil astral do usuário (Solução A).
+ * - Implementação de carregamento e exibição do histórico (Solução B).
+ * - Melhoria geral na lógica de estado e UX para o Astrólogo e histórico.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -27,8 +25,10 @@ import {
     updateProfile,
     deleteUser,
     EmailAuthProvider,
-    reauthenticateWithCredential
+    reauthenticateWithCredential,
+    signInAnonymously
 } from 'firebase/auth';
+
 import {
     getFirestore,
     collection,
@@ -42,14 +42,15 @@ import {
     getDoc,
     Timestamp,
     where,
-    orderBy // Importação para ordenar queries
+    orderBy,
+    onSnapshot
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-// Ícones adicionados para a nova funcionalidade
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle } from 'lucide-react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle, MessageCircleQuestion } from 'lucide-react';
 
 import ReactGA from 'react-ga4';
-// Ícones adicionados para a nova funcionalidade
 
 // --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER) ---
 const GlobalStyles = () => (
@@ -90,28 +91,16 @@ const GlobalStyles = () => (
         @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
         .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
-
-        /* ================================================================= */
-        /* INÍCIO DA SOLUÇÃO: GRADIENTE ANIMADO PARA O PLAYER                */
-        /* ================================================================= */
         .player-background-gradient {
             background: linear-gradient(-45deg, #1a0933, #2c0b4d, #4a148c, #3a1b57);
             background-size: 400% 400%;
             animation: player-gradient-animation 15s ease infinite;
         }
-
         @keyframes player-gradient-animation {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        /* ================================================================= */
-        /* FIM DA SOLUÇÃO                                                    */
-        /* ================================================================= */
-
-        /* ================================================================= */
-        /* INÍCIO DA SOLUÇÃO: ANIMAÇÃO DE ONDAS PARA OS CHAKRAS              */
-        /* ================================================================= */
         @keyframes chakra-pulse {
             0% { transform: scale(1.0); opacity: 0.5; }
             50% { transform: scale(1.2); opacity: 1; }
@@ -120,14 +109,11 @@ const GlobalStyles = () => (
         .chakra-pulse-effect {
             animation: chakra-pulse 2s ease-in-out infinite;
         }
-        /* ================================================================= */
-        /* FIM DA SOLUÇÃO                                                    */
-        /* ================================================================= */
     `}
     </style>
 );
 
-// --- DADOS DOS MANTRAS (sem alterações) ---
+// --- DADOS DOS MANTRAS ---
 const MANTRAS_DATA = [
     { id: 1, nome: "Afirmação da Paz", texto: "Eu sou, Eu sou, Eu sou a luz que emana paz", finalidade: "Acalma a mente e afasta pensamentos negativos.", repeticoes: 12, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Afirmac%CC%A7a%CC%83o%20da%20paz.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz.MP3", imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", imagePrompt: "A serene and ethereal visual representation of inner peace. Abstract art, soft glowing light, calming energy, spiritual, high resolution, beautiful." },
     { id: 2, nome: "Chama Violeta", texto: "Eu sou um ser de fogo violeta, eu sou a pureza que Deus deseja", finalidade: "Limpa culpas, libera o passado e eleva a vibração.", repeticoes: 36, libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Chama%20Violeta.mp3", spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Chama%20Violeta.MP3", imageSrc: "https://i.postimg.cc/BvJ4vhDt/violet.png", imagePrompt: "An abstract representation of the violet flame of transmutation. Swirls of purple, magenta, and indigo light, cleansing energy, spiritual fire, high resolution, ethereal." },
@@ -144,7 +130,6 @@ const MANTRAS_DATA = [
 ];
 
 // --- NOVOS DADOS: CHAKRAS (MOVIDO PARA DENTRO DO CÓDIGO PARA SIMPLIFICAR) ---
-// A ordem dos chakras foi invertida para corresponder à ordem de baixo para cima.
 const CHAKRAS_DATA = [
     {
         id: 1,
@@ -210,7 +195,8 @@ const CHAKRAS_DATA = [
         audioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/AUM.MP3"
     }
 ];
-// --- CONFIGURAÇÃO DO FIREBASE (sem alterações) ---
+
+// --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
     authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -221,12 +207,13 @@ const firebaseConfig = {
     measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
-let app, auth, db, storage;
+let app, auth, db, storage, functions;
 try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
+    functions = getFunctions(app);
 } catch (error) {
     console.error("Erro na inicialização do Firebase. Verifique suas credenciais no .env:", error);
 }
@@ -244,7 +231,7 @@ try {
     console.error("Erro na inicialização do Google Analytics:", error);
 }
 
-// --- CONTEXTO DA APLICAÇÃO (sem alterações) ---
+// --- CONTEXTO DA APLICAÇÃO ---
 const AppContext = createContext(null);
 
 const AppProvider = ({ children }) => {
@@ -259,12 +246,16 @@ const AppProvider = ({ children }) => {
     const [allEntries, setAllEntries] = useState([]);
     const [permissionError, setPermissionError] = useState(null);
     const [isSubscribed, setIsSubscribed] = useState(false);
+    const [freeQuestionUsed, setFreeQuestionUsed] = useState(false);
 
     // --- NOVOS ESTADOS PARA "MEU SANTUÁRIO" ---
     const [meusAudios, setMeusAudios] = useState([]);
     const [playlists, setPlaylists] = useState([]);
 
-    // Funções existentes (sem alterações)
+    // --- NOVOS ESTADOS PARA "ASTROLOGER" ---
+    const [astroProfile, setAstroProfile] = useState(null);
+    const [astroHistory, setAstroHistory] = useState([]);
+
     const fetchAllEntries = useCallback(async (uid) => {
         if (!db || !uid) return [];
         try {
@@ -388,6 +379,45 @@ const AppProvider = ({ children }) => {
             console.error("Erro ao buscar Playlists:", error);
         }
     }, []);
+    
+    // --- NOVA FUNÇÃO PARA ASTROLOGER ---
+    const fetchAstroHistory = useCallback(async (uid) => {
+        if (!db || !uid) return;
+        try {
+            const q = query(collection(db, `users/${uid}/astroHistory`), orderBy("createdAt", "desc"));
+            const snapshot = await getDocs(q);
+            const history = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+            setAstroHistory(history);
+        } catch (error) {
+            console.error("Erro ao buscar histórico astral:", error);
+            // O erro de permissão é tratado no onAuthStateChanged principal, mas é bom ter aqui também
+        }
+   }, []);
+
+// Atualização em tempo real do histórico do astrólogo
+useEffect(() => {
+
+        if (!db || !userId) return;
+        try {
+            const q = query(collection(db, `users/${userId}/astroHistory`), orderBy('createdAt', 'desc'));
+            const unsub = onSnapshot(
+                q,
+                (snap) => {
+                    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAstroHistory(items);
+                },
+                (err) => {
+                    console.error('onSnapshot astroHistory', err);
+                    if (err?.code === 'permission-denied') {
+                        setPermissionError('Firestore. Verifique as regras ou autenticação.');
+                    }
+                }
+            );
+            return () => unsub();
+        } catch (e) {
+            console.error('Erro no listener de astroHistory:', e);
+        }
+    }, [db, userId]);
 
     // Função para buscar todos os dados do usuário, incluindo os novos
     const fetchUserData = useCallback(async (uid) => {
@@ -401,38 +431,59 @@ const AppProvider = ({ children }) => {
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
                 setIsSubscribed(data.isPremium || false);
+                setFreeQuestionUsed(!!data.freeQuestionUsed);
                 setStreakData({
                     currentStreak: data.currentStreak || 0,
                     lastPracticedDate: data.lastPracticedDate?.toDate() || null
                 });
+                // --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
+                if (data.astroProfile) {
+                    setAstroProfile(data.astroProfile);
+                } else {
+                    setAstroProfile(null);
+                }
             } else if (auth.currentUser?.displayName) {
                 setUserName(auth.currentUser.displayName);
                 setIsSubscribed(false);
+                setAstroProfile(null);
             }
             await fetchAllEntries(uid);
-            // Chama as novas funções de busca
             await fetchMeusAudios(uid);
             await fetchPlaylists(uid);
+            await fetchAstroHistory(uid);
         } catch (error) {
             console.error("Error fetching user data:", error);
             if (error.code === 'permission-denied') {
                 setPermissionError("Firestore");
             }
         }
-    }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists]);
+    }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
 
     useEffect(() => {
         if (!auth) {
             setLoading(false);
             return;
         }
+
+        // Login anônimo automático
+        signInAnonymously(auth).catch((error) => {
+            console.error("Erro no login anônimo:", error);
+        });
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
                     const fetchedUserId = user.uid;
                     setUserId(fetchedUserId);
                     setUser(user);
-                    await fetchUserData(fetchedUserId);
+
+                    const ref = doc(db, "users", user.uid);
+                    await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+
+                    const snap = await getDoc(ref);
+                    if (snap.exists()) {
+                        await fetchUserData(fetchedUserId);
+                    }
                 } else {
                     setUser(null);
                     setUserId(null);
@@ -442,9 +493,10 @@ const AppProvider = ({ children }) => {
                     setPhotoURL(null);
                     setAllEntries([]);
                     setIsSubscribed(false);
-                    // Limpa os novos estados ao deslogar
                     setMeusAudios([]);
                     setPlaylists([]);
+                    setAstroProfile(null);
+                    setAstroHistory([]);
                 }
             } catch (error) {
                 console.error("Error during auth state change:", error);
@@ -466,15 +518,14 @@ const AppProvider = ({ children }) => {
         }
     };
 
-    // Adiciona os novos estados e funções ao valor do contexto
     const value = { 
         user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
-        // Valores do Meu Santuário
-        meusAudios, playlists, fetchMeusAudios, fetchPlaylists 
+        meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
+        astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
     };
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
-// --- TELAS E COMPONENTES EXISTENTES (sem alterações, exceto onde indicado) ---
+// --- TELAS E COMPONENTES EXISTENTES ---
 
 const SplashScreen = () => (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-purple-500 via-purple-700 to-indigo-900 text-white z-50 p-4">
@@ -636,47 +687,35 @@ const AuthScreen = () => {
     );
 };
 
-// --- COMPONENTES AUXILIARES (sem alterações) ---
+// --- COMPONENTES AUXILIARES ---
 const ScreenAnimator = ({ children, screenKey }) => (<div key={screenKey} className="screen-animation">{children}</div>);
 const PageTitle = ({ children, subtitle }) => (<div><h1 className="page-title">{children}</h1>{subtitle && <p className="page-subtitle">{subtitle}</p>}</div>);
 const PremiumButton = ({ onClick, children, className = '' }) => (<button type="button" onClick={onClick} className={`w-full modern-btn-primary !py-2 !px-4 !text-sm !font-normal !bg-white/10 !text-white/70 cursor-pointer ${className}`}><Lock className="h-4 w-4" />{children}</button>);
 const Header = ({ setActiveScreen }) => { const LOGO_URL = "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png"; return (<header className="fixed top-0 left-0 right-0 z-30 p-4 glass-nav"><div className="max-w-4xl mx-auto flex justify-between items-center"><div className="flex items-center gap-3"><img src={LOGO_URL} alt="Logo Clube dos Mantras" className="w-10 h-10" /><span className="text-lg text-white/90" style={{fontFamily: 'var(--font-display)'}}>Mantras+</span></div><button onClick={() => setActiveScreen('settings')} className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors"><Settings className="h-6 w-6" /></button></div></header>); };
 
-// --- BOTTOMNAV (ATUALIZADO COM O ÍCONE DE CHAKRAS) ---
-const BottomNav = ({ activeScreen, setActiveScreen }) => { 
-    const navItems = [ 
-        { id: 'home', icon: Home, label: 'Início' }, 
+// --- BOTTOMNAV (ATUALIZADO COM O ÍCONE DE CHAKRAS E ASTROLOGO) ---
+const BottomNav = ({ activeScreen, setActiveScreen }) => {
+    const navItems = [
+        { id: 'home', icon: Home, label: 'Início' },
         { id: 'spokenMantras', icon: Mic2, label: 'Praticar' },
-        { id: 'chakras', icon: Circle, label: 'Chakras' }, // Novo item de navegação
+        { id: 'chakras', icon: Circle, label: 'Chakras' },
         { id: 'meuSantuario', icon: Heart, label: 'Santuário' },
-        { id: 'mantras', icon: Music, label: 'Ouvir' }, 
-        { id: 'history', icon: History, label: 'Histórico' }, 
-        { id: 'oracle', icon: BrainCircuit, label: 'Oráculo' } 
-    ]; 
-    return (<nav className="fixed bottom-0 left-0 right-0 z-30 glass-bottom-nav"><div className="flex justify-around max-w-lg mx-auto">{navItems.map(item => (<button key={item.id} onClick={() => setActiveScreen(item.id)} className="relative flex flex-col items-center justify-center w-full py-3 px-1 transition-colors duration-300 ease-in-out text-white/70 hover:text-white"><item.icon className={`h-6 w-6 transition-all ${activeScreen === item.id ? 'text-[#FFD54F]' : ''}`} /> <span className={`text-xs mt-1 transition-opacity ${activeScreen === item.id ? 'opacity-100 text-[#FFD54F]' : 'opacity-0'}`}>{item.label}</span></button>))}</div></nav>); 
+        { id: 'mantras', icon: Music, label: 'Ouvir' },
+        { id: 'astrologer', icon: MessageCircleQuestion, label: 'Astrólogo' },
+        { id: 'history', icon: History, label: 'Histórico' },
+        { id: 'oracle', icon: BrainCircuit, label: 'Oráculo' }
+    ];
+    return (<nav className="fixed bottom-0 left-0 right-0 z-30 glass-bottom-nav"><div className="flex justify-around max-w-lg mx-auto">{navItems.map(item => (<button key={item.id} onClick={() => setActiveScreen(item.id)} className="relative flex flex-col items-center justify-center w-full py-3 px-1 transition-colors duration-300 ease-in-out text-white/70 hover:text-white"><item.icon className={`h-6 w-6 transition-all ${activeScreen === item.id ? 'text-[#FFD54F]' : ''}`} /> <span className={`text-xs mt-1 transition-opacity ${activeScreen === item.id ? 'opacity-100 text-[#FFD54F]' : 'opacity-0'}`}>{item.label}</span></button>))}</div></nav>);
 };
 
-// --- COMPONENTES DE MODAL (sem alterações, exceto o novo modal) ---
+// --- COMPONENTES DE MODAL ---
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", confirmClass = "btn-danger" }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">{title}</h2><p className="text-white/70 my-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onClose} className="btn-secondary">Cancelar</button><button onClick={onConfirm} className={confirmClass}>{confirmText}</button></div></div></div>); };
 const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubmitting, title, message, errorMessage }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm text-white" onClick={e => e.stopPropagation()}><h2 className="text-xl">{title}</h2><p className="text-white/70 my-4">{message}</p><form onSubmit={onConfirm} className="space-y-4"><div className="space-y-2"><label className="text-sm text-white/80" htmlFor="reauth-password">Sua Senha</label><input id="reauth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" required /></div>{errorMessage && <p className="text-sm text-center text-red-400">{errorMessage}</p>}<div className="flex justify-end gap-4 pt-4"><button type="button" onClick={onClose} className="btn-secondary" disabled={isSubmitting}>Cancelar</button><button type="submit" className="btn-danger" disabled={isSubmitting}>{isSubmitting ? 'Confirmando...' : 'Confirmar e Deletar'}</button></div></form></div></div>); };
 const PremiumLockModal = ({ isOpen, onClose }) => { if (!isOpen) return null; const handleSubscribe = () => { window.open('https://pay.kiwify.com.br/fFFErhY', '_blank'); onClose(); }; return (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}><Sparkles className="mx-auto h-12 w-12 text-[#FFD54F]" style={{filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))'}} /><h2 className="text-2xl text-white mt-4" style={{ fontFamily: "var(--font-display)" }}>Função Premium</h2><p className="text-white/70 my-4 font-light">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p><div className="flex flex-col gap-4"><button onClick={handleSubscribe} className="modern-btn-primary h-14">Assinar Agora</button><button onClick={onClose} className="text-sm text-white/60 hover:underline">Agora não</button></div></div></div>); };
-
-// =================================================================
-// INÍCIO DA SOLUÇÃO: NOVO MODAL DE GERENCIAMENTO DE ASSINATURA
-// =================================================================
 const SubscriptionManagementModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
-
-    const handleNewSubscription = () => {
-        window.open('https://pay.kiwify.com.br/fFFErhY', '_blank');
-        onClose();
-    };
-
-    const handleManageSubscription = () => {
-        window.open('https://subscription.kiwify.com/subscription/manage', '_blank');
-        onClose();
-    };
-
+    const handleNewSubscription = () => { window.open('https://pay.kiwify.com.br/fFFErhY', '_blank'); onClose(); };
+    const handleManageSubscription = () => { window.open('https://subscription.kiwify.com/subscription/manage', '_blank'); onClose(); };
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
@@ -691,45 +730,10 @@ const SubscriptionManagementModal = ({ isOpen, onClose }) => {
         </div>
     );
 };
-// =================================================================
-// FIM DA SOLUÇÃO
-// =================================================================
 
-
-// --- TELAS EXISTENTES (ALTERAÇÕES EM HomeScreen e HistoryScreen) ---
-const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => { const { userName, streakData, allEntries, isSubscribed } = useContext(AppContext); const dailyMessages = [ "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." ]; const premiumMessages = [ "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.", "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.", "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.", "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.", "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.", "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.", "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria." ]; const todayIndex = new Date().getDay(); const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex]; const messageColor = isSubscribed ? 'text-[#FFD54F]/80' : 'text-white/60'; const WeekView = () => { const today = new Date(); const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; const days = Array.from({ length: 7 }).map((_, i) => { const date = new Date(today); date.setDate(today.getDate() - today.getDay() + i); return date; }); const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())); return (<div className={`w-full glass-card p-4 space-y-3 ${isSubscribed ? 'premium-card-glow' : ''}`}><div className="flex justify-around">{days.map((day, index) => { const isPracticed = practicedDays.has(day.toDateString()); const isToday = day.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<div key={index} className="flex flex-col items-center gap-2"><span className={`text-sm font-light ${isToday ? 'text-[#FFD54F]' : 'text-white/60'}`}>{weekDays[day.getDay()]}</span><button onClick={() => openDayDetail(day)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day.getDate()}</button></div>); })}</div><div className="text-center pt-3 border-t border-white/10"><button onClick={openCalendar} className="text-sm text-[#FFD54F] hover:underline font-light">Ver calendário completo</button></div></div>); }; return (<div className="page-container text-center"><div><div className="flex items-center justify-center gap-3 flex-wrap"><h1 className="page-title !text-3xl !mb-0">Olá, {userName || "Ser de Luz"}</h1>{isSubscribed && (<div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]"><span>PREMIUM</span></div>)}</div><p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p></div>{streakData && streakData.currentStreak > 0 && (<div className={`glass-card p-6 flex items-center justify-center gap-5 text-center ${isSubscribed ? 'premium-card-glow' : ''}`}><Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} /><div><p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p><p className="text-sm text-white/60 font-light">Continue assim!</p></div></div>)}<WeekView />
-        {/* ================================================================= */}
-        {/* INÍCIO DA ALTERAÇÃO: BOTÕES UNIFORMIZADOS                       */}
-        {/* ================================================================= */}
-        <div className="w-full max-w-md mx-auto space-y-3">
-            <button onClick={() => setActiveScreen('diary')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2">
-                <PlusCircle className="h-6 w-6" /> Registrar Prática de Mantra
-            </button>
-            <button onClick={() => setActiveScreen('gratitude')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2">
-                <PlusCircle className="h-6 w-6" /> Registrar Gratidão Diária
-            </button>
-        </div>
-        {/* ================================================================= */}
-        {/* FIM DA ALTERAÇÃO                                                */}
-        {/* ================================================================= */}
-    </div>); };
-
-const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => { const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); const [repetitions, setRepetitions] = useState(''); const [timeOfDay, setTimeOfDay] = useState([]); const [feelings, setFeelings] = useState(''); const [observations, setObservations] = useState(''); const [status, setStatus] = useState({ type: '', message: '' }); const [reflection, setReflection] = useState(''); const [isGenerating, setIsGenerating] = useState(false); const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); useEffect(() => { if (entryToEdit) { setSelectedMantra(entryToEdit.mantraId); setRepetitions(entryToEdit.repetitions); setTimeOfDay(entryToEdit.timeOfDay); setFeelings(entryToEdit.feelings); setObservations(entryToEdit.observations || ''); } }, [entryToEdit]); useEffect(() => { if (!entryToEdit) { const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); if (mantra) { setRepetitions(mantra.repeticoes); } } }, [selectedMantra, entryToEdit]); const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); const handleSubmit = async (e) => { e.preventDefault(); if (!selectedMantra || !repetitions || timeOfDay.length === 0 || !feelings) { setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); return; } if (!userId || !db) return; const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; try { if (entryToEdit) { await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); setStatus({ type: 'success', message: 'Registro atualizado!' }); } else { await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); setStatus({ type: 'success', message: 'Registro salvo!' }); } const entries = await fetchAllEntries(userId); await recalculateAndSetStreak(entries, userId); setTimeout(() => onSave(), 1500); } catch (error) { setStatus({ type: 'error', message: 'Erro ao salvar.' }); } }; const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; return (<><div className="page-container"><PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle><form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div><div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div><div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div><div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>{feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-normal" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}{reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}<div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div>
-        {/* ================================================================= */}
-        {/* INÍCIO DA ALTERAÇÃO: POSICIONAMENTO DA NOTIFICAÇÃO              */}
-        {/* ================================================================= */}
-        <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
-            <div className="flex gap-4">
-                {entryToEdit && <button type="button" onClick={onCancelEdit} className="w-full btn-secondary">Cancelar</button>}
-                <button type="submit" className="w-full modern-btn-primary h-14">{entryToEdit ? 'Atualizar' : 'Salvar'}</button>
-            </div>
-            {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
-        </div>
-        {/* ================================================================= */}
-        {/* FIM DA ALTERAÇÃO                                                */}
-        {/* ================================================================= */}
-        </form></div><MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} /></>); };
-
+// --- TELAS EXISTENTES (alteradas para navegação) ---
+const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => { const { userName, streakData, allEntries, isSubscribed } = useContext(AppContext); const dailyMessages = [ "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." ]; const premiumMessages = [ "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.", "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.", "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.", "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.", "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.", "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.", "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria." ]; const todayIndex = new Date().getDay(); const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex]; const messageColor = isSubscribed ? 'text-[#FFD54F]/80' : 'text-white/60'; const WeekView = () => { const today = new Date(); const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; const days = Array.from({ length: 7 }).map((_, i) => { const date = new Date(today); date.setDate(today.getDate() - today.getDay() + i); return date; }); const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())); return (<div className={`w-full glass-card p-4 space-y-3 ${isSubscribed ? 'premium-card-glow' : ''}`}><div className="flex justify-around">{days.map((day, index) => { const isPracticed = practicedDays.has(day.toDateString()); const isToday = day.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<div key={index} className="flex flex-col items-center gap-2"><span className={`text-sm font-light ${isToday ? 'text-[#FFD54F]' : 'text-white/60'}`}>{weekDays[day.getDay()]}</span><button onClick={() => openDayDetail(day)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day.getDate()}</button></div>); })}</div><div className="text-center pt-3 border-t border-white/10"><button onClick={openCalendar} className="text-sm text-[#FFD54F] hover:underline font-light">Ver calendário completo</button></div></div>); }; return (<div className="page-container text-center"><div><div className="flex items-center justify-center gap-3 flex-wrap"><h1 className="page-title !text-3xl !mb-0">Olá, {userName || "Ser de Luz"}</h1>{isSubscribed && (<div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]"><span>PREMIUM</span></div>)}</div><p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p></div>{streakData && streakData.currentStreak > 0 && (<div className={`glass-card p-6 flex items-center justify-center gap-5 text-center ${isSubscribed ? 'premium-card-glow' : ''}`}><Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} /><div><p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p><p className="text-sm text-white/60 font-light">Continue assim!</p></div></div>)}<WeekView /><div className="w-full max-w-md mx-auto space-y-3"><button onClick={() => setActiveScreen('diary')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Prática de Mantra</button><button onClick={() => setActiveScreen('gratitude')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Gratidão Diária</button></div></div>); };
+const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => { const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); const [repetitions, setRepetitions] = useState(''); const [timeOfDay, setTimeOfDay] = useState([]); const [feelings, setFeelings] = useState(''); const [observations, setObservations] = useState(''); const [status, setStatus] = useState({ type: '', message: '' }); const [reflection, setReflection] = useState(''); const [isGenerating, setIsGenerating] = useState(false); const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); useEffect(() => { if (entryToEdit) { setSelectedMantra(entryToEdit.mantraId); setRepetitions(entryToEdit.repetitions); setTimeOfDay(entryToEdit.timeOfDay); setFeelings(entryToEdit.feelings); setObservations(entryToEdit.observations || ''); } }, [entryToEdit]); useEffect(() => { if (!entryToEdit) { const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); if (mantra) { setRepetitions(mantra.repeticoes); } } }, [selectedMantra, entryToEdit]); const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); const handleSubmit = async (e) => { e.preventDefault(); if (!selectedMantra || !repetitions || timeOfDay.length === 0 || !feelings) { setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); return; } if (!userId || !db) return; const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; try { if (entryToEdit) { await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); setStatus({ type: 'success', message: 'Registro atualizado!' }); } else { await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); setStatus({ type: 'success', message: 'Registro salvo!' }); } const entries = await fetchAllEntries(userId); await recalculateAndSetStreak(entries, userId); setTimeout(() => onSave(), 1500); } catch (error) { setStatus({ type: 'error', message: 'Erro ao salvar.' }); } }; const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; return (<><div className="page-container"><PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle><form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div><div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div><div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div><div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>{feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-semibold" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}{reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}<div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4">{entryToEdit && <button type="button" onClick={onCancelEdit} className="w-full btn-secondary">Cancelar</button>}<button type="submit" className="w-full modern-btn-primary h-14">{entryToEdit ? 'Atualizar' : 'Salvar'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div><MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} /></>); };
 const MantraSelectionModal = ({ isOpen, onClose, onSelectMantra, currentMantraId }) => { if (!isOpen) return null; const handleSelect = (id) => { onSelectMantra(id); }; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-lg" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><h2 className="text-xl text-white" style={{fontFamily: "var(--font-display)"}}>Selecione um Mantra</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button></div><div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">{MANTRAS_DATA.map(mantra => (<div key={mantra.id} onClick={() => handleSelect(mantra.id)} className={`p-4 rounded-lg cursor-pointer transition-all ${currentMantraId === mantra.id ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><p>{mantra.nome}</p><p className={`text-sm font-light ${currentMantraId === mantra.id ? 'opacity-80' : 'text-white/70'}`}>{mantra.texto}</p></div>))}</div></div></div>); };
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Uma biblioteca sonora para relaxar e meditar.">Ouvir Mantras</PageTitle><div className="grid grid-cols-2 gap-4 md:gap-6">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable" onClick={() => isLocked ? openPremiumModal() : onPlayMantra(mantra, 1, 'library')}><img src={mantra.imageSrc} alt={`Visual para ${mantra.nome}`} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'filter grayscale brightness-50' : ''}`} /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>{isLocked && (<div className="absolute inset-0 flex items-center justify-center bg-black/40"><Lock className="h-10 w-10 text-white/70" /></div>)}<div className="absolute bottom-0 left-0 p-4"><h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3></div></div>); })}</div></div>); };
 const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Escolha um mantra para focar e iniciar sua prática de repetição.">Praticar Mantras</PageTitle><div className="space-y-4">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="glass-card !p-5 text-left"><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3><p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p><div className="mt-4 text-right">{isLocked ? (<PremiumButton onClick={openPremiumModal} className="!w-auto !py-2 !px-5 !text-sm !font-semibold">Praticar</PremiumButton>) : (<button onClick={() => onSelectMantra(mantra)} className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"><Mic2 className="h-4 w-4" />Praticar</button>)}</div></div>); })}</div></div>); };
@@ -745,7 +749,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                 {entries.length > 0 ? (
                     entries.map(entry => {
                         const isExpanded = expandedId === entry.id;
-
                         if (entry.type === 'mantra') {
                             const mantra = MANTRAS_DATA.find(m => m.id === entry.mantraId);
                             if (!mantra || !entry.practicedAt?.toDate) return null;
@@ -773,10 +776,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                                 </div>
                             );
                         }
-
-                        // =================================================================
-                        // INÍCIO DA ALTERAÇÃO: ADICIONADO RENDERIZAÇÃO DA GRATIDÃO        
-                        // =================================================================
                         if (entry.type === 'gratitude') {
                             if (!entry.practicedAt?.toDate) return null;
                             return (
@@ -798,10 +797,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                                 </div>
                             );
                         }
-                        // =================================================================
-                        // FIM DA ALTERAÇÃO
-                        // =================================================================
-                        
                         if (entry.type === 'note') {
                             if (!entry.practicedAt?.toDate) return null;
                             return (
@@ -834,9 +829,7 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
     );
 };
 
-// =================================================================
-// INÍCIO DA SOLUÇÃO: TELA DE CONFIGURAÇÕES ATUALIZADA
-// =================================================================
+// --- TELA DE CONFIGURAÇÕES ATUALIZADA ---
 const SettingsScreen = ({ setActiveScreen }) => {
     const { user, userName, photoURL, setPhotoURL, fetchUserData } = useContext(AppContext);
     const [newName, setNewName] = useState(userName);
@@ -955,47 +948,31 @@ const SettingsScreen = ({ setActiveScreen }) => {
         </>
     );
 };
-// =================================================================
-// FIM DA SOLUÇÃO
-// =================================================================
 
-const OracleScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const [userInput, setUserInput] = useState(''); const [suggestedMantra, setSuggestedMantra] = useState(null); const [isLoading, setIsLoading] = useState(false); const [error, setError] = useState(''); const handleSuggestMantra = async () => { if (!userInput) return; if (!isSubscribed) { openPremiumModal(); return; } setIsLoading(true); setSuggestedMantra(null); setError(''); try { const mantraListForPrompt = MANTRAS_DATA.map(m => `ID ${m.id}: ${m.nome} - ${m.finalidade}`).join('\n'); const prompt = `Um usuário está sentindo: "${userInput}". Baseado nisso, qual dos seguintes mantras é o mais adequado? Por favor, responda APENAS com o número do ID do melhor mantra. \n\nMantras:\n${mantraListForPrompt}`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; const match = text?.match(/\d+/); if (match) { const mantraId = parseInt(match[0], 10); const foundMantra = MANTRAS_DATA.find(m => m.id === mantraId); if (foundMantra) { setSuggestedMantra(foundMantra); } else { setError("O oráculo não encontrou uma sugestão. Tente descrever seu sentimento de outra forma."); } } else { setError("Não foi possível interpretar a sugestão do oráculo. Tente novamente."); } } else { console.error("Unexpected API response structure:", result); setError("O oráculo está em silêncio no momento. Por favor, tente mais tarde."); } } catch (err) { console.error("Gemini Suggestion Error:", err); if (err.message.includes("403")) { setError("Erro de permissão (403). Verifique se a sua Chave de API está correta e se as restrições no Google Cloud estão configuradas."); } else if (err.message.includes("404")) { setError("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão."); } } finally { setIsLoading(false); } }; return (<div className="page-container"><PageTitle subtitle="Não sabe qual mantra escolher? Descreva seu sentimento e deixe a sabedoria interior guiá-lo.">Oráculo dos Mantras</PageTitle><div className="w-full max-w-lg mx-auto space-y-6 glass-card"><textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} className="textarea-field" rows="4" placeholder="Descreva como você está se sentindo hoje..." />{isSubscribed ? (<button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}><BrainCircuit className="h-6 w-6" />{isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}</button>) : (<PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">Revelar o meu Mantra</PremiumButton>)}{error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}{suggestedMantra && (<div className="pt-4 border-t border-white/10"><p className="text-center text-white/70 mb-2 font-light">O oráculo sugere:</p><div className="bg-black/20 p-4 rounded-lg clickable cursor-pointer" onClick={() => onPlayMantra(suggestedMantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{suggestedMantra.nome}</h3><p className="italic text-white/90 my-2 font-light">"{suggestedMantra.texto}"</p></div></div>)}</div></div>); };
+// --- TELA DO ORÁCULO ---
+const OracleScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const [userInput, setUserInput] = useState(''); const [suggestedMantra, setSuggestedMantra] = useState(null); const [isLoading, setIsLoading] = useState(false); const [error, setError] = useState(''); const handleSuggestMantra = async () => { if (!userInput) return; if (!isSubscribed) {
+            if (freeQuestionUsed) {
+                openPremiumModal();
+                return;
+            }
+            // 1 pergunta grátis: permite enviar
+        } setIsLoading(true); setSuggestedMantra(null); setError(''); try { const mantraListForPrompt = MANTRAS_DATA.map(m => `ID ${m.id}: ${m.nome} - ${m.finalidade}`).join('\n'); const prompt = `Um usuário está sentindo: "${userInput}". Baseado nisso, qual dos seguintes mantras é o mais adequado? Por favor, responda APENAS com o número do ID do melhor mantra. \n\nMantras:\n${mantraListForPrompt}`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; const match = text?.match(/\d+/); if (match) { const mantraId = parseInt(match[0], 10); const foundMantra = MANTRAS_DATA.find(m => m.id === mantraId); if (foundMantra) { setSuggestedMantra(foundMantra); } else { setError("O oráculo não encontrou uma sugestão. Tente descrever seu sentimento de outra forma."); } } else { setError("Não foi possível interpretar a sugestão do oráculo. Tente novamente."); } } else { console.error("Unexpected API response structure:", result); setError("O oráculo está em silêncio no momento. Por favor, tente mais tarde."); } } catch (err) { console.error("Gemini Suggestion Error:", err); if (err.message.includes("403")) { setError("Erro de permissão (403). Verifique se a sua Chave de API está correta e se as restrições no Google Cloud estão configuradas."); } else if (err.message.includes("404")) { setError("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setError("Ocorreu um erro ao consultar o oráculo. Verifique sua conexão."); } } finally { setIsLoading(false); } }; return (<div className="page-container"><PageTitle subtitle="Não sabe qual mantra escolher? Descreva seu sentimento e deixe a sabedoria interior guiá-lo.">Oráculo dos Mantras</PageTitle><div className="w-full max-w-lg mx-auto space-y-6 glass-card"><textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} className="textarea-field" rows="4" placeholder="Descreva como você está se sentindo hoje..." />{isSubscribed ? (<button onClick={handleSuggestMantra} className="w-full modern-btn-primary h-14" disabled={isLoading}><BrainCircuit className="h-6 w-6" />{isLoading ? 'Consultando...' : 'Revelar o meu Mantra'}</button>) : (<PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">Revelar o meu Mantra</PremiumButton>)}{error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}{suggestedMantra && (<div className="pt-4 border-t border-white/10"><p className="text-center text-white/70 mb-2 font-light">O oráculo sugere:</p><div className="bg-black/20 p-4 rounded-lg clickable cursor-pointer" onClick={() => onPlayMantra(suggestedMantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{suggestedMantra.nome}</h3><p className="italic text-white/90 my-2 font-light">"{suggestedMantra.texto}"</p></div></div>)}</div></div>); };
 const FavoritesScreen = ({ onPlayMantra }) => { const { favorites } = useContext(AppContext); const favoriteMantras = MANTRAS_DATA.filter(mantra => favorites.includes(mantra.id)); return (<div className="page-container"><PageTitle subtitle="Acesse rapidamente os mantras que mais ressoam com você.">Meus Favoritos</PageTitle><div className="space-y-4">{favoriteMantras.length === 0 ? (<div className="glass-card text-center"><Heart className="mx-auto h-12 w-12 text-white/50" /><p className="mt-4 text-white/70">Clique no coração no player para adicionar um mantra aqui.</p></div>) : (favoriteMantras.map((mantra) => (<div key={mantra.id} className="glass-card clickable cursor-pointer" onClick={() => onPlayMantra(mantra, 1, 'library')}><h3 className="text-lg text-[#FFD54F]" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h3><p className="italic text-white/80 my-2 font-light">"{mantra.texto}"</p></div>)))}</div></div>); };
 const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions = 1, audioType }) => { const { favorites, updateFavorites } = useContext(AppContext); const [isPlaying, setIsPlaying] = useState(false); const [currentTime, setCurrentTime] = useState(0); const [duration, setDuration] = useState(0); const [playbackRate, setPlaybackRate] = useState(1); const [areControlsVisible, setAreControlsVisible] = useState(true); const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false); const [showSpeedModal, setShowSpeedModal] = useState(false); const [showTimerModal, setShowTimerModal] = useState(false); const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null }); const [repetitionCount, setRepetitionCount] = useState(1); const audioRef = useRef(null); const hideControlsTimeoutRef = useRef(null); const repetitionCountRef = useRef(1); const practiceTimerRef = useRef(practiceTimer); useEffect(() => { practiceTimerRef.current = practiceTimer; }, [practiceTimer]); const isSpokenPractice = audioType === 'spoken'; const isFavorite = favorites.includes(currentMantra.id); const audioSrc = audioType === 'spoken' ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc; const touchStartX = useRef(null); const touchStartY = useRef(null); const touchEndX = useRef(null); const touchEndY = useRef(null); const minSwipeDistance = 50; const handleTouchStart = (e) => { if (e.target.type === 'range') return; touchStartX.current = e.targetTouches[0].clientX; touchStartY.current = e.targetTouches[0].clientY; touchEndX.current = null; touchEndY.current = null; }; const handleTouchMove = (e) => { touchEndX.current = e.targetTouches[0].clientX; touchEndY.current = e.targetTouches[0].clientY; }; const handleTouchEnd = () => { if (!touchStartX.current || !touchEndX.current) return; const distanceX = touchStartX.current - touchEndX.current; const distanceY = touchStartY.current - touchEndY.current; if (Math.abs(distanceX) < Math.abs(distanceY)) return; const isLeftSwipe = distanceX > minSwipeDistance; const isRightSwipe = distanceX < -minSwipeDistance; const currentIndex = MANTRAS_DATA.findIndex(m => m.id === currentMantra.id); if (isLeftSwipe) { const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[nextIndex]); } else if (isRightSwipe) { const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length; onMantraChange(MANTRAS_DATA[prevIndex]); } touchStartX.current = null; touchEndX.current = null; touchStartY.current = null; touchEndY.current = null; }; const showControls = useCallback(() => { clearTimeout(hideControlsTimeoutRef.current); setAreControlsVisible(true); if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) { hideControlsTimeoutRef.current = setTimeout(() => { setAreControlsVisible(false); }, 4000); } }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]); useEffect(() => { showControls(); return () => clearTimeout(hideControlsTimeoutRef.current); }, [showControls]); const toggleFavorite = useCallback(() => { const newFavorites = isFavorite ? favorites.filter(id => id !== currentMantra.id) : [...favorites, currentMantra.id]; updateFavorites(newFavorites); }, [isFavorite, favorites, currentMantra.id, updateFavorites]); const changePlaybackRate = useCallback((rate) => { if(audioRef.current) audioRef.current.playbackRate = rate; setPlaybackRate(rate); setShowSpeedModal(false); setIsOptionsMenuOpen(false); }, []); const handleSetPracticeDuration = useCallback((seconds) => { if (seconds > 0) { const endTime = Date.now() + seconds * 1000; setPracticeTimer({ endTime, duration: seconds }); } else { setPracticeTimer({ endTime: null, duration: null }); } setShowTimerModal(false); setIsOptionsMenuOpen(false); }, []); useEffect(() => { const audio = audioRef.current; if (!audio) return; setCurrentTime(0); setDuration(0); setIsPlaying(true); setRepetitionCount(1); repetitionCountRef.current = 1; const setAudioData = () => setDuration(audio.duration); const handleTimeUpdate = () => { const timer = practiceTimerRef.current; if (timer.endTime && Date.now() >= timer.endTime) { audio.pause(); setIsPlaying(false); setPracticeTimer({ endTime: null, duration: null }); } else { setCurrentTime(audio.currentTime); } }; const handleAudioEnd = () => { const timer = practiceTimer.current; if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) { repetitionCountRef.current += 1; setRepetitionCount(repetitionCountRef.current); audio.currentTime = 0; audio.play(); } else if (timer.endTime && Date.now() < timer.endTime) { audio.currentTime = 0; audio.play(); } else { setIsPlaying(false); if (timer.endTime) { setPracticeTimer({ endTime: null, duration: null }); } } }; audio.addEventListener('loadedmetadata', setAudioData); audio.addEventListener('timeupdate', handleTimeUpdate); audio.addEventListener('ended', handleAudioEnd); audio.play().catch(e => { console.error("Audio play failed:", e); setIsPlaying(false); }); return () => { audio.removeEventListener('loadedmetadata', setAudioData); audio.removeEventListener('timeupdate', handleTimeUpdate); audio.removeEventListener('ended', handleAudioEnd); }; }, [audioSrc, totalRepetitions, isSpokenPractice]); const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]); const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }; const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []); const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]); const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []); const openSpeedModal = useCallback(() => setShowSpeedModal(true), []); const closeTimerModal = useCallback(() => setShowTimerModal(false), []); const openTimerModal = useCallback(() => setShowTimerModal(true), []); if (!currentMantra) return null; return (<div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation player-background-gradient" onClick={showControls} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}><MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} /><div className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${areControlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}><div className="w-full flex justify-between items-start"><button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><MoreHorizontal size={22} /></button><button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button></div><div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? 'space-y-4' : 'space-y-8'} -mb-10`}><div style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}><h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2><p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>{isSpokenPractice && (<div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto"><Repeat size={14} /><span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span></div>)}</div><div className="w-full max-w-sm flex flex-col items-center gap-3"><div className="w-full"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" /><div className="flex justify-between text-xs font-light text-white/70 mt-1"><span>{formatTime(currentTime)}</span><span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now())/1000)}` : formatTime(duration)}</span></div></div><button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">{isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}</button></div></div><div /></div><audio ref={audioRef} src={audioSrc} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} /><OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />{showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}{showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}</div>); };
 const OptionsMenu = memo(({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => { if (!isOpen) return null; const OptionButton = ({ icon: Icon, text, onClick, active = false }) => (<button onClick={onClick} className={`w-full flex items-center gap-4 text-left p-4 rounded-lg transition-colors ${active ? 'text-[#FFD54F]' : 'text-white'} hover:bg-white/10`}><Icon size={20} className={active ? 'text-[#FFD54F]' : 'text-white/70'} /><span className="font-light">{text}</span></button>); return (<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={onClose}><div className="glass-modal w-full max-w-xs" onClick={e => e.stopPropagation()}><div className="space-y-1"><OptionButton icon={Heart} text="Favoritar" onClick={onFavorite} active={isFavorite} /><OptionButton icon={GaugeCircle} text="Velocidade" onClick={onSpeed} /><OptionButton icon={Clock} text="Definir Duração" onClick={onTimer} /></div></div></div>); });
 const PlaybackSpeedModal = memo(({ currentRate, onSelectRate, onClose }) => { const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Velocidade de Reprodução</h3><ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">{speeds.map(speed => (<li key={speed} onClick={() => onSelectRate(speed)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${currentRate === speed ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{speed}x</span>{currentRate === speed && <CheckCircle />}</li>))}</ul></div></div>); });
 const PracticeTimerModal = memo(({ activeTimer, onSetTimer, onClose }) => { const timers = [ { label: "5 Minutos", seconds: 300 }, { label: "15 Minutos", seconds: 900 }, { label: "30 Minutos", seconds: 1800 }, { label: "60 Minutos", seconds: 3600 }, ]; return (<div className="fixed inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}><div className="glass-modal w-full rounded-b-none" onClick={e => e.stopPropagation()}><h3 className="text-lg text-center mb-4 text-white">Definir Duração</h3><ul className="space-y-2">{activeTimer.duration && (<li onClick={() => onSetTimer(null)} className="p-4 bg-red-500/30 text-red-300 rounded-lg hover:bg-red-500/40 cursor-pointer text-center font-light">Cancelar Timer</li>)}{timers.map(timer => (<li key={timer.label} onClick={() => onSetTimer(timer.seconds)} className={`flex justify-between items-center p-4 rounded-lg cursor-pointer ${activeTimer.duration === timer.seconds ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><span className="font-light">{timer.label}</span>{activeTimer.duration === timer.seconds && <CheckCircle />}</li>))}</ul></div></div>); });
-const MantraVisualizer = memo(({ mantra, isPlaying }) => { const { isSubscribed } = useContext(AppContext); const [images, setImages] = useState([mantra.imageSrc]); const [currentIndex, setCurrentIndex] = useState(0); const hasStartedGenerating = useRef(false); useEffect(() => { const generateImages = async () => { if (hasStartedGenerating.current || !mantra.imagePrompt || !isSubscribed) return; hasStartedGenerating.current = true; try { const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`API request failed`); const result = await response.json(); if (result.predictions && result.predictions.length > 0) { const newImageUrls = result.predictions.map(pred => `data:image/png;base64,${pred.bytesBase64Encoded}`); setImages(prev => [...prev, ...newImageUrls]); } } catch (error) { console.error("Slideshow Image Generation Error:", error); } }; if (isPlaying) { generateImages(); } }, [isPlaying, mantra.imagePrompt, isSubscribed]); useEffect(() => { let interval; if (isPlaying && images.length > 1) { interval = setInterval(() => { setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length); }, 8000); } return () => clearInterval(interval); }, [isPlaying, images]); return (<div className="absolute inset-0 w-full h-full overflow-hidden"><div className={`absolute inset-0 w-full h-full transition-transform duration-[20000ms] ease-linear ${isPlaying ? 'animate-ken-burns-outer' : ''}`}>{images.map((src, index) => (<div key={index} className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-[3000ms] ease-in-out" style={{ backgroundImage: `url(${src})`, opacity: index === currentIndex ? 0.35 : 0, }} />))}</div><div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div><style>{` @keyframes ken-burns-outer { 0% { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.15) translate(2%, -2%); } 100% { transform: scale(1) translate(0, 0); } } .animate-ken-burns-outer { animation: ken-burns-outer 20s ease-in-out infinite; } `}</style></div>); });
+const MantraVisualizer = memo(({ mantra, isPlaying }) => { const { isSubscribed } = useContext(AppContext); const [images, setImages] = useState([mantra.imageSrc]); const [currentIndex, setCurrentIndex] = useState(0); const hasStartedGenerating = useRef(false); useEffect(() => { const generateImages = async () => { if (hasStartedGenerating.current || !mantra.imagePrompt || !isSubscribed) return; hasStartedGenerating.current = true; try { const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`API request failed`); const result = await response.json(); if (result.predictions && result.predictions.length > 0) { const newImageUrls = result.predictions.map(pred => `data:image/png;base64,${pred.bytesBase64Encoded}`); setImages(prev => [...prev, ...newImageUrls]); } } catch (error) { console.error("Slideshow Image Generation Error:", error); } finally { hasStartedGenerating.current = false; } }; if (isPlaying) { generateImages(); } }, [isPlaying, mantra.imagePrompt, isSubscribed]); useEffect(() => { let interval; if (isPlaying && images.length > 1) { interval = setInterval(() => { setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length); }, 8000); } return () => clearInterval(interval); }, [isPlaying, images]); return (<div className="absolute inset-0 w-full h-full overflow-hidden"><div className={`absolute inset-0 w-full h-full transition-transform duration-[20000ms] ease-linear ${isPlaying ? 'animate-ken-burns-outer' : ''}`}>{images.map((src, index) => (<div key={index} className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-[3000ms] ease-in-out" style={{ backgroundImage: `url(${src})`, opacity: index === currentIndex ? 0.35 : 0, }} />))}</div><div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div><style>{` @keyframes ken-burns-outer { 0% { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.15) translate(2%, -2%); } 100% { transform: scale(1) translate(0, 0); } } .animate-ken-burns-outer { animation: ken-burns-outer 20s ease-in-out infinite; } `}</style></div>); });
 const CalendarModal = ({ isOpen, onClose, onDayClick }) => { const { allEntries } = useContext(AppContext); const [currentDate, setCurrentDate] = useState(new Date()); const practicedDays = useMemo(() => new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())), [allEntries]); if (!isOpen) return null; const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]; const daysOfWeek = ["D", "S", "T", "Q", "Q", "S", "S"]; const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(); const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); const changeMonth = (offset) => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1)); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft/></button><h2 className="text-xl text-white">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2><button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="transform rotate-180"/></button></div><div className="grid grid-cols-7 gap-2 text-center text-sm text-white/60">{daysOfWeek.map((day, index) => <div key={index}>{day}</div>)}</div><div className="grid grid-cols-7 gap-2 mt-2 text-center">{Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`}></div>)}{Array.from({ length: daysInMonth }).map((_, day) => { const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day + 1); const isPracticed = practicedDays.has(date.toDateString()); const isToday = date.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm hover:bg-white/20 ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<button key={day} onClick={() => onDayClick(date)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day + 1}</button>); })}</div></div></div>); };
 const DayDetailModal = ({ isOpen, onClose, date, onAddNote }) => { const { allEntries } = useContext(AppContext); if (!isOpen) return null; const entriesForDay = (allEntries || []).filter(entry => entry.practicedAt?.toDate().toDateString() === date.toDateString()); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">Atividades de {date.toLocaleDateString('pt-BR')}</h2><div className="max-h-48 overflow-y-auto space-y-3 pr-2 mt-4">{entriesForDay.length > 0 ? entriesForDay.map(entry => { const mantra = entry.type === 'mantra' ? MANTRAS_DATA.find(m => m.id === entry.mantraId) : null; return (<div key={entry.id} className="bg-black/20 p-3 rounded-lg text-sm">{mantra ? (<p className="font-light"><span className="text-[#FFD54F] font-normal">{mantra.nome}:</span> {entry.feelings}</p>) : (<p className="font-light"><span className="text-[#FFD54F] font-normal">Anotação:</span> {entry.note}</p>)}</div>) }) : <p className="text-white/70 text-sm font-light">Nenhuma prática registrada para este dia.</p>}</div><div className="pt-4 border-t border-white/10 mt-4"><button onClick={onAddNote} className="w-full btn-secondary">Adicionar Anotação</button></div></div></div>); };
-const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => { const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); const [note, setNote] = useState(''); const [isSubmitting, setIsSubmitting] = useState(false); const [status, setStatus] = useState({ type: '', message: '' }); useEffect(() => { setNote(noteToEdit ? noteToEdit.note : ''); }, [noteToEdit]); const handleSave = async (e) => { e.preventDefault(); if (!note.trim() || !userId) return; setIsSubmitting(true); setStatus({ type: '', message: '' }); try { if (noteToEdit) { const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); await updateDoc(noteRef, { note: note.trim() }); setStatus({ type: 'success', message: 'Anotação atualizada!' }); } else { const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; await addDoc(collection(db, `users/${userId}/entries`), noteData); setStatus({ type: 'success', message: 'Anotação salva!' }); } const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setNote(''); setTimeout(() => onSave(), 1500); } catch (error) { console.error("Error saving note:", error); setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); } finally { setIsSubmitting(false); } }; return (<div className="page-container"><PageTitle subtitle="Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.">{noteToEdit ? 'Editar Anotação' : 'Nova Anotação'}</PageTitle><form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><label className="text-white/80 flex items-center gap-2 font-light"><BookOpen size={18} className="text-[#FFD54F]/80" /><span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span></label><textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder="Escreva seus pensamentos, sentimentos ou insights do dia..." required /></div>
-    {/* ================================================================= */}
-    {/* INÍCIO DA ALTERAÇÃO: POSICIONAMENTO DA NOTIFICAÇÃO              */}
-    {/* ================================================================= */}
-    <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
-        <div className="flex gap-4">
-            <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
-            <button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>{isSubmitting ? 'Salvando...' : 'Salvar Anotação'}</button>
-        </div>
-        {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
-    </div>
-    {/* ================================================================= */}
-    {/* FIM DA ALTERAÇÃO                                                */}
-    {/* ================================================================= */}
-    </form></div>); };
+const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => { const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); const [note, setNote] = useState(''); const [isSubmitting, setIsSubmitting] = useState(false); const [status, setStatus] = useState({ type: '', message: '' }); useEffect(() => { setNote(noteToEdit ? noteToEdit.note : ''); }, [noteToEdit]); const handleSave = async (e) => { e.preventDefault(); if (!note.trim() || !userId) return; setIsSubmitting(true); setStatus({ type: '', message: '' }); try { if (noteToEdit) { const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); await updateDoc(noteRef, { note: note.trim() }); setStatus({ type: 'success', message: 'Anotação atualizada!' }); } else { const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; await addDoc(collection(db, `users/${userId}/entries`), noteData); setStatus({ type: 'success', message: 'Anotação salva!' }); } const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setNote(''); setTimeout(() => onSave(), 1500); } catch (error) { console.error("Error saving note:", error); setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); } finally { setIsSubmitting(false); } }; return (<div className="page-container"><PageTitle subtitle="Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.">{noteToEdit ? 'Editar Anotação' : 'Nova Anotação'}</PageTitle><form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><label className="text-white/80 flex items-center gap-2 font-light"><BookOpen size={18} className="text-[#FFD54F]/80" /><span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span></label><textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder="Escreva seus pensamentos, sentimentos ou insights do dia..." required /></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4"><button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button><button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>{isSubmitting ? 'Salvando...' : 'Salvar Anotação'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div>); };
 const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen) return null; const repetitionOptions = [12, 24, 36, 48, 108]; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white text-center" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h2><p className="text-white/70 my-4 text-center font-light">Quantas vezes você gostaria de repetir este mantra?</p><div className="space-y-3">{repetitionOptions.map(reps => (<button key={reps} onClick={() => onStart(reps)} className="w-full btn-secondary">{reps} repetições}</button>))}</div><div className="text-center mt-4"><button onClick={onClose} className="text-sm text-white/60 hover:underline">Cancelar</button></div></div></div>); };
 
 // --- INÍCIO: NOVOS COMPONENTES E TELAS PARA "MEU SANTUÁRIO" ---
-
-/**
- * Tela Principal do "Meu Santuário"
- * Mostra as listas de áudios e playlists do usuário.
- */
 const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onAddAudio, onAddPlaylist, openPremiumModal }) => {
     const { isSubscribed, meusAudios, playlists } = useContext(AppContext);
-    const [itemToDelete, setItemToDelete] = useState(null); // { type: 'audio' | 'playlist', item: {} }
+    const [itemToDelete, setItemToDelete] = useState(null);
     const { userId, fetchMeusAudios, fetchPlaylists } = useContext(AppContext);
-
     const handleDelete = async () => {
         if (!itemToDelete || !userId) return;
         const { type, item } = itemToDelete;
@@ -1069,7 +1046,6 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
             <div className="page-container">
                 <PageTitle subtitle="Seu espaço sagrado para criar e praticar com seus próprios áudios e sequências.">Meu Santuário</PageTitle>
 
-                {/* Seção Meus Áudios */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Meus Áudios</h2>
@@ -1094,7 +1070,6 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
                     )}
                 </div>
 
-                {/* Seção Minhas Playlists */}
                 <div className="space-y-4 pt-8">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Minhas Playlists</h2>
@@ -1133,14 +1108,10 @@ const MeuSantuarioScreen = ({ onStartPlaylist, onEditPlaylist, onStartAudio, onA
         </>
     );
 };
-
-/**
- * Modal para Gravar ou Importar um novo áudio.
- */
 const AudioCreatorModal = ({ isOpen, onClose }) => {
     const { userId, fetchMeusAudios } = useContext(AppContext);
     const [nome, setNome] = useState('');
-    const [status, setStatus] = useState('idle'); // idle, recording, recorded, saving, success, error
+    const [status, setStatus] = useState('idle');
     const [error, setError] = useState('');
     const [audioBlob, setAudioBlob] = useState(null);
     const [audioUrl, setAudioUrl] = useState(null);
@@ -1332,22 +1303,15 @@ const AudioCreatorModal = ({ isOpen, onClose }) => {
         </div>
     );
 };
-
-/**
- * Modal para definir repetições de um áudio personalizado.
- */
 const CustomRepetitionModal = ({ isOpen, onClose, onStart, audio }) => {
     const [repetitions, setRepetitions] = useState(1);
-
     if (!isOpen) return null;
-
     const handleStart = () => {
         const reps = parseInt(repetitions, 10);
         if (reps >= 1 && reps <= 108) {
             onStart(reps);
         }
     };
-
     return (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
             <div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}>
@@ -1369,10 +1333,6 @@ const CustomRepetitionModal = ({ isOpen, onClose, onStart, audio }) => {
         </div>
     );
 };
-
-/**
- * Player para áudios personalizados e playlists. (COM A CORREÇÃO DEFINITIVA DO LOOP)
- */
 const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
     const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
     const [repetitionCount, setRepetitionCount] = useState(1);
@@ -1380,11 +1340,9 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const audioRef = useRef(null);
-
     const isPlaylist = !!playlist;
     const currentTrack = isPlaylist ? playlist.sequencia[currentTrackIndex] : { audio: singleAudio, repeticoes: repetitions };
     const audioSrc = currentTrack?.audio?.downloadURL;
-
     const advanceTrack = useCallback(() => {
         if (isPlaylist && currentTrackIndex < playlist.sequencia.length - 1) {
             setCurrentTrackIndex(prev => prev + 1);
@@ -1392,7 +1350,6 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
             onClose(); 
         }
     }, [isPlaylist, currentTrackIndex, playlist, onClose]);
-
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio || !audioSrc) return;
@@ -1404,7 +1361,6 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
             setIsPlaying(false);
         });
     }, [audioSrc]); 
-
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
@@ -1428,7 +1384,6 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
             audio.removeEventListener('loadedmetadata', setAudioDuration);
         };
     }, [repetitionCount, currentTrack.repeticoes, advanceTrack]); 
-
     const togglePlayPause = () => {
         if (isPlaying) {
             audioRef.current?.pause();
@@ -1437,22 +1392,18 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
         }
         setIsPlaying(!isPlaying);
     };
-    
     const formatTime = (time) => {
         if (isNaN(time) || time === 0) return '00:00';
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
-
     if (!audioSrc) return null;
-
     return (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center screen-animation p-6 player-background-gradient">
             <div className="absolute top-6 right-6">
                 <button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"><X size={22} /></button>
             </div>
-            
             <div className="text-center text-white space-y-4 w-full max-w-md">
                 {isPlaylist && <p className="text-sm text-white/70">{playlist.nome}</p>}
                 <h2 className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>{currentTrack.audio.nome}</h2>
@@ -1462,7 +1413,6 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
                 </div>
                 {isPlaylist && <p className="text-xs text-white/60">Faixa {currentTrackIndex + 1} de {playlist.sequencia.length}</p>}
             </div>
-
             <div className="w-full max-w-sm flex flex-col items-center gap-3 mt-8">
                 <div className="w-full">
                     <input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if(audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" />
@@ -1484,378 +1434,12 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
         </div>
     );
 };
-
-
-// =================================================================
-// INÍCIO DA SOLUÇÃO: NOVA LÓGICA E COMPONENTES PARA O EDITOR DE PLAYLIST
-// =================================================================
-
-/**
- * Modal para selecionar áudios para adicionar a uma playlist.
- */
-const AudioSelectionModal = ({ isOpen, onClose, onSelectAudio, meusAudios }) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl text-white" style={{fontFamily: "var(--font-display)"}}>Adicionar Áudio</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button>
-                </div>
-                <div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">
-                    {meusAudios.length > 0 ? (
-                        meusAudios.map(audio => (
-                            <div key={audio.id} onClick={() => onSelectAudio(audio)} className="p-4 rounded-lg cursor-pointer bg-white/5 text-white hover:bg-white/10">
-                                <p>{audio.nome}</p>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-white/70 text-center">Você não tem áudios pessoais. Grave ou importe um na tela anterior.</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-/**
- * Tela para Criar e Editar Playlists (FUNCIONAL)
- */
-const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
-    const { userId, meusAudios, fetchPlaylists } = useContext(AppContext);
-    const isEditing = playlistToEdit && playlistToEdit.id;
-    
-    const [playlistName, setPlaylistName] = useState('');
-    const [sequencia, setSequencia] = useState([]);
-    const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    
-    const dragItem = useRef();
-    const dragOverItem = useRef();
-    const [dragging, setDragging] = useState(false);
-
-
-    useEffect(() => {
-        if (isEditing) {
-            setPlaylistName(playlistToEdit.nome);
-            const hydratedSequencia = playlistToEdit.sequencia
-                .map(item => {
-                    const audio = meusAudios.find(a => a.id === item.audioId);
-                    return audio ? { audio, repeticoes: item.repeticoes } : null;
-                })
-                .filter(Boolean);
-            setSequencia(hydratedSequencia);
-        } else {
-            setPlaylistName('');
-            setSequencia([]);
-        }
-    }, [playlistToEdit, isEditing, meusAudios]);
-
-
-    const handleAddAudioToSequencia = (audioToAdd) => {
-        setSequencia(prev => [...prev, { audio: audioToAdd, repeticoes: 1 }]);
-        setIsAudioModalOpen(false);
-    };
-
-    const handleRemoveAudio = (indexToRemove) => {
-        setSequencia(prev => prev.filter((_, index) => index !== indexToRemove));
-    };
-
-    const handleRepetitionsChange = (index, newReps) => {
-        const reps = Math.max(1, parseInt(newReps, 10) || 1);
-        setSequencia(prev => {
-            const newSequencia = [...prev];
-            newSequencia[index].repeticoes = reps;
-            return newSequencia;
-        });
-    };
-    
-    const handleDragStart = (e, position) => {
-        dragItem.current = position;
-        setDragging(true);
-    };
-
-    const handleDragEnter = (e, position) => {
-        dragOverItem.current = position;
-        const newSequencia = [...sequencia];
-        const dragItemContent = newSequencia[dragItem.current];
-        newSequencia.splice(dragItem.current, 1);
-        newSequencia.splice(dragOverItem.current, 0, dragItemContent);
-        dragItem.current = position;
-        setSequencia(newSequencia);
-    };
-
-    const handleDragEnd = () => {
-        setDragging(false);
-        dragItem.current = null;
-        dragOverItem.current = null;
-    };
-
-
-    const handleSave = async () => {
-        if (!playlistName.trim()) {
-            setError("O nome da playlist é obrigatório.");
-            return;
-        }
-        if (sequencia.length === 0) {
-            setError("Adicione pelo menos um áudio à playlist.");
-            return;
-        }
-        
-        setIsSubmitting(true);
-        setError('');
-
-        const firestoreSequencia = sequencia.map(item => ({
-            audioId: item.audio.id,
-            repeticoes: item.repeticoes
-        }));
-
-        const playlistData = {
-            nome: playlistName.trim(),
-            sequencia: firestoreSequencia,
-            updatedAt: Timestamp.now(),
-        };
-
-        try {
-            if (isEditing) {
-                const playlistRef = doc(db, `users/${userId}/playlists`, playlistToEdit.id);
-                await updateDoc(playlistRef, playlistData);
-            } else {
-                playlistData.createdAt = Timestamp.now();
-                await addDoc(collection(db, `users/${userId}/playlists`), playlistData);
-            }
-            await fetchPlaylists(userId);
-            onSave();
-        } catch (err) {
-            console.error("Erro ao salvar playlist:", err);
-            setError("Ocorreu um erro ao salvar. Tente novamente.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <>
-            <div className="page-container">
-                <div className="flex items-center justify-between mb-4">
-                    <button onClick={onCancel} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft size={24}/></button>
-                    <h1 className="page-title !text-2xl !mb-0">{isEditing ? 'Editar Playlist' : 'Nova Playlist'}</h1>
-                    <div className="w-10"></div> 
-                </div>
-                
-                <div className="w-full max-w-lg mx-auto glass-card space-y-8">
-                    <div className="space-y-3">
-                        <label className="text-white/80 flex items-center gap-2 font-light">
-                            <Edit3 size={18} className="text-[#FFD54F]/80" />
-                            <span>Nome da Playlist</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            value={playlistName}
-                            onChange={e => setPlaylistName(e.target.value)}
-                            placeholder="Ex: Prática Matinal de Foco"
-                            className="input-field"
-                        />
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-white/80 flex items-center gap-2 font-light">
-                                <Music size={18} className="text-[#FFD54F]/80" />
-                                <span>Sequência de Áudios</span>
-                            </h3>
-                            <button onClick={() => setIsAudioModalOpen(true)} className="btn-secondary !py-1 !px-3 !text-sm flex items-center gap-1">
-                                <Plus size={16}/> Adicionar
-                            </button>
-                        </div>
-                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                            {sequencia.length > 0 ? (
-                                sequencia.map((item, index) => (
-                                    <div 
-                                        key={`${item.audio.id}-${index}`}
-                                        className={`bg-black/20 p-3 rounded-lg flex items-center justify-between gap-3 transition-opacity ${dragging && dragItem.current === index ? 'dragging' : ''}`}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, index)}
-                                        onDragEnter={(e) => handleDragEnter(e, index)}
-                                        onDragEnd={handleDragEnd}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onTouchStart={(e) => handleDragStart(e, index)}
-                                        onTouchMove={(e) => {
-                                            e.preventDefault();
-                                            const touch = e.touches[0];
-                                            const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                                            const targetIndex = target?.closest('[data-index]')?.dataset.index;
-                                            if (targetIndex && parseInt(targetIndex) !== dragOverItem.current) {
-                                                handleDragEnter(e, parseInt(targetIndex));
-                                            }
-                                        }}
-                                        onTouchEnd={handleDragEnd}
-                                        onContextMenu={(e) => e.preventDefault()}
-                                        data-index={index}
-                                    >
-                                        <GripVertical className="text-white/40 cursor-grab" />
-                                        <p className="text-white/90 flex-1 truncate">{item.audio.nome}</p>
-                                        <div className="flex items-center gap-2">
-                                            <Repeat size={14} className="text-white/60"/>
-                                            <input 
-                                                type="number" 
-                                                value={item.repeticoes}
-                                                onChange={(e) => handleRepetitionsChange(index, e.target.value)}
-                                                className="input-field !p-1 !w-14 !text-center !rounded-md"
-                                                min="1"
-                                                max="108"
-                                            />
-                                        </div>
-                                        <button onClick={() => handleRemoveAudio(index)} className="p-2 text-red-400 hover:bg-white/10 rounded-full">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-4">
-                                    <p className="text-white/70">Sua playlist está vazia.</p>
-                                    <p className="text-sm text-white/50 font-light mt-1">Clique em "Adicionar" para começar.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}
-
-                    <div className="flex gap-4 pt-6 border-t border-white/10">
-                        <button type="button" onClick={onCancel} className="w-full btn-secondary" disabled={isSubmitting}>Cancelar</button>
-                        <button type="button" onClick={handleSave} className="w-full modern-btn-primary h-14" disabled={isSubmitting}>
-                            {isSubmitting ? <div className="w-6 h-6 border-2 border-black/50 border-t-black rounded-full animate-spin"></div> : <><Save /> Salvar Playlist</>}
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <AudioSelectionModal 
-                isOpen={isAudioModalOpen}
-                onClose={() => setIsAudioModalOpen(false)}
-                onSelectAudio={handleAddAudioToSequencia}
-                meusAudios={meusAudios}
-            />
-        </>
-    );
-};
-// =================================================================
-// FIM DA SOLUÇÃO
-// =================================================================
-
-// =================================================================
-// INÍCIO DA NOVA FUNCIONALIDADE: TELA DIÁRIO DA GRATIDÃO
-// =================================================================
-const GratitudeScreen = ({ onSave, onCancel }) => {
-    const { userId, fetchAllEntries } = useContext(AppContext);
-    const [gratefulFor, setGratefulFor] = useState(['', '', '']);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [status, setStatus] = useState({ type: '', message: '' });
-
-    const handleInputChange = (index, value) => {
-        const newGratefulFor = [...gratefulFor];
-        newGratefulFor[index] = value;
-        setGratefulFor(newGratefulFor);
-    };
-
-    const handleSave = async (e) => {
-        e.preventDefault();
-        const gratitudeItems = gratefulFor.filter(item => item.trim() !== '');
-        if (gratitudeItems.length === 0 || !userId) {
-            setStatus({ type: 'error', message: 'Escreva pelo menos um motivo de gratidão.' });
-            return;
-        }
-
-        setIsSubmitting(true);
-        setStatus({ type: '', message: '' });
-
-        try {
-            const entryData = {
-                type: 'gratitude',
-                gratefulFor: gratitudeItems,
-                practicedAt: Timestamp.now()
-            };
-            await addDoc(collection(db, `users/${userId}/entries`), entryData);
-            setStatus({ type: 'success', message: 'Gratidão registrada!' });
-            await fetchAllEntries(userId); 
-            setTimeout(() => onSave(), 1500);
-        } catch (error) {
-            console.error("Error saving gratitude:", error);
-            setStatus({ type: 'error', message: 'Erro ao salvar.' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    return (
-        <div className="page-container">
-            <PageTitle subtitle="Deposite no seu pote da gratidão 3 coisas que aqueceram seu coração hoje.">Diário da Gratidão</PageTitle>
-            <form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8">
-                <div className="space-y-4">
-                    {gratefulFor.map((item, index) => (
-                        <div key={index}>
-                            <label className="text-white/80 flex items-center gap-2 font-light text-sm mb-2">
-                                <Heart size={16} className="text-[#FFD54F]/80" />
-                                <span>Sou grata por...</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={item}
-                                onChange={e => handleInputChange(index, e.target.value)}
-                                className="input-field"
-                                placeholder={`Motivo #${index + 1}`}
-                            />
-                        </div>
-                    ))}
-                </div>
-                {/* ================================================================= */}
-                {/* INÍCIO DA ALTERAÇÃO: POSICIONAMENTO DA NOTIFICAÇÃO              */}
-                {/* ================================================================= */}
-                <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
-                    <div className="flex gap-4">
-                        <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
-                        <button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting}>
-                            {isSubmitting ? 'Salvando...' : 'Salvar Gratidão'}
-                        </button>
-                    </div>
-                    {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
-                </div>
-                {/* ================================================================= */}
-                {/* FIM DA ALTERAÇÃO                                                */}
-                {/* ================================================================= */}
-            </form>
-        </div>
-    );
-};
-// =================================================================
-// FIM DA NOVA FUNCIONALIDADE
-// =================================================================
-
-
-// =================================================================
-// INÍCIO DA NOVA FUNCIONALIDADE: TELA DE CHAKRAS
-// =================================================================
 const ChakraScreen = () => {
     const [selectedChakra, setSelectedChakra] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const backgroundAudioRef = useRef(null);
     const mantraAudioRef = useRef(null);
-    
-    // Posições verticais dos chakras ajustadas manualmente
-    const chakraPositions = {
-    1: '17%', // Muladhara
-    2: '27%', // Svadhisthana
-    3: '37%', // Manipura
-    4: '47%', // Anahata
-    5: '57%', // Vishuddha
-    6: '67%', // Ajna
-    7: '77%'  // Sahasrara
-};
-
-    // Música de fundo
+    const chakraPositions = { 1: '17%', 2: '27%', 3: '37%', 4: '47%', 5: '57%', 6: '67%', 7: '77%' };
     useEffect(() => {
         if (!backgroundAudioRef.current) {
             backgroundAudioRef.current = new Audio('https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/som-fundo.mp3');
@@ -1867,58 +1451,46 @@ const ChakraScreen = () => {
             backgroundAudioRef.current.pause();
         };
     }, []);
-
     const handleSelectChakra = (chakra) => {
         setSelectedChakra(chakra);
         setIsPlaying(true);
     };
-
     const togglePlayPause = () => {
         setIsPlaying(prev => !prev);
     };
-    
-    // Efeito para o áudio do mantra
     useEffect(() => {
         if (!mantraAudioRef.current) {
             mantraAudioRef.current = new Audio();
             mantraAudioRef.current.loop = true;
         }
-
         if (isPlaying && selectedChakra) {
             if (mantraAudioRef.current.src !== selectedChakra.audioSrc) {
                 mantraAudioRef.current.pause();
                 mantraAudioRef.current.src = selectedChakra.audioSrc;
                 mantraAudioRef.current.load();
             }
-            backgroundAudioRef.current.pause(); // PAUSA O SOM AMBIENTE
+            backgroundAudioRef.current.pause();
             mantraAudioRef.current.play().catch(e => console.error("Erro ao tocar áudio do chakra:", e));
         } else {
             mantraAudioRef.current.pause();
-            backgroundAudioRef.current.play().catch(e => console.error("Erro ao retomar som de fundo:", e)); // RETOMA O SOM AMBIENTE
+            backgroundAudioRef.current.play().catch(e => console.error("Erro ao retomar som de fundo:", e));
         }
-
         return () => {
             mantraAudioRef.current.pause();
         };
     }, [isPlaying, selectedChakra]);
-
-    // Reordenar os dados dos chakras para exibir de baixo para cima
     const orderedChakras = [...CHAKRAS_DATA].reverse();
-
     return (
         <div className="page-container" style={{backgroundColor: selectedChakra?.color ? `${selectedChakra.color}20` : 'transparent', transition: 'background-color 1s ease'}}>
             <PageTitle subtitle="Conecte-se e equilibre seus centros de energia através da meditação sonora.">Meditação de Chakras</PageTitle>
-
             <div className="flex flex-col items-center justify-center flex-1">
                 <div className="flex w-full items-center justify-center space-x-4 md:space-x-8">
-                    {/* Visualização da Figura Humana (Placeholder) */}
                     <div className="relative w-full max-w-[150px] md:max-w-[200px] h-96 flex items-center justify-center flex-shrink-0">
                         <img 
                             src="https://i.postimg.cc/fkQNDZH4/mente.png" 
                             alt="Figura humana com chakras" 
                             className="h-full object-contain"
                         />
-                        {/* Indicadores dos Chakras */}
                         {CHAKRAS_DATA.map(chakra => (
                             <div
                                 key={chakra.id}
@@ -1937,8 +1509,6 @@ const ChakraScreen = () => {
                             ></div>
                         ))}
                     </div>
-
-                    {/* Lista de Chakras à direita */}
                     <div className="flex flex-col space-y-2 p-2 w-full max-w-[150px] flex-shrink-0" style={{ height: '384px' }}>
                         {orderedChakras.map(chakra => (
                             <div 
@@ -1959,8 +1529,6 @@ const ChakraScreen = () => {
                         ))}
                     </div>
                 </div>
-
-                {/* Controles de Reprodução */}
                 {selectedChakra && (
                     <div className="glass-card w-full max-w-md text-center space-y-4 mt-8">
                         <h3 className="text-xl text-white" style={{fontFamily: 'var(--font-display)'}}>{selectedChakra.name}</h3>
@@ -1981,9 +1549,244 @@ const ChakraScreen = () => {
         </div>
     );
 };
-// =================================================================
-// FIM DA NOVA FUNCIONALIDADE
-// =================================================================
+
+// --- NOVA TELA DE ASTROLOGER PESSOAL (REFATORADA) ---
+const AstrologerScreen = ({ openPremiumModal }) => {
+    const { isSubscribed, userId, astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed } = useContext(AppContext);
+    const [question, setQuestion] = useState('');
+    const [isEditingProfile, setIsEditingProfile] = useState(!astroProfile);
+    const [status, setStatus] = useState('idle');
+    const [statusMessage, setStatusMessage] = useState('');
+
+    const initializedFromCtx = useRef(false);
+    useEffect(() => {
+        if (initializedFromCtx.current) return;
+        setIsEditingProfile(!astroProfile);
+        initializedFromCtx.current = true;
+    }, [astroProfile]);
+
+    const handleAskQuestion = async () => {
+        if (!isSubscribed) {
+            openPremiumModal();
+            return;
+        }
+
+        if (!question.trim()) {
+            setStatusMessage('Por favor, digite sua pergunta.');
+            return;
+        }
+
+        if (!astroProfile || !astroProfile.nomeCompleto || !astroProfile.cidadeNascimento || !astroProfile.dataNascimento || !astroProfile.horaNascimento) {
+            setStatusMessage('Por favor, preencha todos os dados do seu mapa astral.');
+            return;
+        }
+
+        setStatus('submitting');
+        setStatusMessage('Salvando perfil e enviando pergunta...');
+
+        try {
+            // Salvar o perfil astral antes de enviar a pergunta
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, { astroProfile });
+
+            const askAstrologerCallable = httpsCallable(functions, 'askAstrologer');
+            const result = await askAstrologerCallable({
+                userId,
+                question,
+                astroProfile
+            });
+
+            if (result.data.success) {
+                setStatus('idle');
+                setStatusMessage('Sua pergunta foi enviada! O astrólogo está preparando a resposta.');
+                setQuestion('');
+                fetchAstroHistory(userId); // Recarregar histórico
+                // Marcar uso da pergunta grátis para não-assinantes.
+                if (!isSubscribed && !freeQuestionUsed) {
+                    try {
+                        const userRef = doc(db, `users/${userId}`);
+                        await updateDoc(userRef, { freeQuestionUsed: true });
+                        setFreeQuestionUsed(true);
+                    } catch (e) {
+                        console.error('Falha ao marcar freeQuestionUsed:', e);
+                    }
+                }
+
+            } else {
+                throw new Error(result.data.message || 'Erro ao obter resposta do backend.');
+            }
+        } catch (err) {
+            console.error(err);
+            setStatus('error');
+            setStatusMessage('Ocorreu um erro ao enviar a pergunta. Tente novamente mais tarde.');
+        } finally {
+            // A mensagem de sucesso não precisa desaparecer, pois a resposta final chegará via onSnapshot
+            if (status !== 'sent') {
+                 setTimeout(() => setStatusMessage(''), 5000);
+            }
+        }
+    };
+
+    const handleSave = async (id) => {
+        try {
+            await updateDoc(doc(db, `users/${userId}/astroHistory/${id}`), { saved: true });
+        } catch (e) {
+            console.error('save error', e);
+            if (e?.code === 'permission-denied') {
+                setPermissionError('Firestore. Verifique regras/autenticação.');
+            }
+        }
+    };
+
+    const handleDiscard = async (id) => {
+        try {
+            await deleteDoc(doc(db, `users/${userId}/astroHistory/${id}`));
+        } catch (e) {
+            console.error('discard error', e);
+            if (e?.code === 'permission-denied') {
+                setPermissionError('Firestore. Verifique regras/autenticação.');
+            }
+        }
+    };
+
+
+    const isFormComplete = astroProfile?.nomeCompleto && astroProfile?.cidadeNascimento && astroProfile?.dataNascimento && astroProfile?.horaNascimento;
+
+    return (
+        <div className="page-container">
+            <PageTitle subtitle="Receba uma análise astrológica profunda e exclusiva, revisada por um especialista.">Pergunte ao Astrólogo</PageTitle>
+
+            <div className="w-full max-w-lg mx-auto glass-card space-y-6">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                    <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Seu Mapa Astral</h2>
+                    <button
+                        onClick={() => setIsEditingProfile(true)}
+                        className="p-2 rounded-full text-white/60 hover:bg-white/10"
+                        disabled={isEditingProfile}
+                    >
+                        <Edit3 size={20} />
+                    </button>
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-sm text-white/80 font-light">Nome Completo</label>
+                    <input
+                        type="text"
+                        value={astroProfile?.nomeCompleto || ''}
+                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), nomeCompleto: e.target.value }))}
+                        className="input-field"
+                        placeholder="Seu Nome Completo"
+                        readOnly={!isEditingProfile && isFormComplete}
+                    />
+                    <label className="text-sm text-white/80 font-light">Cidade de Nascimento</label>
+                    <input
+                        type="text"
+                        value={astroProfile?.cidadeNascimento || ''}
+                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), cidadeNascimento: e.target.value }))}
+                        className="input-field"
+                        placeholder="Cidade de Nascimento"
+                        readOnly={!isEditingProfile && isFormComplete}
+                    />
+                    <label className="text-sm text-white/80 font-light">Data de Nascimento</label>
+                    <input
+                        type="date"
+                        value={astroProfile?.dataNascimento || ''}
+                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), dataNascimento: e.target.value }))}
+                        className="input-field"
+                        readOnly={!isEditingProfile && isFormComplete}
+                    />
+                    <label className="text-sm text-white/80 font-light">Hora de Nascimento</label>
+                    <input
+                        type="time"
+                        value={astroProfile?.horaNascimento || ''}
+                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), horaNascimento: e.target.value }))}
+                        className="input-field"
+                        readOnly={!isEditingProfile && isFormComplete}
+                    />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                    <textarea
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        className="textarea-field"
+                        rows="4"
+                        placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..."
+                        disabled={(!isSubscribed && freeQuestionUsed) || !isFormComplete}
+                    />
+                    
+                    {!isSubscribed ? (
+                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
+                            Acesse o Astrólogo (Premium)
+                        </PremiumButton>
+                    ) : (
+                        <button
+                            onClick={handleAskQuestion}
+                            className="w-full modern-btn-primary h-14"
+                            disabled={!isFormComplete || status === 'submitting'}
+                        >
+                            {status === 'submitting' ? 'Enviando pergunta...' : 'Enviar Pergunta'}
+                        </button>
+                    )}
+
+                    {statusMessage && (
+                        <p className={`p-3 rounded-lg text-center text-sm ${
+                            status === 'error' ? 'text-red-400 bg-red-500/20' : 'text-yellow-400 bg-yellow-500/20'
+                        }`}>{statusMessage}</p>
+                    )}
+                </div>
+            </div>
+            
+            <div className="w-full max-w-lg mx-auto space-y-4 pt-8">
+                <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>Histórico de Perguntas</h2>
+                {astroHistory.length > 0 ? (
+                    astroHistory.map(item => (
+                        <div key={item.id} className="glass-card !p-5">
+                            <p className="text-sm text-white/70">
+                                <span className="text-[#FFD54F]">Pergunta:</span>
+                            </p>
+                            <p className="mt-1 leading-relaxed text-base text-white/80">{item.question}</p>
+                            {item.response ? (
+                                <div className="mt-3">
+                                    <p className="text-sm text-white/70">
+                                        <span className="text-[#FFD54F]">Resposta:</span>
+                                    </p>
+                                    <p className="mt-1 leading-relaxed text-base text-white">{item.response}</p>
+                                    <div className="flex gap-2 mt-4">
+                                        {!item.saved && (
+                                            <button
+                                                onClick={() => updateDoc(doc(db, `users/${userId}/astroHistory/${item.id}`), { saved: true })}
+                                                className="btn-secondary !text-xs !py-1 !px-3"
+                                            >
+                                                <Save size={14} className="inline-block mr-1" /> Salvar
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDiscard(item.id)}
+                                            className="btn-danger-outline !text-xs !py-1 !px-3"
+                                        >
+                                            <Trash2 size={14} className="inline-block mr-1" /> Descartar
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-white/60 italic mt-2">Aguardando resposta do astrólogo...</p>
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    <div className="glass-card text-center !py-8">
+                        <MessageCircleQuestion className="mx-auto h-10 w-10 text-white/50" />
+                        <p className="mt-3 text-white/70">Você ainda não fez nenhuma pergunta.</p>
+                        <p className="text-sm text-white/50 font-light">Seus diálogos aparecerão aqui.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // --- COMPONENTE PRINCIPAL (ATUALIZADO com navegação para Gratidão) ---
 const AppContent = () => {
     const { isSubscribed } = useContext(AppContext);
@@ -2001,24 +1804,15 @@ const AppContent = () => {
     
     // --- NOVOS ESTADOS PARA "MEU SANTUÁRIO" ---
     const [isAudioCreatorOpen, setIsAudioCreatorOpen] = useState(false);
-    const [customAudioToPlay, setCustomAudioToPlay] = useState(null); // { audio: {}, repeticoes: 1 }
+    const [customAudioToPlay, setCustomAudioToPlay] = useState(null);
     const [isCustomRepModalOpen, setIsCustomRepModalOpen] = useState(false);
     const [playlistToPlay, setPlaylistToPlay] = useState(null);
-    const [playlistToEdit, setPlaylistToEdit] = useState(null); // Pode ser um objeto de playlist ou `{}` para nova
+    const [playlistToEdit, setPlaylistToEdit] = useState(null);
 
-    // =========================================================================
-    // RASTREADOR DE NAVEGAÇÃO DO GOOGLE ANALYTICS
-    // =========================================================================
     useEffect(() => {
-        // Envia um evento de pageview para o Google Analytics toda vez que a tela ativa muda.
-        // Usamos a barra '/' para simular um caminho de URL, ex: "/home", "/settings".
         ReactGA.send({ hitType: "pageview", page: `/${activeScreen}` });
-
-        // A linha abaixo é opcional, mas ajuda você a ver no console do navegador se está funcionando.
         console.log(`GA Pageview Enviado: /${activeScreen}`);
-
-    }, [activeScreen]); // A mágica acontece aqui: este efeito roda toda vez que 'activeScreen' muda.
-    // =========================================================================
+    }, [activeScreen]);
 
     const handlePlayMantra = (mantra, repetitions, audioType) => { setPlayerData({ mantra, repetitions, audioType }); setRepetitionModalData({ isOpen: false, mantra: null }); };
     const handleSelectSpokenMantra = (mantra) => { setRepetitionModalData({ isOpen: true, mantra: mantra }); };
@@ -2026,28 +1820,11 @@ const AppContent = () => {
     const handleDeleteEntry = async () => { if (!entryToDelete || !userId || !db) return; try { await deleteDoc(doc(db, `users/${userId}/entries`, entryToDelete.id)); const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setEntryToDelete(null); } catch (error) { console.error("Error deleting entry:", error); } };
     const handleDayClick = (day) => { setSelectedDate(day); setIsCalendarOpen(false); setIsDayDetailOpen(true); };
     const handleAddNoteForDate = () => { setNoteToEdit(null); setIsDayDetailOpen(false); setActiveScreen('noteEditor'); };
+    const handleStartCustomAudio = (audio) => { setCustomAudioToPlay({ audio }); setIsCustomRepModalOpen(true); };
+    const handleEditPlaylist = (playlist) => { setPlaylistToEdit(playlist); setActiveScreen('playlistEditor'); };
+    const handleAddPlaylist = () => { setPlaylistToEdit({}); setActiveScreen('playlistEditor'); };
+    const handleSavePlaylist = () => { setPlaylistToEdit(null); setActiveScreen('meuSantuario'); };
     
-    // --- NOVAS FUNÇÕES DE CONTROLE PARA "MEU SANTUÁRIO" ---
-    const handleStartCustomAudio = (audio) => {
-        setCustomAudioToPlay({ audio });
-        setIsCustomRepModalOpen(true);
-    };
-    
-    const handleEditPlaylist = (playlist) => {
-        setPlaylistToEdit(playlist);
-        setActiveScreen('playlistEditor');
-    };
-    
-    const handleAddPlaylist = () => {
-        setPlaylistToEdit({}); // Objeto vazio indica nova playlist
-        setActiveScreen('playlistEditor');
-    };
-    
-    const handleSavePlaylist = () => {
-        setPlaylistToEdit(null);
-        setActiveScreen('meuSantuario');
-    };
-
     const renderScreen = () => {
         if (entryToEdit && activeScreen !== 'diary') setEntryToEdit(null);
         if (noteToEdit && activeScreen !== 'noteEditor') setNoteToEdit(null);
@@ -2059,7 +1836,7 @@ const AppContent = () => {
             case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen('history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;
             case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} openPremiumModal={openPremiumModal} />;
-            case 'meuSantuario': return <MeuSantuarioScreen 
+            case 'meuSantuario': return <MeuSantuarioScreen
                 onStartPlaylist={setPlaylistToPlay}
                 onEditPlaylist={handleEditPlaylist}
                 onStartAudio={handleStartCustomAudio}
@@ -2067,7 +1844,7 @@ const AppContent = () => {
                 onAddPlaylist={handleAddPlaylist}
                 openPremiumModal={openPremiumModal}
             />;
-            case 'playlistEditor': return <PlaylistEditorScreen 
+            case 'playlistEditor': return <PlaylistEditorScreen
                 playlistToEdit={playlistToEdit}
                 onSave={handleSavePlaylist}
                 onCancel={handleSavePlaylist}
@@ -2076,7 +1853,8 @@ const AppContent = () => {
             case 'settings': return <SettingsScreen setActiveScreen={setActiveScreen} />;
             case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
-            case 'chakras': return <ChakraScreen />; // Nova tela de Chakras
+            case 'chakras': return <ChakraScreen />;
+            case 'astrologer': return <AstrologerScreen openPremiumModal={openPremiumModal} />;
             default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
         }
     };
@@ -2089,7 +1867,6 @@ const AppContent = () => {
             <Header setActiveScreen={setActiveScreen} />
             <ScreenAnimator screenKey={activeScreen}>{renderScreen()}</ScreenAnimator>
             <BottomNav activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
-            {/* Players e Modais existentes */}
             {playerData.mantra && <MantraPlayer currentMantra={playerData.mantra} totalRepetitions={playerData.repetitions} audioType={playerData.audioType} onClose={() => setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' })} onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} />}
             <RepetitionModal isOpen={repetitionModalData.isOpen} mantra={repetitionModalData.mantra} onClose={() => setRepetitionModalData({ isOpen: false, mantra: null })} onStart={(repetitions) => handlePlayMantra(repetitionModalData.mantra, repetitions, 'spoken')} />
             <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={handleDeleteEntry} title="Apagar Registro" message="Tem certeza que deseja apagar este registro? Esta ação não pode ser desfeita." />

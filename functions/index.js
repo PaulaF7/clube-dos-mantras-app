@@ -64,9 +64,6 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
     // PREMIUM AUTOMATION END
     
     // --- INÍCIO DA NOVA IMPLEMENTAÇÃO: LÓGICA DE CANCELAMENTO ---
-    // Verifica se o evento é de cancelamento ou expiração de assinatura.
-    // Os nomes dos eventos podem variar (ex: "subscription_canceled", "subscription_expired").
-    // Verifique a documentação da Kiwify para os nomes exatos.
     if (event.webhook_event_type === "subscription_canceled" || event.webhook_event_type === "subscription_expired") {
         const customerEmail = event.Customer?.email;
 
@@ -78,12 +75,10 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
         functions.logger.info(`Processando cancelamento de assinatura para o e-mail: ${customerEmail}`);
         
         try {
-            // Procura pelo usuário no Firestore usando o e-mail.
             const usersRef = db.collection("users");
             const userQuery = await usersRef.where("email", "==", customerEmail).limit(1).get();
 
             if (!userQuery.empty) {
-                // Se o usuário for encontrado, atualiza o campo isPremium para false.
                 const userDoc = userQuery.docs[0];
                 await userDoc.ref.update({ isPremium: false });
                 functions.logger.info(`Assinatura do usuário ${userDoc.id} (${customerEmail}) foi cancelada. Status premium atualizado para false.`);
@@ -97,14 +92,10 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
     }
     // --- FIM DA NOVA IMPLEMENTAÇÃO ---
 
-
-    // Exemplo: tratar pedido reembolsado (lógica original mantida)
     if (event.webhook_event_type === "order_refunded") {
       functions.logger.info(`Pedido reembolsado: ${event.order_id}`);
-      // Aqui você pode adicionar a lógica para revogar acesso se necessário.
     }
 
-    // Resposta obrigatória para Kiwify (200 OK)
     return res.status(200).json({ received: true });
 
   } catch (error) {
@@ -120,7 +111,6 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
 exports.activatePremiumOnUserCreation = functions.firestore
   .document('users/{userId}')
   .onCreate(async (snap, context) => {
-    // 1. Pega os dados do usuário recém-criado, incluindo o email.
     const newUser = snap.data();
     const userEmail = newUser.email;
     const userId = context.params.userId;
@@ -132,19 +122,14 @@ exports.activatePremiumOnUserCreation = functions.firestore
 
     functions.logger.log(`Novo usuário criado: ${userEmail}. Verificando compras pendentes.`);
 
-    // 2. Procura na coleção 'pendingPremium' por um registro com o mesmo email.
     const pendingPremiumRef = db.collection("pendingPremium");
     const pendingQuery = await pendingPremiumRef.where("email", "==", userEmail).get();
 
-    // 3. Se encontrar uma compra pendente, ativa o premium.
     if (!pendingQuery.empty) {
       functions.logger.log(`Compra pendente encontrada para ${userEmail}. Ativando premium.`);
       
       const pendingDoc = pendingQuery.docs[0];
-
       await snap.ref.update({ isPremium: true });
-
-      // 4. (Opcional, mas recomendado) Remove o registro de 'pendingPremium' para não ser usado novamente.
       await pendingDoc.ref.delete();
       
       functions.logger.log(`Usuário ${userId} atualizado para premium e registro pendente removido.`);
@@ -154,3 +139,74 @@ exports.activatePremiumOnUserCreation = functions.firestore
       return null;
     }
   });
+
+
+//--------------------------------------------------------------------------------------------------
+// Função 3: Perguntas para o Astrólogo (chamada pelo frontend com httpsCallable).
+//--------------------------------------------------------------------------------------------------
+exports.askAstrologer = functions.https.onCall(async (data, context) => {
+  try {
+    const { userId, question, astroProfile } = data;
+
+    // Autenticação básica
+    if (!context.auth || context.auth.uid !== userId) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Usuário não autenticado ou não autorizado."
+      );
+    }
+
+    if (!question) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "A pergunta é obrigatória."
+      );
+    }
+
+    const userRef = db.collection("users").doc(userId);
+
+    await db.runTransaction(async (t) => {
+      const userSnap = await t.get(userRef);
+      if (!userSnap.exists) {
+        throw new functions.https.HttpsError("failed-precondition", "Usuário não encontrado.");
+      }
+      const u = userSnap.data() || {};
+      const isPremium = !!u.isPremium;
+      const freeUsed = !!u.freeQuestionUsed;
+
+      // Se não assinante e já usou a pergunta grátis, bloquear
+      if (!isPremium && freeUsed) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "A pergunta grátis já foi utilizada. Assine para enviar novas perguntas."
+        );
+      }
+
+      const astroHistoryRef = userRef.collection("astroHistory");
+      const newDocRef = astroHistoryRef.doc();
+
+      // Cria o registro da pergunta
+      t.set(newDocRef, {
+        question,
+        response: null,
+        status: "waiting",
+        astroProfile: astroProfile || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        saved: false,
+      });
+
+      // Marca o uso do crédito grátis se aplicável
+      if (!isPremium && !freeUsed) {
+        t.update(userRef, { freeQuestionUsed: true });
+      }
+    });
+
+    return { success: true, message: "Pergunta registrada com sucesso." };
+  } catch (error) {
+    functions.logger.error("Erro em askAstrologer:", error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError("internal", "Erro interno.");
+  }
+});
