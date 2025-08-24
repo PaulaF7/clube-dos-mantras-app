@@ -1566,7 +1566,8 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     }, [astroProfile]);
 
     const handleAskQuestion = async () => {
-        if (!isSubscribed) {
+        // Libera 1 pergunta grátis para não-assinantes
+        if (!isSubscribed && freeQuestionUsed) {
             openPremiumModal();
             return;
         }
@@ -1715,18 +1716,18 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                         disabled={(!isSubscribed && freeQuestionUsed) || !isFormComplete}
                     />
                     
-                    {!isSubscribed ? (
-                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
-                            Acesse o Astrólogo (Premium)
-                        </PremiumButton>
-                    ) : (
+                    {(isSubscribed || !freeQuestionUsed) ? (
                         <button
                             onClick={handleAskQuestion}
                             className="w-full modern-btn-primary h-14"
                             disabled={!isFormComplete || status === 'submitting'}
                         >
-                            {status === 'submitting' ? 'Enviando pergunta...' : 'Enviar Pergunta'}
+                            {status === 'submitting' ? 'Enviando pergunta...' : (isSubscribed ? 'Enviar Pergunta' : 'Enviar Pergunta Grátis')}
                         </button>
+                    ) : (
+                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
+                            Acesse o Astrólogo (Premium)
+                        </PremiumButton>
                     )}
 
                     {statusMessage && (
