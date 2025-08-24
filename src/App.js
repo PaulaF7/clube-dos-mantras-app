@@ -505,7 +505,7 @@ useEffect(() => {
             }
         });
         return () => unsubscribe();
-    }, [fetchUserData]);
+    }, [];
 
     const updateFavorites = async (newFavorites) => {
         setFavorites(newFavorites);
