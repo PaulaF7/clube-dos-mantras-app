@@ -465,10 +465,7 @@ useEffect(() => {
             return;
         }
 
-        // Login anônimo automático
-        signInAnonymously(auth).catch((error) => {
-            console.error("Erro no login anônimo:", error);
-        });
+                });
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
@@ -1566,8 +1563,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     }, [astroProfile]);
 
     const handleAskQuestion = async () => {
-        // Libera 1 pergunta grátis para não-assinantes
-        if (!isSubscribed && freeQuestionUsed) {
+        if (!isSubscribed) {
             openPremiumModal();
             return;
         }
@@ -1716,18 +1712,18 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                         disabled={(!isSubscribed && freeQuestionUsed) || !isFormComplete}
                     />
                     
-                    {(isSubscribed || !freeQuestionUsed) ? (
+                    {!isSubscribed ? (
+                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
+                            Acesse o Astrólogo (Premium)
+                        </PremiumButton>
+                    ) : (
                         <button
                             onClick={handleAskQuestion}
                             className="w-full modern-btn-primary h-14"
                             disabled={!isFormComplete || status === 'submitting'}
                         >
-                            {status === 'submitting' ? 'Enviando pergunta...' : (isSubscribed ? 'Enviar Pergunta' : 'Enviar Pergunta Grátis')}
+                            {status === 'submitting' ? 'Enviando pergunta...' : 'Enviar Pergunta'}
                         </button>
-                    ) : (
-                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
-                            Acesse o Astrólogo (Premium)
-                        </PremiumButton>
                     )}
 
                     {statusMessage && (
