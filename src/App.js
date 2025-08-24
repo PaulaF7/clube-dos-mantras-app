@@ -436,91 +436,91 @@ useEffect(() => {
                     currentStreak: data.currentStreak || 0,
                     lastPracticedDate: data.lastPracticedDate?.toDate() || null
                 });
-                // --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
-                if (data.astroProfile) {
-                    setAstroProfile(data.astroProfile);
-                } else {
-                    setAstroProfile(null);
+// --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
+if (data.astroProfile) {
+    setAstroProfile(data.astroProfile);
+} else {
+    setAstroProfile(null);
+}
+} else if (auth.currentUser?.displayName) {
+    setUserName(auth.currentUser.displayName);
+    setIsSubscribed(false);
+    setAstroProfile(null);
+}
+await fetchAllEntries(uid);
+await fetchMeusAudios(uid);
+await fetchPlaylists(uid);
+await fetchAstroHistory(uid);
+} catch (error) {
+    console.error("Error fetching user data:", error);
+    if (error.code === 'permission-denied') {
+        setPermissionError("Firestore");
+    }
+}
+}, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
+
+useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        try {
+            if (user) {
+                const fetchedUserId = user.uid;
+                setUserId(fetchedUserId);
+                setUser(user);
+
+                const ref = doc(db, "users", user.uid);
+                await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    await fetchUserData(fetchedUserId);
                 }
-            } else if (auth.currentUser?.displayName) {
-                setUserName(auth.currentUser.displayName);
+            } else {
+                setUser(null);
+                setUserId(null);
+                setUserName('');
+                setFavorites([]);
+                setStreakData({ currentStreak: 0, lastPracticedDate: null });
+                setPhotoURL(null);
+                setAllEntries([]);
                 setIsSubscribed(false);
+                setMeusAudios([]);
+                setPlaylists([]);
                 setAstroProfile(null);
+                setAstroHistory([]);
             }
-            await fetchAllEntries(uid);
-            await fetchMeusAudios(uid);
-            await fetchPlaylists(uid);
-            await fetchAstroHistory(uid);
         } catch (error) {
-            console.error("Error fetching user data:", error);
+            console.error("Error during auth state change:", error);
             if (error.code === 'permission-denied') {
                 setPermissionError("Firestore");
             }
-        }
-    }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
-
-    useEffect(() => {
-        if (!auth) {
+        } finally {
             setLoading(false);
-            return;
         }
+    });
 
-                });
+    return () => unsubscribe();
+}, []);
 
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            try {
-                if (user) {
-                    const fetchedUserId = user.uid;
-                    setUserId(fetchedUserId);
-                    setUser(user);
+const updateFavorites = async (newFavorites) => {
+    setFavorites(newFavorites);
+    if (userId && db) {
+        const userRef = doc(db, `users/${userId}`);
+        await updateDoc(userRef, { favorites: newFavorites });
+    }
+};
 
-                    const ref = doc(db, "users", user.uid);
-                    await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+const value = { 
+    user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
+    meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
+    astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
+};
 
-                    const snap = await getDoc(ref);
-                    if (snap.exists()) {
-                        await fetchUserData(fetchedUserId);
-                    }
-                } else {
-                    setUser(null);
-                    setUserId(null);
-                    setUserName('');
-                    setFavorites([]);
-                    setStreakData({ currentStreak: 0, lastPracticedDate: null });
-                    setPhotoURL(null);
-                    setAllEntries([]);
-                    setIsSubscribed(false);
-                    setMeusAudios([]);
-                    setPlaylists([]);
-                    setAstroProfile(null);
-                    setAstroHistory([]);
-                }
-            } catch (error) {
-                console.error("Error during auth state change:", error);
-                if (error.code === 'permission-denied') {
-                    setPermissionError("Firestore");
-                }
-            } finally {
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, [];
-
-    const updateFavorites = async (newFavorites) => {
-        setFavorites(newFavorites);
-        if (userId && db) {
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { favorites: newFavorites });
-        }
-    };
-
-    const value = { 
-        user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
-        meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
-        astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
-    };
-    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 // --- TELAS E COMPONENTES EXISTENTES ---
 
