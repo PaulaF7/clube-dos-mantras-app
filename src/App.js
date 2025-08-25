@@ -7,9 +7,9 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.22: Refinamento de Ícones (Premium e Segurança)
- * - Atualização dos ícones de assinatura para 'Sparkles'.
- * - Adição do ícone 'KeyRound' ao botão de alterar senha.
+ * v2.23: Lógica de Pergunta Grátis (Astrólogo)
+ * - Implementação da regra de 1 pergunta grátis para usuários não-premium.
+ * - Atualização da interface do AstrologerScreen para refletir o estado da pergunta.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -1601,7 +1601,7 @@ const ChakraScreen = () => {
     );
 };
 
-// --- NOVA TELA DE ASTROLOGER PESSOAL (REFATORADA) ---
+// --- TELA DO ASTROLOGER ATUALIZADA COM LÓGICA DE PERGUNTA GRÁTIS ---
 const AstrologerScreen = ({ openPremiumModal }) => {
     const { isSubscribed, userId, astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed } = useContext(AppContext);
     const [question, setQuestion] = useState('');
@@ -1617,11 +1617,6 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     }, [astroProfile]);
 
     const handleAskQuestion = async () => {
-        if (!isSubscribed) {
-            openPremiumModal();
-            return;
-        }
-
         if (!question.trim()) {
             setStatusMessage('Por favor, digite sua pergunta.');
             return;
@@ -1651,18 +1646,18 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                 setStatus('idle');
                 setStatusMessage('Sua pergunta foi enviada! O astrólogo está preparando a resposta.');
                 setQuestion('');
-                fetchAstroHistory(userId); // Recarregar histórico
-                // Marcar uso da pergunta grátis para não-assinantes.
-                if (!isSubscribed && !freeQuestionUsed) {
+                fetchAstroHistory(userId);
+                
+                // Se não for premium, marcar a pergunta grátis como usada
+                if (!isSubscribed) {
                     try {
-                        const userRef = doc(db, `users/${userId}`);
-                        await updateDoc(userRef, { freeQuestionUsed: true });
-                        setFreeQuestionUsed(true);
+                        const userDocRef = doc(db, `users/${userId}`);
+                        await updateDoc(userDocRef, { freeQuestionUsed: true });
+                        setFreeQuestionUsed(true); // Atualiza o estado no app
                     } catch (e) {
-                        console.error('Falha ao marcar freeQuestionUsed:', e);
+                        console.error('Falha ao marcar a pergunta grátis como usada:', e);
                     }
                 }
-
             } else {
                 throw new Error(result.data.message || 'Erro ao obter resposta do backend.');
             }
@@ -1671,7 +1666,6 @@ const AstrologerScreen = ({ openPremiumModal }) => {
             setStatus('error');
             setStatusMessage('Ocorreu um erro ao enviar a pergunta. Tente novamente mais tarde.');
         } finally {
-            // A mensagem de sucesso não precisa desaparecer, pois a resposta final chegará via onSnapshot
             if (status !== 'sent') {
                  setTimeout(() => setStatusMessage(''), 5000);
             }
@@ -1683,9 +1677,6 @@ const AstrologerScreen = ({ openPremiumModal }) => {
             await updateDoc(doc(db, `users/${userId}/astroHistory/${id}`), { saved: true });
         } catch (e) {
             console.error('save error', e);
-            if (e?.code === 'permission-denied') {
-                setPermissionError('Firestore. Verifique regras/autenticação.');
-            }
         }
     };
 
@@ -1694,14 +1685,11 @@ const AstrologerScreen = ({ openPremiumModal }) => {
             await deleteDoc(doc(db, `users/${userId}/astroHistory/${id}`));
         } catch (e) {
             console.error('discard error', e);
-            if (e?.code === 'permission-denied') {
-                setPermissionError('Firestore. Verifique regras/autenticação.');
-            }
         }
     };
 
-
     const isFormComplete = astroProfile?.nomeCompleto && astroProfile?.cidadeNascimento && astroProfile?.dataNascimento && astroProfile?.horaNascimento;
+    const canAsk = isSubscribed || !freeQuestionUsed;
 
     return (
         <div className="page-container">
@@ -1721,63 +1709,34 @@ const AstrologerScreen = ({ openPremiumModal }) => {
 
                 <div className="space-y-3">
                     <label className="text-sm text-white/80 font-light">Nome Completo</label>
-                    <input
-                        type="text"
-                        value={astroProfile?.nomeCompleto || ''}
-                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), nomeCompleto: e.target.value }))}
-                        className="input-field"
-                        placeholder="Seu Nome Completo"
-                        readOnly={!isEditingProfile && isFormComplete}
-                    />
+                    <input type="text" value={astroProfile?.nomeCompleto || ''} onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), nomeCompleto: e.target.value }))} className="input-field" placeholder="Seu Nome Completo" readOnly={!isEditingProfile && isFormComplete} />
                     <label className="text-sm text-white/80 font-light">Cidade de Nascimento</label>
-                    <input
-                        type="text"
-                        value={astroProfile?.cidadeNascimento || ''}
-                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), cidadeNascimento: e.target.value }))}
-                        className="input-field"
-                        placeholder="Cidade de Nascimento"
-                        readOnly={!isEditingProfile && isFormComplete}
-                    />
+                    <input type="text" value={astroProfile?.cidadeNascimento || ''} onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), cidadeNascimento: e.target.value }))} className="input-field" placeholder="Cidade de Nascimento" readOnly={!isEditingProfile && isFormComplete} />
                     <label className="text-sm text-white/80 font-light">Data de Nascimento</label>
-                    <input
-                        type="date"
-                        value={astroProfile?.dataNascimento || ''}
-                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), dataNascimento: e.target.value }))}
-                        className="input-field"
-                        readOnly={!isEditingProfile && isFormComplete}
-                    />
+                    <input type="date" value={astroProfile?.dataNascimento || ''} onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), dataNascimento: e.target.value }))} className="input-field" readOnly={!isEditingProfile && isFormComplete} />
                     <label className="text-sm text-white/80 font-light">Hora de Nascimento</label>
-                    <input
-                        type="time"
-                        value={astroProfile?.horaNascimento || ''}
-                        onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), horaNascimento: e.target.value }))}
-                        className="input-field"
-                        readOnly={!isEditingProfile && isFormComplete}
-                    />
+                    <input type="time" value={astroProfile?.horaNascimento || ''} onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), horaNascimento: e.target.value }))} className="input-field" readOnly={!isEditingProfile && isFormComplete} />
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-white/10">
-                    <textarea
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        className="textarea-field"
-                        rows="4"
-                        placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..."
-                        disabled={(!isSubscribed && freeQuestionUsed) || !isFormComplete}
-                    />
+                    <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..." disabled={!isFormComplete} />
                     
-                    {!isSubscribed ? (
-                        <PremiumButton onClick={openPremiumModal} className="h-14 !text-base !font-semibold">
-                            Acesse o Astrólogo (Premium)
-                        </PremiumButton>
-                    ) : (
-                        <button
-                            onClick={handleAskQuestion}
-                            className="w-full modern-btn-primary h-14"
-                            disabled={!isFormComplete || status === 'submitting'}
-                        >
-                            {status === 'submitting' ? 'Enviando pergunta...' : 'Enviar Pergunta'}
+                    {canAsk ? (
+                        <button onClick={handleAskQuestion} className="w-full modern-btn-primary h-14" disabled={!isFormComplete || status === 'submitting'}>
+                            {status === 'submitting' ? 'Enviando...' : 'Enviar Pergunta'}
                         </button>
+                    ) : (
+                        <button onClick={openPremiumModal} className="w-full modern-btn-primary h-14 !bg-white/10 !text-white/70 cursor-pointer">
+                            <Lock className="h-5 w-5" />
+                            <span>Assine para continuar</span>
+                        </button>
+                    )}
+
+                    {!isSubscribed && !freeQuestionUsed && (
+                        <p className="text-center text-sm text-green-400 font-light">🎁 Você tem direito a 1 pergunta grátis!</p>
+                    )}
+                    {!isSubscribed && freeQuestionUsed && (
+                        <p className="text-center text-sm text-red-400 font-light">Sua pergunta grátis já foi usada. Assine para continuar.</p>
                     )}
 
                     {statusMessage && (
@@ -1806,7 +1765,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                                     <div className="flex gap-2 mt-4">
                                         {!item.saved && (
                                             <button
-                                                onClick={() => updateDoc(doc(db, `users/${userId}/astroHistory/${item.id}`), { saved: true })}
+                                                onClick={() => handleSave(item.id)}
                                                 className="btn-secondary !text-xs !py-1 !px-3"
                                             >
                                                 <Save size={14} className="inline-block mr-1" /> Salvar
@@ -1837,6 +1796,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
         </div>
     );
 };
+
 
 // --- NOVA TELA "MAIS" PARA AGRUPAR ITENS DE NAVEGAÇÃO ---
 const MoreScreen = ({ setActiveScreen }) => {
@@ -1936,7 +1896,7 @@ const AppContent = () => {
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
             case 'chakras': return <ChakraScreen />;
             case 'astrologer': return <AstrologerScreen openPremiumModal={openPremiumModal} />;
-            case 'more': return <MoreScreen setActiveScreen={setActiveScreen} />; // <-- NOVA LINHA
+            case 'more': return <MoreScreen setActiveScreen={setActiveScreen} />;
             default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
         }
     };
