@@ -7,9 +7,9 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.23: Lógica de Pergunta Grátis (Astrólogo)
- * - Implementação da regra de 1 pergunta grátis para usuários não-premium.
- * - Atualização da interface do AstrologerScreen para refletir o estado da pergunta.
+ * v2.23.2: Correção de Layout Fixo (Mobile)
+ * - Removido 'position: relative' do container principal para garantir
+ * o comportamento 'fixed' das barras de navegação em todos os dispositivos.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -58,7 +58,7 @@ const GlobalStyles = memo(() => (
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
     :root { --font-body: 'Poppins', sans-serif; --font-display: 'Playfair Display', serif; }
     body { font-family: var(--font-body); transition: background-color 0.5s ease, color 0.5s ease; background-color: #1a0933; }
-    .modern-body { background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57); background-size: 200% 200%; animation: gradient-animation 25s ease-in-out infinite; color: #F3E5F5; overflow-x: hidden; position: relative; }
+    .modern-body { background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57); background-size: 200% 200%; animation: gradient-animation 25s ease-in-out infinite; color: #F3E5F5; overflow-x: hidden; }
     .premium-body { background: linear-gradient(220deg, #2c0b4d, #4a148c, #3a1b57); background-size: 200% 200%; animation: gradient-animation 20s ease-in-out infinite; }
     .sparkles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
     .sparkle { position: absolute; width: 2px; height: 2px; background-color: rgba(255, 213, 79, 0.7); border-radius: 50%; box-shadow: 0 0 5px rgba(255, 213, 79, 0.8); animation: sparkle-animation 15s linear infinite; }
