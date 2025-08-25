@@ -14,6 +14,7 @@
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { initializeApp } from 'firebase/app';
 import {
     getAuth,
@@ -28,7 +29,6 @@ import {
     reauthenticateWithCredential,
     signInAnonymously
 } from 'firebase/auth';
-
 import {
     getFirestore,
     collection,
@@ -47,71 +47,104 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-
 import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle, MessageCircleQuestion } from 'lucide-react';
-
 import ReactGA from 'react-ga4';
 
-// --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER) ---
-const GlobalStyles = () => (
-    <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
-        :root { --font-body: 'Poppins', sans-serif; --font-display: 'Playfair Display', serif; }
-        body { font-family: var(--font-body); transition: background-color 0.5s ease, color 0.5s ease; background-color: #1a0933; }
-        .modern-body { background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57); background-size: 200% 200%; animation: gradient-animation 25s ease-in-out infinite; color: #F3E5F5; overflow-x: hidden; position: relative; }
-        .premium-body { background: linear-gradient(220deg, #2c0b4d, #4a148c, #3a1b57); background-size: 200% 200%; animation: gradient-animation 20s ease-in-out infinite; }
-        .sparkles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
-        .sparkle { position: absolute; width: 2px; height: 2px; background-color: rgba(255, 213, 79, 0.7); border-radius: 50%; box-shadow: 0 0 5px rgba(255, 213, 79, 0.8); animation: sparkle-animation 15s linear infinite; }
-        @keyframes sparkle-animation { from { transform: translateY(100vh) scale(1); opacity: 1; } to { transform: translateY(-10vh) scale(0.5); opacity: 0; } }
-        @keyframes gradient-animation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .glass-card, .glass-modal { background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); padding: 2rem; transition: border-color 0.5s ease, box-shadow 0.5s ease; }
-        .premium-card-glow { border-color: rgba(255, 213, 79, 0.3); animation: premium-glow 3s ease-in-out infinite; }
-        @keyframes premium-glow { 0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } }
-        .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
-        .glass-nav, .glass-bottom-nav { background: rgba(26, 9, 51, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-color: rgba(255, 255, 255, 0.08); }
-        .glass-nav { border-bottom-width: 1px; } .glass-bottom-nav { border-top-width: 1px; }
-        .page-container { padding: 1.5rem; padding-top: 8rem; padding-bottom: 8rem; max-width: 700px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 2; }
-        .page-title { font-family: var(--font-display); font-size: 1.8rem; color: #FFFFFF; margin-bottom: 0.25rem; line-height: 1.2; font-weight: 400; text-align: center; }
-        .page-subtitle { text-align: center; color: #D1C4E9; opacity: 0.8; margin-top: 0.25rem; margin-bottom: 1rem; font-weight: 300; max-width: 90%; margin-left: auto; margin-right: auto; }
-        .modern-btn-primary { background: #FFD54F; color: #2c0b4d; padding: 1rem 2rem; border-radius: 9999px; font-weight: 600; font-size: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease; box-shadow: 0 4px 15px -5px rgba(255, 213, 79, 0.5); border: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; }
-        .modern-btn-primary:hover { transform: translateY(-3px); filter: brightness(1.1); box-shadow: 0 7px 20px -5px rgba(255, 213, 79, 0.6); }
-        .modern-btn-primary:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.4); cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
-        .btn-secondary { background-color: rgba(255, 255, 255, 0.08); color: #F3E5F5; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 400; transition: background-color 0.3s ease; cursor: pointer; }
-        .btn-secondary:hover { background-color: rgba(255, 255, 255, 0.15); }
-        .btn-danger { background-color: #D32F2F; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.3s ease; }
-        .btn-danger:hover { background-color: #B71C1C; }
-        .btn-danger-outline { background-color: transparent; color: #D32F2F; border: 1px solid #D32F2F; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.3s ease, color 0.3s ease; }
-        .btn-danger-outline:hover { background-color: #D32F2F; color: white; }
-        .input-field, .textarea-field, .select-field { width: 100%; background-color: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: #F3E5F5; padding: 1rem; border-radius: 0.75rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; font-weight: 300; }
-        .input-field::placeholder, .textarea-field::placeholder { color: #D1C4E9; opacity: 0.6; }
-        .input-field:focus, .textarea-field:focus, .select-field:focus { outline: none; border-color: #FFD54F; box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.15); }
-        .select-field option { background-color: #3A1B57; }
-        @keyframes screen-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .screen-animation { animation: screen-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
-        .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
-        .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
-        .player-background-gradient {
-            background: linear-gradient(-45deg, #1a0933, #2c0b4d, #4a148c, #3a1b57);
-            background-size: 400% 400%;
-            animation: player-gradient-animation 15s ease infinite;
+
+// --- ESTILOS GLOBAIS (COM MELHORIA NO PLAYER E OTIMIZAÇÃO DE PERFORMANCE) ---
+// Adicionado `memo` para evitar que o componente seja renderizado desnecessariamente.
+const GlobalStyles = memo(() => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
+    :root { --font-body: 'Poppins', sans-serif; --font-display: 'Playfair Display', serif; }
+    body { font-family: var(--font-body); transition: background-color 0.5s ease, color 0.5s ease; background-color: #1a0933; }
+    .modern-body { background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57); background-size: 200% 200%; animation: gradient-animation 25s ease-in-out infinite; color: #F3E5F5; overflow-x: hidden; position: relative; }
+    .premium-body { background: linear-gradient(220deg, #2c0b4d, #4a148c, #3a1b57); background-size: 200% 200%; animation: gradient-animation 20s ease-in-out infinite; }
+    .sparkles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+    .sparkle { position: absolute; width: 2px; height: 2px; background-color: rgba(255, 213, 79, 0.7); border-radius: 50%; box-shadow: 0 0 5px rgba(255, 213, 79, 0.8); animation: sparkle-animation 15s linear infinite; }
+    @keyframes sparkle-animation { from { transform: translateY(100vh) scale(1); opacity: 1; } to { transform: translateY(-10vh) scale(0.5); opacity: 0; } }
+    @keyframes gradient-animation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .glass-card, .glass-modal { background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); padding: 2rem; transition: border-color 0.5s ease, box-shadow 0.5s ease; }
+    .premium-card-glow { border-color: rgba(255, 213, 79, 0.3); animation: premium-glow 3s ease-in-out infinite; }
+    @keyframes premium-glow { 0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } }
+    .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
+    .glass-nav, .glass-bottom-nav { background: rgba(26, 9, 51, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-color: rgba(255, 255, 255, 0.08); }
+    .glass-nav { border-bottom-width: 1px; } .glass-bottom-nav { border-top-width: 1px; }
+    .page-container { padding: 1.5rem; padding-top: 8rem; padding-bottom: 8rem; max-width: 700px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 2; }
+    .page-title { font-family: var(--font-display); font-size: 1.8rem; color: #FFFFFF; margin-bottom: 0.25rem; line-height: 1.2; font-weight: 400; text-align: center; }
+    .page-subtitle { text-align: center; color: #D1C4E9; opacity: 0.8; margin-top: 0.25rem; margin-bottom: 1rem; font-weight: 300; max-width: 90%; margin-left: auto; margin-right: auto; }
+    .modern-btn-primary { background: #FFD54F; color: #2c0b4d; padding: 1rem 2rem; border-radius: 9999px; font-weight: 600; font-size: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease; box-shadow: 0 4px 15px -5px rgba(255, 213, 79, 0.5); border: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; }
+    .modern-btn-primary:hover { transform: translateY(-3px); filter: brightness(1.1); box-shadow: 0 7px 20px -5px rgba(255, 213, 79, 0.6); }
+    .modern-btn-primary:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.4); cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
+    .btn-secondary { background-color: rgba(255, 255, 255, 0.08); color: #F3E5F5; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 400; transition: background-color 0.3s ease; cursor: pointer; }
+    .btn-secondary:hover { background-color: rgba(255, 255, 255, 0.15); }
+    .btn-danger { background-color: #D32F2F; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.3s ease; }
+    .btn-danger:hover { background-color: #B71C1C; }
+    .btn-danger-outline { background-color: transparent; color: #D32F2F; border: 1px solid #D32F2F; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.3s ease, color 0.3s ease; }
+    .btn-danger-outline:hover { background-color: #D32F2F; color: white; }
+    .input-field, .textarea-field, .select-field { width: 100%; background-color: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: #F3E5F5; padding: 1rem; border-radius: 0.75rem; transition: border-color 0.3s ease, box-shadow 0.3s ease; font-weight: 300; }
+    .input-field::placeholder, .textarea-field::placeholder { color: #D1C4E9; opacity: 0.6; }
+    .input-field:focus, .textarea-field:focus, .select-field:focus { outline: none; border-color: #FFD54F; box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.15); }
+    .select-field option { background-color: #3A1B57; }
+    @keyframes screen-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .screen-animation { animation: screen-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
+    .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
+    .player-background-gradient {
+      background: linear-gradient(-45deg, #1a0933, #2c0b4d, #4a148c, #3a1b57);
+      background-size: 400% 400%;
+      animation: player-gradient-animation 15s ease infinite;
+    }
+    @keyframes player-gradient-animation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes chakra-pulse {
+      0% { transform: scale(1.0); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1.0); opacity: 0.5; }
+    }
+    .chakra-pulse-effect {
+      animation: chakra-pulse 2s ease-in-out infinite;
+    }
+
+    /* === Padronização de inputs date/time com os de texto === */
+    .input-field[type="date"],
+    .input-field[type="time"] {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 52px; /* igual aos demais campos */
+        padding: 16px; /* igual aos demais */
+        line-height: 1.5;
+        text-align: left; /* Adicionado para alinhar o texto à esquerda */
+    }
+    .input-field[type="date"]::-webkit-datetime-edit,
+    .input-field[type="time"]::-webkit-datetime-edit {
+        padding: 0;
+        text-align: left; /* Adicionado para alinhar as partes do texto */
+    }
+    /* Adicionado para garantir o alinhamento do valor preenchido */
+    .input-field[type="date"]::-webkit-date-and-time-value,
+    .input-field[type="time"]::-webkit-date-and-time-value {
+        text-align: left;
+    }
+    .input-field[type="date"]::-webkit-calendar-picker-indicator,
+    .input-field[type="time"]::-webkit-calendar-picker-indicator {
+        opacity: 0.7;
+        filter: invert(1);
+    }
+    @supports (-moz-appearance: none) {
+        .input-field[type="date"],
+        .input-field[type="time"] {
+            -moz-appearance: textfield;
         }
-        @keyframes player-gradient-animation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        @keyframes chakra-pulse {
-            0% { transform: scale(1.0); opacity: 0.5; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1.0); opacity: 0.5; }
-        }
-        .chakra-pulse-effect {
-            animation: chakra-pulse 2s ease-in-out infinite;
-        }
-    `}
-    </style>
-);
+    }
+  `}</style>
+));
+
+
 
 // --- DADOS DOS MANTRAS ---
 const MANTRAS_DATA = [
@@ -436,94 +469,91 @@ useEffect(() => {
                     currentStreak: data.currentStreak || 0,
                     lastPracticedDate: data.lastPracticedDate?.toDate() || null
                 });
-                // --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
-                if (data.astroProfile) {
-                    setAstroProfile(data.astroProfile);
-                } else {
-                    setAstroProfile(null);
+// --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
+if (data.astroProfile) {
+    setAstroProfile(data.astroProfile);
+} else {
+    setAstroProfile(null);
+}
+} else if (auth.currentUser?.displayName) {
+    setUserName(auth.currentUser.displayName);
+    setIsSubscribed(false);
+    setAstroProfile(null);
+}
+await fetchAllEntries(uid);
+await fetchMeusAudios(uid);
+await fetchPlaylists(uid);
+await fetchAstroHistory(uid);
+} catch (error) {
+    console.error("Error fetching user data:", error);
+    if (error.code === 'permission-denied') {
+        setPermissionError("Firestore");
+    }
+}
+}, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
+
+useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        try {
+            if (user) {
+                const fetchedUserId = user.uid;
+                setUserId(fetchedUserId);
+                setUser(user);
+
+                const ref = doc(db, "users", user.uid);
+                await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    await fetchUserData(fetchedUserId);
                 }
-            } else if (auth.currentUser?.displayName) {
-                setUserName(auth.currentUser.displayName);
+            } else {
+                setUser(null);
+                setUserId(null);
+                setUserName('');
+                setFavorites([]);
+                setStreakData({ currentStreak: 0, lastPracticedDate: null });
+                setPhotoURL(null);
+                setAllEntries([]);
                 setIsSubscribed(false);
+                setMeusAudios([]);
+                setPlaylists([]);
                 setAstroProfile(null);
+                setAstroHistory([]);
             }
-            await fetchAllEntries(uid);
-            await fetchMeusAudios(uid);
-            await fetchPlaylists(uid);
-            await fetchAstroHistory(uid);
         } catch (error) {
-            console.error("Error fetching user data:", error);
+            console.error("Error during auth state change:", error);
             if (error.code === 'permission-denied') {
                 setPermissionError("Firestore");
             }
-        }
-    }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
-
-    useEffect(() => {
-        if (!auth) {
+        } finally {
             setLoading(false);
-            return;
         }
+    });
 
-        // Login anônimo automático
-        signInAnonymously(auth).catch((error) => {
-            console.error("Erro no login anônimo:", error);
-        });
+    return () => unsubscribe();
+}, []);
 
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            try {
-                if (user) {
-                    const fetchedUserId = user.uid;
-                    setUserId(fetchedUserId);
-                    setUser(user);
+const updateFavorites = async (newFavorites) => {
+    setFavorites(newFavorites);
+    if (userId && db) {
+        const userRef = doc(db, `users/${userId}`);
+        await updateDoc(userRef, { favorites: newFavorites });
+    }
+};
 
-                    const ref = doc(db, "users", user.uid);
-                    await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+const value = { 
+    user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
+    meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
+    astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
+};
 
-                    const snap = await getDoc(ref);
-                    if (snap.exists()) {
-                        await fetchUserData(fetchedUserId);
-                    }
-                } else {
-                    setUser(null);
-                    setUserId(null);
-                    setUserName('');
-                    setFavorites([]);
-                    setStreakData({ currentStreak: 0, lastPracticedDate: null });
-                    setPhotoURL(null);
-                    setAllEntries([]);
-                    setIsSubscribed(false);
-                    setMeusAudios([]);
-                    setPlaylists([]);
-                    setAstroProfile(null);
-                    setAstroHistory([]);
-                }
-            } catch (error) {
-                console.error("Error during auth state change:", error);
-                if (error.code === 'permission-denied') {
-                    setPermissionError("Firestore");
-                }
-            } finally {
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, [fetchUserData]);
-
-    const updateFavorites = async (newFavorites) => {
-        setFavorites(newFavorites);
-        if (userId && db) {
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { favorites: newFavorites });
-        }
-    };
-
-    const value = { 
-        user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
-        meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
-        astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
-    };
-    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 // --- TELAS E COMPONENTES EXISTENTES ---
 
