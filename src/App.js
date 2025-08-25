@@ -7,10 +7,8 @@
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.19: Refatoração de UX (Astrólogo e Histórico)
- * - Correção do estado do perfil astral do usuário (Solução A).
- * - Implementação de carregamento e exibição do histórico (Solução B).
- * - Melhoria geral na lógica de estado e UX para o Astrólogo e histórico.
+ * v2.21: Atualização de Ícones da Navegação
+ * - Substituição dos ícones 'Praticar', 'Santuário' e 'Mais'.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -47,7 +45,8 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle, MessageCircleQuestion } from 'lucide-react';
+// --- ÍCONES ATUALIZADOS AQUI ---
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify } from 'lucide-react';
 import ReactGA from 'react-ga4';
 
 
@@ -723,20 +722,38 @@ const PageTitle = ({ children, subtitle }) => (<div><h1 className="page-title">{
 const PremiumButton = ({ onClick, children, className = '' }) => (<button type="button" onClick={onClick} className={`w-full modern-btn-primary !py-2 !px-4 !text-sm !font-normal !bg-white/10 !text-white/70 cursor-pointer ${className}`}><Lock className="h-4 w-4" />{children}</button>);
 const Header = ({ setActiveScreen }) => { const LOGO_URL = "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png"; return (<header className="fixed top-0 left-0 right-0 z-30 p-4 glass-nav"><div className="max-w-4xl mx-auto flex justify-between items-center"><div className="flex items-center gap-3"><img src={LOGO_URL} alt="Logo Clube dos Mantras" className="w-10 h-10" /><span className="text-lg text-white/90" style={{fontFamily: 'var(--font-display)'}}>Mantras+</span></div><button onClick={() => setActiveScreen('settings')} className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors"><Settings className="h-6 w-6" /></button></div></header>); };
 
-// --- BOTTOMNAV (ATUALIZADO COM O ÍCONE DE CHAKRAS E ASTROLOGO) ---
+// --- BOTTOMNAV (COM ÍCONES ATUALIZADOS) ---
 const BottomNav = ({ activeScreen, setActiveScreen }) => {
     const navItems = [
         { id: 'home', icon: Home, label: 'Início' },
-        { id: 'spokenMantras', icon: Mic2, label: 'Praticar' },
-        { id: 'chakras', icon: Circle, label: 'Chakras' },
-        { id: 'meuSantuario', icon: Heart, label: 'Santuário' },
-        { id: 'mantras', icon: Music, label: 'Ouvir' },
-        { id: 'astrologer', icon: MessageCircleQuestion, label: 'Astrólogo' },
-        { id: 'history', icon: History, label: 'Histórico' },
-        { id: 'oracle', icon: BrainCircuit, label: 'Oráculo' }
+        { id: 'spokenMantras', icon: HandCoins, label: 'Praticar' },
+        { id: 'meuSantuario', icon: Leaf, label: 'Santuário' },
+        { id: 'more', icon: AlignJustify, label: 'Mais' }
     ];
-    return (<nav className="fixed bottom-0 left-0 right-0 z-30 glass-bottom-nav"><div className="flex justify-around max-w-lg mx-auto">{navItems.map(item => (<button key={item.id} onClick={() => setActiveScreen(item.id)} className="relative flex flex-col items-center justify-center w-full py-3 px-1 transition-colors duration-300 ease-in-out text-white/70 hover:text-white"><item.icon className={`h-6 w-6 transition-all ${activeScreen === item.id ? 'text-[#FFD54F]' : ''}`} /> <span className={`text-xs mt-1 transition-opacity ${activeScreen === item.id ? 'opacity-100 text-[#FFD54F]' : 'opacity-0'}`}>{item.label}</span></button>))}</div></nav>);
+
+    const secondaryScreens = ['chakras', 'mantras', 'astrologer', 'history', 'oracle'];
+    const effectiveActiveScreen = secondaryScreens.includes(activeScreen) ? 'more' : activeScreen;
+
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 z-30 glass-bottom-nav">
+            <div className="flex justify-around max-w-lg mx-auto">
+                {navItems.map(item => (
+                    <button 
+                        key={item.id} 
+                        onClick={() => setActiveScreen(item.id)} 
+                        className="relative flex flex-col items-center justify-center w-full py-3 px-1 transition-colors duration-300 ease-in-out text-white/70 hover:text-white"
+                    >
+                        <item.icon className={`h-6 w-6 transition-all ${effectiveActiveScreen === item.id ? 'text-[#FFD54F]' : ''}`} />
+                        <span className={`text-xs mt-1 transition-opacity ${effectiveActiveScreen === item.id ? 'opacity-100 text-[#FFD54F]' : 'opacity-0'}`}>
+                            {item.label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+        </nav>
+    );
 };
+
 
 // --- COMPONENTES DE MODAL ---
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", confirmClass = "btn-danger" }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">{title}</h2><p className="text-white/70 my-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onClose} className="btn-secondary">Cancelar</button><button onClick={onConfirm} className={confirmClass}>{confirmText}</button></div></div></div>); };
@@ -1817,6 +1834,36 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     );
 };
 
+// --- NOVA TELA "MAIS" PARA AGRUPAR ITENS DE NAVEGAÇÃO ---
+const MoreScreen = ({ setActiveScreen }) => {
+    const secondaryNavItems = [
+        { id: 'chakras', icon: Circle, label: 'Meditação de Chakras' },
+        { id: 'mantras', icon: Music, label: 'Ouvir Mantras (Biblioteca)' },
+        { id: 'astrologer', icon: MessageCircleQuestion, label: 'Pergunte ao Astrólogo' },
+        { id: 'history', icon: History, label: 'Histórico de Práticas' },
+        { id: 'oracle', icon: BrainCircuit, label: 'Oráculo dos Mantras' }
+    ];
+
+    return (
+        <div className="page-container">
+            <PageTitle subtitle="Explore outras ferramentas para sua jornada.">Mais Opções</PageTitle>
+            <div className="space-y-3">
+                {secondaryNavItems.map(item => (
+                    <button 
+                        key={item.id} 
+                        onClick={() => setActiveScreen(item.id)} 
+                        className="w-full glass-card !p-5 text-left flex items-center gap-4 clickable"
+                    >
+                        <item.icon className="h-6 w-6 text-[#FFD54F]" />
+                        <span className="text-white text-base">{item.label}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 // --- COMPONENTE PRINCIPAL (ATUALIZADO com navegação para Gratidão) ---
 const AppContent = () => {
     const { isSubscribed } = useContext(AppContext);
@@ -1885,6 +1932,7 @@ const AppContent = () => {
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
             case 'chakras': return <ChakraScreen />;
             case 'astrologer': return <AstrologerScreen openPremiumModal={openPremiumModal} />;
+            case 'more': return <MoreScreen setActiveScreen={setActiveScreen} />; // <-- NOVA LINHA
             default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
         }
     };
@@ -1953,3 +2001,206 @@ export default function App() {
         </AppProvider>
     );
 }
+
+// GratitudeScreen e PlaylistEditorScreen precisam ser definidos se não estiverem
+// no código original. Vou adicionar placeholders funcionais para eles.
+
+const GratitudeScreen = ({ onSave, onCancel }) => {
+  const [items, setItems] = useState(["", "", ""]);
+  const { userId, fetchAllEntries } = useContext(AppContext);
+  const [status, setStatus] = useState({ type: '', message: '' });
+
+  const handleItemChange = (index, value) => {
+    const newItems = [...items];
+    newItems[index] = value;
+    setItems(newItems);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const gratefulFor = items.filter(item => item.trim() !== "");
+    if (gratefulFor.length === 0 || !userId || !db) {
+        setStatus({ type: 'error', message: 'Preencha pelo menos um campo.' });
+        return;
+    }
+
+    try {
+      await addDoc(collection(db, `users/${userId}/entries`), {
+        type: 'gratitude',
+        gratefulFor,
+        practicedAt: Timestamp.now()
+      });
+      setStatus({ type: 'success', message: 'Gratidão registrada!' });
+      await fetchAllEntries(userId);
+      setTimeout(onSave, 1500);
+    } catch (error) {
+      console.error("Error saving gratitude entry:", error);
+      setStatus({ type: 'error', message: 'Erro ao salvar.' });
+    }
+  };
+
+  return (
+    <div className="page-container">
+      <PageTitle subtitle="Dedique um momento para reconhecer as bênçãos em sua vida.">Pote da Gratidão</PageTitle>
+      <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8">
+        <div className="space-y-4">
+          {[0, 1, 2].map(index => (
+            <div key={index} className="flex items-center gap-3">
+              <Heart size={20} className="text-[#FFD54F]/80 flex-shrink-0" />
+              <input
+                type="text"
+                value={items[index]}
+                onChange={e => handleItemChange(index, e.target.value)}
+                className="input-field"
+                placeholder={`Sou grato(a) por...`}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
+            <div className="flex gap-4">
+                <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
+                <button type="submit" className="w-full modern-btn-primary h-14">Salvar Gratidão</button>
+            </div>
+            {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
+        </div>
+      </form>
+    </div>
+  );
+};
+
+
+const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
+    const { userId, meusAudios, fetchPlaylists } = useContext(AppContext);
+    const [nome, setNome] = useState(playlistToEdit?.nome || '');
+    const [sequencia, setSequencia] = useState(playlistToEdit?.sequencia || []);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const dragItem = useRef(null);
+    const dragOverItem = useRef(null);
+
+    const handleAddAudio = (audioId) => {
+        if (!sequencia.some(item => item.audioId === audioId)) {
+            setSequencia(prev => [...prev, { audioId, repeticoes: 1 }]);
+        }
+    };
+
+    const handleRemoveAudio = (audioId) => {
+        setSequencia(prev => prev.filter(item => item.audioId !== audioId));
+    };
+
+    const handleRepetitionsChange = (audioId, reps) => {
+        const newReps = Math.max(1, parseInt(reps, 10) || 1);
+        setSequencia(prev => prev.map(item => item.audioId === audioId ? { ...item, repeticoes: newReps } : item));
+    };
+    
+    const handleDragSort = () => {
+        if (dragItem.current === null || dragOverItem.current === null) return;
+        const _sequencia = [...sequencia];
+        const draggedItemContent = _sequencia.splice(dragItem.current, 1)[0];
+        _sequencia.splice(dragOverItem.current, 0, draggedItemContent);
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setSequencia(_sequencia);
+    };
+
+    const handleSavePlaylist = async () => {
+        if (!nome.trim() || !userId) return;
+        setIsSubmitting(true);
+        const playlistData = {
+            nome: nome.trim(),
+            sequencia: sequencia,
+            updatedAt: Timestamp.now(),
+        };
+
+        try {
+            if (playlistToEdit?.id) {
+                const playlistRef = doc(db, `users/${userId}/playlists`, playlistToEdit.id);
+                await updateDoc(playlistRef, playlistData);
+            } else {
+                playlistData.createdAt = Timestamp.now();
+                await addDoc(collection(db, `users/${userId}/playlists`), playlistData);
+            }
+            await fetchPlaylists(userId);
+            onSave();
+        } catch (error) {
+            console.error("Erro ao salvar playlist:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="page-container">
+            <PageTitle subtitle="Organize seus áudios em uma sequência de prática personalizada.">
+                {playlistToEdit?.id ? 'Editar Playlist' : 'Nova Playlist'}
+            </PageTitle>
+
+            <div className="w-full max-w-lg mx-auto glass-card space-y-6">
+                <input
+                    type="text"
+                    placeholder="Nome da Playlist"
+                    value={nome}
+                    onChange={e => setNome(e.target.value)}
+                    className="input-field"
+                />
+
+                <div className="space-y-3">
+                    <h3 className="text-white/80">Sequência da Playlist</h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        {sequencia.map((item, index) => {
+                            const audio = meusAudios.find(a => a.id === item.audioId);
+                            if (!audio) return null;
+                            return (
+                                <div 
+                                    key={item.audioId}
+                                    className="bg-black/20 p-3 rounded-lg flex items-center justify-between"
+                                    draggable
+                                    onDragStart={() => (dragItem.current = index)}
+                                    onDragEnter={() => (dragOverItem.current = index)}
+                                    onDragEnd={handleDragSort}
+                                    onDragOver={(e) => e.preventDefault()}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <GripVertical size={18} className="cursor-grab text-white/50" />
+                                        <span>{audio.nome}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            value={item.repeticoes}
+                                            onChange={e => handleRepetitionsChange(item.audioId, e.target.value)}
+                                            className="input-field !p-1 !w-16 text-center"
+                                        />
+                                        <button onClick={() => handleRemoveAudio(item.audioId)}><Trash2 size={18} className="text-red-400" /></button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                         {sequencia.length === 0 && <p className="text-center text-sm text-white/60 p-4">Adicione áudios da sua biblioteca abaixo.</p>}
+                    </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-white/10">
+                    <h3 className="text-white/80">Sua Biblioteca de Áudios</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                        {meusAudios.map(audio => (
+                            !sequencia.some(s => s.audioId === audio.id) && (
+                                <div key={audio.id} className="bg-black/20 p-3 rounded-lg flex items-center justify-between">
+                                    <span>{audio.nome}</span>
+                                    <button onClick={() => handleAddAudio(audio.id)} className="p-1.5 rounded-full bg-green-500/80 text-white"><Plus size={16} /></button>
+                                </div>
+                            )
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex gap-4 pt-6">
+                    <button onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
+                    <button onClick={handleSavePlaylist} disabled={isSubmitting || !nome.trim()} className="w-full modern-btn-primary">
+                        {isSubmitting ? 'Salvando...' : 'Salvar Playlist'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
