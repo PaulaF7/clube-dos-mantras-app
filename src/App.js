@@ -1,16 +1,15 @@
 /**
  * =================================================================
- * Mantras+ - Aplicativo Principal (React)
+ * Clube dos Mantras - Aplicativo Principal (React)
  * =================================================================
  *
  * Este arquivo contém a estrutura completa do aplicativo React,
  * incluindo a configuração do Firebase, o contexto de autenticação,
  * a navegação entre telas e a lógica de ativação de assinatura.
  *
- * v2.23.3: Correção de Layout Fixo (Definitiva)
- * - Removido 'position: relative' do .page-container para garantir
- * que as barras de navegação fixas não se movam com a rolagem
- * após re-renderizações de componentes.
+ * v2.23.2: Correção de Layout Fixo (Mobile)
+ * - Removido 'position: relative' do container principal para garantir
+ * o comportamento 'fixed' das barras de navegação em todos os dispositivos.
  *
  */
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo, memo } from 'react';
@@ -71,8 +70,7 @@ const GlobalStyles = memo(() => (
     .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
     .glass-nav, .glass-bottom-nav { background: rgba(26, 9, 51, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-color: rgba(255, 255, 255, 0.08); }
     .glass-nav { border-bottom-width: 1px; } .glass-bottom-nav { border-top-width: 1px; }
-    /* --- CORREÇÃO APLICADA AQUI --- */
-    .page-container { padding: 1.5rem; padding-top: 8rem; padding-bottom: 8rem; max-width: 700px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1.5rem; }
+    .page-container { padding: 1.5rem; padding-top: 8rem; padding-bottom: 8rem; max-width: 700px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 2; }
     .page-title { font-family: var(--font-display); font-size: 1.8rem; color: #FFFFFF; margin-bottom: 0.25rem; line-height: 1.2; font-weight: 400; text-align: center; }
     .page-subtitle { text-align: center; color: #D1C4E9; opacity: 0.8; margin-top: 0.25rem; margin-bottom: 1rem; font-weight: 300; max-width: 90%; margin-left: auto; margin-right: auto; }
     .modern-btn-primary { background: #FFD54F; color: #2c0b4d; padding: 1rem 2rem; border-radius: 9999px; font-weight: 600; font-size: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease; box-shadow: 0 4px 15px -5px rgba(255, 213, 79, 0.5); border: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; }
