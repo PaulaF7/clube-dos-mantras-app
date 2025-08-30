@@ -12,7 +12,11 @@ import {
     deleteUser,
     EmailAuthProvider,
     reauthenticateWithCredential,
-    signInAnonymously
+    signInAnonymously,
+    // ADICIONE ESTAS 3 LINHAS:
+    GoogleAuthProvider,
+    OAuthProvider,
+    signInWithPopup
 } from 'firebase/auth';
 import {
     getFirestore,
@@ -52,6 +56,8 @@ const SolarSystemBackground = memo(() => {
         alignItems: 'center',
         opacity: 0.5, // AJUSTE: Opacidade aumentada para maior visibilidade constante
     };
+    // Otimização: Adiciona 'will-change' para garantir que a animação execute em sua própria camada de composição na GPU.
+    style['willChange'] = 'transform';
 
     const planetStyles = {
         sun: { width: '80px', height: '80px', backgroundColor: '#ffca28', borderRadius: '50%', boxShadow: '0 0 20px 5px rgba(255, 202, 40, 0.8), 0 0 40px 10px rgba(255, 202, 40, 0.5)' },
@@ -117,13 +123,13 @@ const SolarSystemBackground = memo(() => {
                     <div className="planet" style={planetStyles.jupiter}></div>
                 </div>
                 <div className="planet-orbit w-[560px] h-[560px]">
-  <div className="planet" style={planetStyles.saturn}>
-    <div
-      className="absolute top-1/2 left-1/2 w-[36px] h-[36px] rounded-full border border-white/30 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-      style={{ transform: 'translate(-50%, -50%) rotateX(65deg)' }}
-    />
-  </div>
-</div>
+                    <div className="planet" style={planetStyles.saturn}>
+                        <div
+                            className="absolute top-1/2 left-1/2 w-[36px] h-[36px] rounded-full border border-white/30 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{ transform: 'translate(-50%, -50%) rotateX(65deg)' }}
+                        />
+                    </div>
+                </div>
 
                 <div className="planet-orbit w-[680px] h-[680px]">
                     <div className="planet" style={planetStyles.uranus}></div>
@@ -152,7 +158,15 @@ const GlobalStyles = memo(() => (
     .sparkle { position: absolute; width: 2px; height: 2px; background-color: rgba(255, 213, 79, 0.7); border-radius: 50%; box-shadow: 0 0 5px rgba(255, 213, 79, 0.8); animation: sparkle-animation 15s linear infinite; }
     @keyframes sparkle-animation { from { transform: translateY(100vh) scale(1); opacity: 1; } to { transform: translateY(-10vh) scale(0.5); opacity: 0; } }
     @keyframes gradient-animation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .glass-card, .glass-modal { background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); padding: 2rem; transition: border-color 0.5s ease, box-shadow 0.5s ease; }
+    /* Otimização: Adicionado 'will-change' para promover os cards a sua própria camada de composição durante animações,
+       reduzindo o custo de repintura e a interferência com a camada do background. */
+    .glass-card, .glass-modal { 
+      background: rgba(255, 255, 255, 0.04); 
+      backdrop-filter: blur(20px); /* Leve redução no blur para aliviar a GPU */
+      -webkit-backdrop-filter: blur(20px); 
+      border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); padding: 2rem; transition: border-color 0.5s ease, box-shadow 0.5s ease;
+      will-change: transform, opacity;
+    }
     .premium-card-glow { border-color: rgba(255, 213, 79, 0.3); animation: premium-glow 3s ease-in-out infinite; }
     @keyframes premium-glow { 0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } }
     .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
@@ -663,11 +677,13 @@ const AuthScreen = () => {
             case 'auth/email-already-in-use': return 'Este e-mail já está em uso.';
             case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.';
             case 'auth/network-request-failed': return 'Erro de conexão. Verifique sua internet.';
+            case 'auth/popup-closed-by-user': return 'A janela de login foi fechada. Tente novamente.';
+            case 'auth/account-exists-with-different-credential': return 'Já existe uma conta com este e-mail, mas usando um método de login diferente.';
             default: return `Ocorreu um erro inesperado. Tente novamente. (Código: ${code})`;
         }
     };
 
-    const handleAuth = async (e) => {
+    const handleEmailAuth = async (e) => {
         e.preventDefault();
         if (!auth || !db) {
             setError("O Firebase não foi inicializado corretamente. Verifique a configuração.");
@@ -700,7 +716,6 @@ const AuthScreen = () => {
                     }
                 } catch (checkError) {
                     console.error("Erro ao verificar assinatura pendente:", checkError);
-                    isPremium = false; 
                 }
 
                 const userRef = doc(db, `users/${user.uid}`);
@@ -722,13 +737,70 @@ const AuthScreen = () => {
                 }
             }
         } catch (err) {
-            console.error("Firebase Auth Error:", err);
+            console.error("Firebase Email Auth Error:", err);
             setError(mapAuthCodeToMessage(err.code));
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const handleSocialLogin = async (providerName) => {
+        if (!auth || !db) {
+            setError("O Firebase não foi inicializado corretamente.");
+            return;
+        }
+        setError(''); setMessage(''); setIsSubmitting(true);
+
+        const provider = providerName === 'google'
+            ? new GoogleAuthProvider()
+            : new OAuthProvider('apple.com');
+
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            const userRef = doc(db, `users/${user.uid}`);
+            const docSnap = await getDoc(userRef);
+
+            if (!docSnap.exists()) {
+                // Se o usuário não existe no Firestore, cria o documento dele
+                let isPremium = false;
+                try {
+                    const pendingRef = collection(db, "pendingPremium");
+                    const q = query(pendingRef, where("email", "==", user.email));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        isPremium = true;
+                        const pendingDoc = querySnapshot.docs[0];
+                        await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
+                    }
+                } catch (checkError) {
+                    console.error("Erro ao verificar assinatura pendente:", checkError);
+                }
+
+                await setDoc(userRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    isPremium: isPremium,
+                    favorites: [],
+                    currentStreak: 0,
+                    lastPracticedDate: null,
+                    createdAt: Timestamp.now()
+                });
+
+                if (isPremium) setIsSubscribed(true);
+            }
+            // A transição de tela será gerenciada pelo listener onAuthStateChanged principal.
+        } catch (err) {
+            console.error("Firebase Social Auth Error:", err);
+            setError(mapAuthCodeToMessage(err.code));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
     const handlePasswordReset = async () => {
         if (!email) { setError('Por favor, insira seu e-mail para redefinir a senha.'); return; }
         if (!auth) {
@@ -759,7 +831,7 @@ const AuthScreen = () => {
                     <h2 className="page-title !text-2xl !text-white !-mt-2 text-center">{isLogin ? 'Bem-vindo(a)' : 'Crie a Sua Conta'}</h2>
                     <p className="mt-[-0.5rem] text-base text-white/70 text-center">{isLogin ? 'Acesse seu diário espiritual.' : 'Comece a sua jornada de transformação.'}</p>
                 </div>
-                <form className="space-y-4" onSubmit={handleAuth}>
+                <form className="space-y-4" onSubmit={handleEmailAuth}>
                     {!isLogin && <input type="text" placeholder="O seu nome" value={name} onChange={e => setName(e.target.value)} required className="input-field" />}
                     <input type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} required className="input-field" />
                     <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className="input-field" />
@@ -772,8 +844,33 @@ const AuthScreen = () => {
                 {error && <p className="text-sm text-center text-red-400 bg-red-500/20 p-3 rounded-lg">{error}</p>}
                 {message && <p className="text-sm text-center text-green-400 bg-green-500/20 p-3 rounded-lg">{message}</p>}
                 
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-white/20"></div>
+                    <span className="flex-shrink mx-4 text-white/60 text-xs uppercase">Ou continue com</span>
+                    <div className="flex-grow border-t border-white/20"></div>
+                </div>
+
+                <div className="space-y-3">
+                    <button type="button" onClick={() => handleSocialLogin('google')} className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white" disabled={isSubmitting}>
+                        <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 48 48">
+                            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+                            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.223,0-9.657-3.356-11.303-8H6.393c3.541,8.337,12.061,14,21.607,14L24,44z"></path>
+                            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.018,35.245,44,30.028,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                        </svg>
+                        <span>Entrar com Google</span>
+                    </button>
+                    {/* O login com Apple só funciona em domínios https e pode exigir configuração adicional no console da Apple e Firebase. */}
+                    <button type="button" onClick={() => handleSocialLogin('apple')} className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white" disabled={isSubmitting}>
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8.28,1.259A4.14,4.14,0,0,1,10.643,0c1.458.05,2.774,1.1,3.245,2.623a3.34,3.34,0,0,1-.62.333,4.15,4.15,0,0,0-1.229.869,1.7,1.7,0,0,0-.568,1.223,4.3,4.3,0,0,1,1.118,2.839,4.72,4.72,0,0,1-1.3,3.345,5.1,5.1,0,0,1-3.4,1.528,4.11,4.11,0,0,1-2.1-.568,10.2,10.2,0,0,1-2.618-2.682,4.42,4.42,0,0,1-.8-3.085,4.24,4.24,0,0,1,2.5-3.364,2.37,2.37,0,0,1,1.15-.294A1.33,1.33,0,0,0,8.28,1.259Zm.294,1.3A2.8,2.8,0,0,0,6.4,3.951,3.06,3.06,0,0,0,5.2,6.8a3.17,3.17,0,0,0,1,2.4,3.58,3.58,0,0,0,2.32,1.011,2.81,2.81,0,0,0,2.353-1.185A3.13,3.13,0,0,0,9.6,4.738a4.13,4.13,0,0,0-1.025-2.179Z"/>
+                        </svg>
+                        <span>Entrar com Apple</span>
+                    </button>
+                </div>
+
                 <div>
-                    <div className="text-sm text-center">
+                    <div className="text-sm text-center mt-4">
                         <span className="text-white/60">{isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}</span>
                         <button onClick={() => { setIsLogin(!isLogin); setError(''); setMessage(''); }} className="ml-1 text-[#FFD54F] hover:underline">
                             {isLogin ? 'Registre-se' : 'Faça login'}
@@ -791,6 +888,7 @@ const AuthScreen = () => {
         </div>
     );
 };
+
 
 // --- COMPONENTES AUXILIARES ---
 const ScreenAnimator = ({ children, screenKey }) => (<div key={screenKey} className="screen-animation">{children}</div>);
@@ -2353,4 +2451,3 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
         </div>
     );
 };
-
