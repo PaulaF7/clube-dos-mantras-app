@@ -15,7 +15,6 @@ import {
     signInAnonymously,
     // ADICIONE ESTAS 3 LINHAS:
     GoogleAuthProvider,
-    OAuthProvider,
     signInWithPopup
 } from 'firebase/auth';
 import {
@@ -783,9 +782,7 @@ const AuthScreen = () => {
         }
         setError(''); setMessage(''); setIsSubmitting(true);
 
-        const provider = providerName === 'google'
-            ? new GoogleAuthProvider()
-            : new OAuthProvider('apple.com');
+        const provider = new GoogleAuthProvider(); // Corrigido para usar sempre Google
 
         try {
             const result = await signInWithPopup(auth, provider);
@@ -893,13 +890,7 @@ const AuthScreen = () => {
                         </svg>
                         <span>Entrar com Google</span>
                     </button>
-                    {/* O login com Apple só funciona em domínios https e pode exigir configuração adicional no console da Apple e Firebase. */}
-                    <button type="button" onClick={() => handleSocialLogin('apple')} className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white" disabled={isSubmitting}>
-                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8.28,1.259A4.14,4.14,0,0,1,10.643,0c1.458.05,2.774,1.1,3.245,2.623a3.34,3.34,0,0,1-.62.333,4.15,4.15,0,0,0-1.229.869,1.7,1.7,0,0,0-.568,1.223,4.3,4.3,0,0,1,1.118,2.839,4.72,4.72,0,0,1-1.3,3.345,5.1,5.1,0,0,1-3.4,1.528,4.11,4.11,0,0,1-2.1-.568,10.2,10.2,0,0,1-2.618-2.682,4.42,4.42,0,0,1-.8-3.085,4.24,4.24,0,0,1,2.5-3.364,2.37,2.37,0,0,1,1.15-.294A1.33,1.33,0,0,0,8.28,1.259Zm.294,1.3A2.8,2.8,0,0,0,6.4,3.951,3.06,3.06,0,0,0,5.2,6.8a3.17,3.17,0,0,0,1,2.4,3.58,3.58,0,0,0,2.32,1.011,2.81,2.81,0,0,0,2.353-1.185A3.13,3.13,0,0,0,9.6,4.738a4.13,4.13,0,0,0-1.025-2.179Z"/>
-                        </svg>
-                        <span>Entrar com Apple</span>
-                    </button>
+
                 </div>
 
                 <div>
@@ -1373,6 +1364,9 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
                 if (timer && timer.endTime) {
                     setPracticeTimer({ endTime: null, duration: null });
                 }
+                // ADICIONE ESTAS 2 LINHAS:
+                clearTimeout(hideControlsTimeoutRef.current);
+                setAreControlsVisible(true);
             }
         };
 
