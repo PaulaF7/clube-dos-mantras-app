@@ -36,7 +36,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, Lotus, Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify, KeyRound } from 'lucide-react';
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, /* Lotus, */ Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify, KeyRound, Wind, TrendingUp } from 'lucide-react';
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
 
 // --- SISTEMA SOLAR REACT ---
@@ -243,6 +243,21 @@ const GlobalStyles = memo(() => (
             -moz-appearance: textfield;
         }
     }
+    @supports (backdrop-filter: blur(10px)) {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Media query para desativar em telas menores */
+@media (max-width: 768px) {
+  .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(30, 30, 45, 0.7); /* Cor sólida para garantir legibilidade */
+  }
+}
+
   `}</style>
 ));
 
@@ -369,6 +384,9 @@ const AppProvider = ({ children }) => {
     const [permissionError, setPermissionError] = useState(null);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [freeQuestionUsed, setFreeQuestionUsed] = useState(false);
+    
+    // NOVO ESTADO PARA ONBOARDING
+    const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
     // --- NOVOS ESTADOS PARA "MEU SANTUÁRIO" ---
     const [meusAudios, setMeusAudios] = useState([]);
@@ -476,6 +494,17 @@ const AppProvider = ({ children }) => {
             }
         }
     }, []);
+
+    // NOVA FUNÇÃO PARA ATUALIZAR STATUS DO ONBOARDING
+const updateOnboardingStatus = useCallback(async (status) => {
+    setOnboardingCompleted(status);
+    if (userId && db) {
+        try {
+            const userRef = doc(db, `users/${userId}`);
+            await updateDoc(userRef, { onboardingCompleted: status });
+        } catch (error) { console.error("Erro ao atualizar status do onboarding:", error); }
+    }
+}, [userId]);
 
     // --- NOVAS FUNÇÕES PARA "MEU SANTUÁRIO" ---
     const fetchMeusAudios = useCallback(async (uid) => {
@@ -639,7 +668,9 @@ const updateFavorites = async (newFavorites) => {
 const value = { 
     user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
     meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
-    astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed
+    astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
+    onboardingCompleted, // Adicione esta linha
+    updateOnboardingStatus // Adicione esta linha
 };
 
 return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -726,7 +757,8 @@ const AuthScreen = () => {
                     favorites: [],
                     currentStreak: 0,
                     lastPracticedDate: null,
-                    createdAt: Timestamp.now()
+                    createdAt: Timestamp.now(),
+                    onboardingCompleted: false // Adicione esta linha
                 });
                 
                 if (isPremium) {
@@ -787,7 +819,8 @@ const AuthScreen = () => {
                     favorites: [],
                     currentStreak: 0,
                     lastPracticedDate: null,
-                    createdAt: Timestamp.now()
+                    createdAt: Timestamp.now(),
+                    onboardingCompleted: false // Adicione esta linha
                 });
 
                 if (isPremium) setIsSubscribed(true);
@@ -889,6 +922,93 @@ const AuthScreen = () => {
     );
 };
 
+// --- INÍCIO: NOVO COMPONENTE DE ONBOARDING ---
+const OnboardingScreen = () => {
+    const { userName, updateOnboardingStatus } = useContext(AppContext);
+    const [step, setStep] = useState(1);
+    const [selectedGoal, setSelectedGoal] = useState(null);
+    const [recommendedMantra, setRecommendedMantra] = useState(null);
+    const [playerData, setPlayerData] = useState({ mantra: null, repetitions: 1, audioType: 'library' });
+
+    const goals = [
+        { key: 'anxiety', label: "Reduzir ansiedade e estresse", icon: Wind, mantraId: 12 },
+        { key: 'focus', label: "Melhorar foco e concentração", icon: BrainCircuit, mantraId: 10 },
+        { key: 'prosperity', label: "Atrair mais prosperidade", icon: TrendingUp, mantraId: 11 },
+        { key: 'peace', label: "Aumentar a paz interior", icon: Leaf, mantraId: 1 } // Ícone corrigido de Lotus para Leaf
+    ];
+
+    const handleGoalSelect = (goal) => {
+        setSelectedGoal(goal);
+        const mantra = MANTRAS_DATA.find(m => m.id === goal.mantraId);
+        setRecommendedMantra(mantra);
+        setStep(2);
+    };
+
+    const handleStartPractice = () => {
+        setPlayerData({ mantra: recommendedMantra, repetitions: 1, audioType: 'library' });
+    };
+    
+    const handlePlayerClose = () => {
+        setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' });
+        setStep(3);
+    };
+
+    const handleFinishOnboarding = () => {
+        updateOnboardingStatus(true);
+    };
+    
+    const renderStepContent = () => {
+        switch (step) {
+            case 1:
+                return (
+                    <div className="text-center screen-animation">
+                        <PageTitle subtitle={`Olá, ${userName || 'Ser de Luz'}! Para personalizar sua jornada, conte-nos:`}>Qual seu principal objetivo?</PageTitle>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                            {goals.map(goal => (
+                                <button key={goal.key} onClick={() => handleGoalSelect(goal)} className="glass-card !p-6 text-left flex items-center gap-4 clickable hover:!border-[#FFD54F]">
+                                    <goal.icon className="h-8 w-8 text-[#FFD54F] flex-shrink-0" />
+                                    <span className="text-white text-base font-light">{goal.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            case 2:
+                return (
+                    <div className="text-center screen-animation">
+                        <PageTitle subtitle="Com base no seu objetivo, recomendamos este mantra para começar:">Sua Primeira Prática</PageTitle>
+                        {recommendedMantra && (
+                            <div className="glass-card mt-8">
+                                <img src={recommendedMantra.imageSrc} alt={recommendedMantra.nome} className="w-full h-40 object-cover rounded-lg mb-4" />
+                                <h3 className="text-xl text-[#FFD54F]" style={{fontFamily: "var(--font-display)"}}>{recommendedMantra.nome}</h3>
+                                <p className="text-white/80 my-3 font-light italic">"{recommendedMantra.texto}"</p>
+                                <button onClick={handleStartPractice} className="w-full modern-btn-primary h-14 mt-4"><Play /> Ouvir por 30 segundos</button>
+                            </div>
+                        )}
+                    </div>
+                );
+            case 3:
+                return (
+                     <div className="text-center screen-animation">
+                        <CheckCircle className="mx-auto h-20 w-20 text-green-400" />
+                        <PageTitle subtitle="Você deu o primeiro passo na sua jornada de transformação. Continue a explorar e aprofundar sua prática.">Parabéns!</PageTitle>
+                        <button onClick={handleFinishOnboarding} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Explorar o App</button>
+                    </div>
+                );
+            default: return null;
+        }
+    };
+
+    return (
+        <>
+            <div className="min-h-screen flex items-center justify-center p-4 modern-body">
+                <div className="w-full max-w-lg mx-auto z-10">{renderStepContent()}</div>
+            </div>
+            {playerData.mantra && <MantraPlayer currentMantra={playerData.mantra} onClose={handlePlayerClose} onMantraChange={() => {}} audioType={playerData.audioType} totalRepetitions={1} />}
+        </>
+    );
+};
+// --- FIM: NOVO COMPONENTE DE ONBOARDING ---
 
 // --- COMPONENTES AUXILIARES ---
 const ScreenAnimator = ({ children, screenKey }) => (<div key={screenKey} className="screen-animation">{children}</div>);
@@ -2224,9 +2344,9 @@ const AppContent = () => {
 };
 const PermissionErrorScreen = ({ type }) => (<div className="min-h-screen flex items-center justify-center p-4 modern-body"><div className="glass-card w-full max-w-lg text-center"><AlertTriangle className="mx-auto h-16 w-16 text-red-400" /><h2 className="text-xl text-white mt-4">Erro de Permissão do Firebase</h2><p className="text-white/70 mt-2">O aplicativo não conseguiu acessar seus dados devido a um problema de permissão com o Firebase {type}.</p><p className="text-white/70 mt-2">Para corrigir, acesse seu console do Firebase, vá até as Regras (Rules) do <strong>{type}</strong> e cole as regras adequadas para permitir a leitura/escrita autenticada.</p></div></div>);
 
-// --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL ---
+// --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL (COM LÓGICA DE ONBOARDING) ---
 function AppWithAuthCheck() {
-    const { user, loading, permissionError } = useContext(AppContext);
+    const { user, loading, permissionError, onboardingCompleted } = useContext(AppContext);
     const [isSplashVisible, setIsSplashVisible] = useState(true);
 
     useEffect(() => {
@@ -2236,8 +2356,17 @@ function AppWithAuthCheck() {
 
     if (isSplashVisible || loading) return <SplashScreen />;
     if (permissionError) return <PermissionErrorScreen type={permissionError} />;
+    
+    // Roteamento principal
+    if (!user) {
+        return <AuthScreen />;
+    }
 
-    return user ? <AppContent /> : <AuthScreen />;
+    if (!onboardingCompleted) {
+        return <OnboardingScreen />;
+    }
+
+    return <AppContent />;
 }
 
 export default function App() {
