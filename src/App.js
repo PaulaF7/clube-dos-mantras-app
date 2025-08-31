@@ -1046,20 +1046,61 @@ const BottomNav = ({ activeScreen, setActiveScreen }) => {
 // --- COMPONENTES DE MODAL ---
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", confirmClass = "btn-danger" }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">{title}</h2><p className="text-white/70 my-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onClose} className="btn-secondary">Cancelar</button><button onClick={onConfirm} className={confirmClass}>{confirmText}</button></div></div></div>); };
 const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubmitting, title, message, errorMessage }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm text-white" onClick={e => e.stopPropagation()}><h2 className="text-xl">{title}</h2><p className="text-white/70 my-4">{message}</p><form onSubmit={onConfirm} className="space-y-4"><div className="space-y-2"><label className="text-sm text-white/80" htmlFor="reauth-password">Sua Senha</label><input id="reauth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" required /></div>{errorMessage && <p className="text-sm text-center text-red-400">{errorMessage}</p>}<div className="flex justify-end gap-4 pt-4"><button type="button" onClick={onClose} className="btn-secondary" disabled={isSubmitting}>Cancelar</button><button type="submit" className="btn-danger" disabled={isSubmitting}>{isSubmitting ? 'Confirmando...' : 'Confirmar e Deletar'}</button></div></form></div></div>); };
-const PremiumLockModal = ({ isOpen, onClose }) => { if (!isOpen) return null; const handleSubscribe = () => { window.open('https://pay.kiwify.com.br/fFFErhY', '_blank'); onClose(); }; return (<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}><Sparkles className="mx-auto h-12 w-12 text-[#FFD54F]" style={{filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))'}} /><h2 className="text-2xl text-white mt-4" style={{ fontFamily: "var(--font-display)" }}>Função Premium</h2><p className="text-white/70 my-4 font-light">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p><div className="flex flex-col gap-4"><button onClick={handleSubscribe} className="modern-btn-primary h-14">Assinar Agora</button><button onClick={onClose} className="text-sm text-white/60 hover:underline">Agora não</button></div></div></div>); };
+
+// --- Modal de Bloqueio Premium Redesenhado ---
+const PremiumLockModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+    const handleSubscribe = () => {
+        window.open('https://pay.kiwify.com.br/fFFErhY', '_blank');
+        onClose();
+    };
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
+            <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-900/50 border border-white/10 mb-5">
+                    <Sparkles className="h-7 w-7 text-[#FFD54F]" />
+                </div>
+                <h2 className="text-xl text-white" style={{ fontFamily: "var(--font-display)" }}>Função Premium</h2>
+                <p className="text-white/70 my-3 font-light text-base">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p>
+                <div className="flex flex-col gap-3 mt-6">
+                    <button onClick={handleSubscribe} className="w-full modern-btn-primary !py-3 !text-sm">
+                        Assinar Agora
+                    </button>
+                    <button onClick={onClose} className="text-sm text-white/60 hover:underline py-2">
+                        Agora não
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Modal de Gerenciamento de Assinatura Redesenhado ---
 const SubscriptionManagementModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
-    const handleNewSubscription = () => { window.open('https://pay.kiwify.com.br/fFFErhY', '_blank'); onClose(); };
-    const handleManageSubscription = () => { window.open('https://subscription.kiwify.com/subscription/manage', '_blank'); onClose(); };
+    const handleNewSubscription = () => {
+        window.open('https://pay.kiwify.com.br/fFFErhY', '_blank');
+        onClose();
+    };
+    const handleManageSubscription = () => {
+        window.open('https://subscription.kiwify.com/subscription/manage', '_blank');
+        onClose();
+    };
     return (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
             <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
-                <Sparkles className="mx-auto h-12 w-12 text-[#FFD54F]" style={{filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))'}} />
-                <h2 className="text-2xl text-white mt-4" style={{ fontFamily: "var(--font-display)" }}>Assinatura Premium</h2>
-                <p className="text-white/70 my-4 font-light">O que você gostaria de fazer?</p>
-                <div className="flex flex-col gap-4">
-                    <button onClick={handleNewSubscription} className="modern-btn-primary h-14">Tornar-se Premium</button>
-                    <button onClick={handleManageSubscription} className="w-full btn-secondary">Gerenciar Assinatura Atual</button>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-900/50 border border-white/10 mb-5">
+                     <Sparkles className="h-7 w-7 text-[#FFD54F]" />
+                </div>
+                <h2 className="text-xl text-white" style={{ fontFamily: "var(--font-display)" }}>Assinatura Premium</h2>
+                <p className="text-white/70 my-3 font-light text-base">O que você gostaria de fazer?</p>
+                <div className="flex flex-col gap-3 mt-6">
+                    <button onClick={handleNewSubscription} className="w-full modern-btn-primary !py-3 !text-sm">
+                        Tornar-se Premium
+                    </button>
+                    <button onClick={handleManageSubscription} className="w-full btn-secondary !py-3 !text-sm !font-normal">
+                        Gerenciar Assinatura Atual
+                    </button>
                 </div>
             </div>
         </div>
