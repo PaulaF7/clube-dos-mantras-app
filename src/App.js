@@ -376,6 +376,7 @@ const AppProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userId, setUserId] = useState(null);
+    const [currentUserData, setCurrentUserData] = useState(null); // <-- NOVO: Armazena dados do Firestore
     const [userName, setUserName] = useState('');
     const [favorites, setFavorites] = useState([]);
     const [streakData, setStreakData] = useState({ currentStreak: 0, lastPracticedDate: null });
@@ -384,17 +385,12 @@ const AppProvider = ({ children }) => {
     const [permissionError, setPermissionError] = useState(null);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [freeQuestionUsed, setFreeQuestionUsed] = useState(false);
-    
-    // NOVO ESTADO PARA ONBOARDING
     const [onboardingCompleted, setOnboardingCompleted] = useState(false);
-
-    // --- NOVOS ESTADOS PARA "MEU SANTUÁRIO" ---
     const [meusAudios, setMeusAudios] = useState([]);
     const [playlists, setPlaylists] = useState([]);
-
-    // --- NOVOS ESTADOS PARA "ASTROLOGER" ---
     const [astroProfile, setAstroProfile] = useState(null);
     const [astroHistory, setAstroHistory] = useState([]);
+    
 
     const fetchAllEntries = useCallback(async (uid) => {
         if (!db || !uid) return [];
@@ -578,6 +574,10 @@ useEffect(() => {
             const docSnap = await getDoc(userRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
+                setCurrentUserData({ // <-- ATUALIZADO: Armazena todos os dados do usuário
+                    ...data,
+                    createdAt: data.createdAt?.toDate() // Converte Timestamp para Date
+                });
                 setUserName(data.name);
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
@@ -672,7 +672,9 @@ const value = {
     meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
     astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
     onboardingCompleted,
-    updateOnboardingStatus
+    updateOnboardingStatus,
+    currentUserData, // <-- NOVO: Fornece dados do usuário para o app
+
 };
 
 return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1047,16 +1049,62 @@ const BottomNav = ({ activeScreen, setActiveScreen }) => {
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", confirmClass = "btn-danger" }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">{title}</h2><p className="text-white/70 my-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onClose} className="btn-secondary">Cancelar</button><button onClick={onConfirm} className={confirmClass}>{confirmText}</button></div></div></div>); };
 const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubmitting, title, message, errorMessage }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm text-white" onClick={e => e.stopPropagation()}><h2 className="text-xl">{title}</h2><p className="text-white/70 my-4">{message}</p><form onSubmit={onConfirm} className="space-y-4"><div className="space-y-2"><label className="text-sm text-white/80" htmlFor="reauth-password">Sua Senha</label><input id="reauth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" required /></div>{errorMessage && <p className="text-sm text-center text-red-400">{errorMessage}</p>}<div className="flex justify-end gap-4 pt-4"><button type="button" onClick={onClose} className="btn-secondary" disabled={isSubmitting}>Cancelar</button><button type="submit" className="btn-danger" disabled={isSubmitting}>{isSubmitting ? 'Confirmando...' : 'Confirmar e Deletar'}</button></div></form></div></div>); };
 
-// --- Modal de Bloqueio Premium Redesenhado ---
+// --- ATUALIZADO: Modal de Bloqueio Premium com Oferta de Boas-Vindas ---
 const PremiumLockModal = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
+    const { currentUserData } = useContext(AppContext);
+    const [isOfferActive, setIsOfferActive] = useState(false);
+    const [timeLeft, setTimeLeft] = useState('');
+
+    // SUBSTITUA ESTE LINK PELO SEU LINK DA OFERTA NA KIWIFY
+    const OFFER_URL = 'https://pay.kiwify.com.br/efohCIH'; 
+    const REGULAR_URL = 'https://pay.kiwify.com.br/efohCIH';
+
+    useEffect(() => {
+        let intervalId;
+        if (isOpen && currentUserData?.createdAt) {
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+            const expirationTime = currentUserData.createdAt.getTime() + twentyFourHours;
+
+            const updateTimer = () => {
+                const now = Date.now();
+                const remainingTime = expirationTime - now;
+
+                if (remainingTime > 0) {
+                    setIsOfferActive(true);
+                    const hours = String(Math.floor((remainingTime / (1000 * 60 * 60)) % 24)).padStart(2, '0');
+                    const minutes = String(Math.floor((remainingTime / 1000 / 60) % 60)).padStart(2, '0');
+                    const seconds = String(Math.floor((remainingTime / 1000) % 60)).padStart(2, '0');
+                    setTimeLeft(`${hours}:${minutes}:${seconds}`);
+                } else {
+                    setIsOfferActive(false);
+                    setTimeLeft('');
+                    clearInterval(intervalId);
+                }
+            };
+            
+            updateTimer();
+            intervalId = setInterval(updateTimer, 1000);
+        }
+        return () => clearInterval(intervalId);
+    }, [isOpen, currentUserData]);
+
     const handleSubscribe = () => {
-        window.open('https://pay.kiwify.com.br/efohCIH', '_blank');
+        const url = isOfferActive ? OFFER_URL : REGULAR_URL;
+        window.open(url, '_blank');
         onClose();
     };
+
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
             <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                {isOfferActive && (
+                    <div className="bg-yellow-400/10 border border-yellow-400/30 text-yellow-300 text-sm rounded-lg p-3 mb-4">
+                        <p className="font-bold">✨ OFERTA DE BOAS-VINDAS</p>
+                        <p className="text-xs mt-1">50% OFF no 1º mês! Termina em <span className="font-semibold">{timeLeft}</span></p>
+                    </div>
+                )}
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-900/50 border border-white/10 mb-5">
                     <Sparkles className="h-7 w-7 text-[#FFD54F]" />
                 </div>
@@ -1064,7 +1112,7 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
                 <p className="text-white/70 my-3 font-light text-base">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p>
                 <div className="flex flex-col gap-3 mt-6">
                     <button onClick={handleSubscribe} className="w-full modern-btn-primary !py-3 !text-sm">
-                        Assinar Agora
+                        {isOfferActive ? 'Aproveitar Oferta' : 'Assinar Agora'}
                     </button>
                     <button onClick={onClose} className="text-sm text-white/60 hover:underline py-2">
                         Agora não
@@ -1075,17 +1123,38 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
     );
 };
 
-// --- Modal de Gerenciamento de Assinatura Redesenhado ---
+// --- ATUALIZADO: Modal de Gerenciamento de Assinatura com Oferta de Boas-Vindas ---
 const SubscriptionManagementModal = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
+    const { currentUserData } = useContext(AppContext);
+    const [isOfferActive, setIsOfferActive] = useState(false);
+    
+    // SUBSTITUA ESTE LINK PELO SEU LINK DA OFERTA NA KIWIFY
+    const OFFER_URL = 'https://pay.kiwify.com.br/efohCIH'; 
+    const REGULAR_URL = 'https://pay.kiwify.com.br/efohCIH';
+
+    useEffect(() => {
+        if (isOpen && currentUserData?.createdAt) {
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+            const expirationTime = currentUserData.createdAt.getTime() + twentyFourHours;
+            if (Date.now() < expirationTime) {
+                setIsOfferActive(true);
+            }
+        }
+    }, [isOpen, currentUserData]);
+
     const handleNewSubscription = () => {
-        window.open('https://pay.kiwify.com.br/efohCIH', '_blank');
+        const url = isOfferActive ? OFFER_URL : REGULAR_URL;
+        window.open(url, '_blank');
         onClose();
     };
+    
     const handleManageSubscription = () => {
         window.open('https://subscription.kiwify.com/subscription/manage', '_blank');
         onClose();
     };
+
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
             <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
@@ -1096,7 +1165,7 @@ const SubscriptionManagementModal = ({ isOpen, onClose }) => {
                 <p className="text-white/70 my-3 font-light text-base">O que você gostaria de fazer?</p>
                 <div className="flex flex-col gap-3 mt-6">
                     <button onClick={handleNewSubscription} className="w-full modern-btn-primary !py-3 !text-sm">
-                        Tornar-se Premium
+                        {isOfferActive ? 'Aproveitar Oferta de Boas-Vindas' : 'Tornar-se Premium'}
                     </button>
                     <button onClick={handleManageSubscription} className="w-full btn-secondary !py-3 !text-sm !font-normal">
                         Gerenciar Assinatura Atual
