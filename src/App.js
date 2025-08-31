@@ -1051,7 +1051,7 @@ const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubm
 const PremiumLockModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
     const handleSubscribe = () => {
-        window.open('https://pay.kiwify.com.br/fFFErhY', '_blank');
+        window.open('https://pay.kiwify.com.br/efohCIH', '_blank');
         onClose();
     };
     return (
@@ -1079,7 +1079,7 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
 const SubscriptionManagementModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
     const handleNewSubscription = () => {
-        window.open('https://pay.kiwify.com.br/fFFErhY', '_blank');
+        window.open('https://pay.kiwify.com.br/efohCIH', '_blank');
         onClose();
     };
     const handleManageSubscription = () => {
