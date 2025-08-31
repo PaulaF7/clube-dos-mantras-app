@@ -13,7 +13,6 @@ import {
     EmailAuthProvider,
     reauthenticateWithCredential,
     signInAnonymously,
-    // ADICIONE ESTAS 3 LINHAS:
     GoogleAuthProvider,
     signInWithPopup
 } from 'firebase/auth';
@@ -35,6 +34,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging'; // ADICIONADO: Para notificações
 import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, /* Lotus, */ Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify, KeyRound, Wind, TrendingUp } from 'lucide-react';
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
 
@@ -356,13 +356,14 @@ const firebaseConfig = {
     measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
-let app, auth, db, storage, functions;
+let app, auth, db, storage, functions, messaging; // ADICIONADO: messaging
 try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
     functions = getFunctions(app);
+    messaging = getMessaging(app); // ADICIONADO: Inicialização do Messaging
 } catch (error) {
     console.error("Erro na inicialização do Firebase. Verifique suas credenciais no .env:", error);
 }
@@ -582,6 +583,7 @@ useEffect(() => {
                 setPhotoURL(data.photoURL || null);
                 setIsSubscribed(data.isPremium || false);
                 setFreeQuestionUsed(!!data.freeQuestionUsed);
+                setOnboardingCompleted(!!data.onboardingCompleted); // ADICIONADO: carrega o status do onboarding
                 setStreakData({
                     currentStreak: data.currentStreak || 0,
                     lastPracticedDate: data.lastPracticedDate?.toDate() || null
@@ -623,12 +625,12 @@ useEffect(() => {
                 setUser(user);
 
                 const ref = doc(db, "users", user.uid);
-                await setDoc(ref, { criadoEm: new Date() }, { merge: true });
+                // setDoc é usado aqui para garantir que o documento do usuário exista
+                // A verificação `onboardingCompleted` é feita após buscar os dados com fetchUserData
+                await setDoc(ref, { createdAt: Timestamp.now() }, { merge: true });
 
-                const snap = await getDoc(ref);
-                if (snap.exists()) {
-                    await fetchUserData(fetchedUserId);
-                }
+                await fetchUserData(fetchedUserId);
+
             } else {
                 setUser(null);
                 setUserId(null);
@@ -638,6 +640,7 @@ useEffect(() => {
                 setPhotoURL(null);
                 setAllEntries([]);
                 setIsSubscribed(false);
+                setOnboardingCompleted(false); // ADICIONADO: Reseta ao deslogar
                 setMeusAudios([]);
                 setPlaylists([]);
                 setAstroProfile(null);
@@ -654,7 +657,7 @@ useEffect(() => {
     });
 
     return () => unsubscribe();
-}, []);
+}, [fetchUserData]); // ADICIONADO: fetchUserData como dependência
 
 const updateFavorites = async (newFavorites) => {
     setFavorites(newFavorites);
@@ -668,8 +671,8 @@ const value = {
     user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
     meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
     astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
-    onboardingCompleted, // Adicione esta linha
-    updateOnboardingStatus // Adicione esta linha
+    onboardingCompleted,
+    updateOnboardingStatus
 };
 
 return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1063,9 +1066,39 @@ const SubscriptionManagementModal = ({ isOpen, onClose }) => {
     );
 };
 
+// --- ATUALIZADO: Modal de Permissão de Notificação Push com Design Moderno ---
+const PushPermissionModal = ({ onAllow, onDeny }) => (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onDeny}>
+        <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-900/50 border border-white/10 mb-5">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#FFD54F]">
+                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                 </svg>
+            </div>
+            <h2 className="text-xl text-white" style={{ fontFamily: "var(--font-display)" }}>Ótimo trabalho!</h2>
+            <p className="text-white/70 my-3 font-light text-base">Gostaria de receber lembretes diários para manter sua prática em dia?</p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                    onClick={onDeny}
+                    className="w-full btn-secondary !py-3 !text-sm !font-normal"
+                >
+                    Agora não
+                </button>
+                <button
+                    onClick={onAllow}
+                    className="w-full modern-btn-primary !py-3 !text-sm"
+                >
+                    Sim, por favor!
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
 // --- TELAS EXISTENTES (alteradas para navegação) ---
 const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => { const { userName, streakData, allEntries, isSubscribed } = useContext(AppContext); const dailyMessages = [ "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." ]; const premiumMessages = [ "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.", "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.", "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.", "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.", "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.", "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.", "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria." ]; const todayIndex = new Date().getDay(); const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex]; const messageColor = 'text-[#FFD54F]/80'; const WeekView = () => { const today = new Date(); const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; const days = Array.from({ length: 7 }).map((_, i) => { const date = new Date(today); date.setDate(today.getDate() - today.getDay() + i); return date; }); const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())); return (<div className="w-full glass-card p-4 space-y-3 premium-card-glow"><div className="flex justify-around">{days.map((day, index) => { const isPracticed = practicedDays.has(day.toDateString()); const isToday = day.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<div key={index} className="flex flex-col items-center gap-2"><span className={`text-sm font-light ${isToday ? 'text-[#FFD54F]' : 'text-white/60'}`}>{weekDays[day.getDay()]}</span><button onClick={() => openDayDetail(day)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day.getDate()}</button></div>); })}</div><div className="text-center pt-3 border-t border-white/10"><button onClick={openCalendar} className="text-sm text-[#FFD54F] hover:underline font-light">Ver calendário completo</button></div></div>); }; return (<div className="page-container text-center"><div><div className="flex items-center justify-center gap-3 flex-wrap"><h1 className="page-title !text-3xl !mb-0">Olá, {userName || "Ser de Luz"}</h1>{isSubscribed && (<div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]"><span>PREMIUM</span></div>)}</div><p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p></div>{streakData && streakData.currentStreak > 0 && (<div className="glass-card p-6 flex items-center justify-center gap-5 text-center premium-card-glow"><Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} /><div><p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p><p className="text-sm text-white/60 font-light">Continue assim!</p></div></div>)}<WeekView /><div className="w-full max-w-md mx-auto space-y-3"><button onClick={() => setActiveScreen('diary')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Prática de Mantra</button><button onClick={() => setActiveScreen('gratitude')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Gratidão Diária</button></div></div>); };
-const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => { const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); const [repetitions, setRepetitions] = useState(''); const [timeOfDay, setTimeOfDay] = useState([]); const [feelings, setFeelings] = useState(''); const [observations, setObservations] = useState(''); const [status, setStatus] = useState({ type: '', message: '' }); const [reflection, setReflection] = useState(''); const [isGenerating, setIsGenerating] = useState(false); const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); useEffect(() => { if (entryToEdit) { setSelectedMantra(entryToEdit.mantraId); setRepetitions(entryToEdit.repetitions); setTimeOfDay(entryToEdit.timeOfDay); setFeelings(entryToEdit.feelings); setObservations(entryTo-edit.observations || ''); } }, [entryToEdit]); useEffect(() => { if (!entryToEdit) { const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); if (mantra) { setRepetitions(mantra.repeticoes); } } }, [selectedMantra, entryToEdit]); const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); const handleSubmit = async (e) => { e.preventDefault(); if (!selectedMantra || !repetitions || timeOfDay.length === 0 || !feelings) { setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); return; } if (!userId || !db) return; const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; try { if (entryToEdit) { await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); setStatus({ type: 'success', message: 'Registro atualizado!' }); } else { await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); setStatus({ type: 'success', message: 'Registro salvo!' }); } const entries = await fetchAllEntries(userId); await recalculateAndSetStreak(entries, userId); setTimeout(() => onSave(), 1500); } catch (error) { setStatus({ type: 'error', message: 'Erro ao salvar.' }); } }; const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; return (<><div className="page-container"><PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle><form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div><div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div><div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div><div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>{feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-semibold" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}{reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}<div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4">{entryToEdit && <button type="button" onClick={onCancelEdit} className="w-full btn-secondary">Cancelar</button>}<button type="submit" className="w-full modern-btn-primary h-14">{entryToEdit ? 'Atualizar' : 'Salvar'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div><MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} /></>); };
+const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => { const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); const [repetitions, setRepetitions] = useState(''); const [timeOfDay, setTimeOfDay] = useState([]); const [feelings, setFeelings] = useState(''); const [observations, setObservations] = useState(''); const [status, setStatus] = useState({ type: '', message: '' }); const [reflection, setReflection] = useState(''); const [isGenerating, setIsGenerating] = useState(false); const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); useEffect(() => { if (entryToEdit) { setSelectedMantra(entryToEdit.mantraId); setRepetitions(entryToEdit.repetitions); setTimeOfDay(entryToEdit.timeOfDay); setFeelings(entryToEdit.feelings); setObservations(entryToEdit.observations || ''); } }, [entryToEdit]); useEffect(() => { if (!entryToEdit) { const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); if (mantra) { setRepetitions(mantra.repeticoes); } } }, [selectedMantra, entryToEdit]); const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); const handleSubmit = async (e) => { e.preventDefault(); if (!selectedMantra || !repetitions || timeOfDay.length === 0 || !feelings) { setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); return; } if (!userId || !db) return; const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; try { if (entryToEdit) { await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); setStatus({ type: 'success', message: 'Registro atualizado!' }); } else { await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); setStatus({ type: 'success', message: 'Registro salvo!' }); } const entries = await fetchAllEntries(userId); await recalculateAndSetStreak(entries, userId); setTimeout(() => onSave(), 1500); } catch (error) { setStatus({ type: 'error', message: 'Erro ao salvar.' }); } }; const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; return (<><div className="page-container"><PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle><form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div><div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div><div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div><div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>{feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-semibold" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}{reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}<div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4">{entryToEdit && <button type="button" onClick={onCancelEdit} className="w-full btn-secondary">Cancelar</button>}<button type="submit" className="w-full modern-btn-primary h-14">{entryToEdit ? 'Atualizar' : 'Salvar'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div><MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} /></>); };
 const MantraSelectionModal = ({ isOpen, onClose, onSelectMantra, currentMantraId }) => { if (!isOpen) return null; const handleSelect = (id) => { onSelectMantra(id); }; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-lg" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><h2 className="text-xl text-white" style={{fontFamily: "var(--font-display)"}}>Selecione um Mantra</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button></div><div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">{MANTRAS_DATA.map(mantra => (<div key={mantra.id} onClick={() => handleSelect(mantra.id)} className={`p-4 rounded-lg cursor-pointer transition-all ${currentMantraId === mantra.id ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><p>{mantra.nome}</p><p className={`text-sm font-light ${currentMantraId === mantra.id ? 'opacity-80' : 'text-white/70'}`}>{mantra.texto}</p></div>))}</div></div></div>); };
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Explore melodias sagradas para relaxar e meditar.">Músicas Mântricas</PageTitle><div className="grid grid-cols-2 gap-4 md:gap-6">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable" onClick={() => isLocked ? openPremiumModal() : onPlayMantra(mantra, 1, 'library')}><img src={mantra.imageSrc} alt={`Visual para ${mantra.nome}`} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'filter grayscale brightness-50' : ''}`} /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>{isLocked && (<div className="absolute inset-0 flex items-center justify-center bg-black/40"><Lock className="h-10 w-10 text-white/70" /></div>)}<div className="absolute bottom-0 left-0 p-4"><h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3></div></div>); })}</div></div>); };
 const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Escolha um mantra para focar e iniciar sua prática de repetição.">Mantras para Praticar</PageTitle><div className="space-y-4">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="glass-card !p-5 text-left"><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3><p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p><div className="mt-4 text-right">{isLocked ? (<PremiumButton onClick={openPremiumModal} className="!w-auto !py-2 !px-5 !text-sm !font-semibold">Praticar</PremiumButton>) : (<button onClick={() => onSelectMantra(mantra)} className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"><Mic2 className="h-4 w-4" />Praticar</button>)}</div></div>); })}</div></div>); };
@@ -1380,7 +1413,7 @@ const MantraPlayer = ({ currentMantra, onClose, onMantraChange, totalRepetitions
             audio.removeEventListener('timeupdate', handleTimeUpdate);
             audio.removeEventListener('ended', handleAudioEnd);
         };
-    }, [audioSrc, totalRepetitions, isSpokenPractice]);
+    }, [audioSrc, totalRepetitions, isSpokenPractice, onClose]);
 
     const togglePlayPause = useCallback(() => { if (isPlaying) { audioRef.current.pause(); } else { if (audioRef.current.currentTime >= audioRef.current.duration) { repetitionCountRef.current = 1; setRepetitionCount(1); audioRef.current.currentTime = 0; } audioRef.current.play(); } setIsPlaying(!isPlaying); showControls(); }, [isPlaying, showControls]);
     const formatTime = (time) => { if (isNaN(time) || time === 0) return '00:00'; const minutes = Math.floor(time / 60); const seconds = Math.floor(time % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; };
@@ -1400,7 +1433,7 @@ const PracticeTimerModal = memo(({ activeTimer, onSetTimer, onClose }) => { cons
 const MantraVisualizer = memo(({ mantra, isPlaying }) => { const { isSubscribed } = useContext(AppContext); const [images, setImages] = useState([mantra.imageSrc]); const [currentIndex, setCurrentIndex] = useState(0); const hasStartedGenerating = useRef(false); useEffect(() => { const generateImages = async () => { if (hasStartedGenerating.current || !mantra.imagePrompt || !isSubscribed) return; hasStartedGenerating.current = true; try { const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`API request failed`); const result = await response.json(); if (result.predictions && result.predictions.length > 0) { const newImageUrls = result.predictions.map(pred => `data:image/png;base64,${pred.bytesBase64Encoded}`); setImages(prev => [...prev, ...newImageUrls]); } } catch (error) { console.error("Slideshow Image Generation Error:", error); } finally { hasStartedGenerating.current = false; } }; if (isPlaying) { generateImages(); } }, [isPlaying, mantra.imagePrompt, isSubscribed]); useEffect(() => { let interval; if (isPlaying && images.length > 1) { interval = setInterval(() => { setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length); }, 8000); } return () => clearInterval(interval); }, [isPlaying, images]); return (<div className="absolute inset-0 w-full h-full overflow-hidden"><div className={`absolute inset-0 w-full h-full transition-transform duration-[20000ms] ease-linear ${isPlaying ? 'animate-ken-burns-outer' : ''}`}>{images.map((src, index) => (<div key={index} className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-[3000ms] ease-in-out" style={{ backgroundImage: `url(${src})`, opacity: index === currentIndex ? 0.35 : 0, }} />))}</div><div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div><style>{` @keyframes ken-burns-outer { 0% { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.15) translate(2%, -2%); } 100% { transform: scale(1) translate(0, 0); } } .animate-ken-burns-outer { animation: ken-burns-outer 20s ease-in-out infinite; } `}</style></div>); });
 const CalendarModal = ({ isOpen, onClose, onDayClick }) => { const { allEntries } = useContext(AppContext); const [currentDate, setCurrentDate] = useState(new Date()); const practicedDays = useMemo(() => new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())), [allEntries]); if (!isOpen) return null; const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]; const daysOfWeek = ["D", "S", "T", "Q", "Q", "S", "S"]; const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(); const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); const changeMonth = (offset) => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1)); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft/></button><h2 className="text-xl text-white">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2><button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="transform rotate-180"/></button></div><div className="grid grid-cols-7 gap-2 text-center text-sm text-white/60">{daysOfWeek.map((day, index) => <div key={index}>{day}</div>)}</div><div className="grid grid-cols-7 gap-2 mt-2 text-center">{Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`}></div>)}{Array.from({ length: daysInMonth }).map((_, day) => { const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day + 1); const isPracticed = practicedDays.has(date.toDateString()); const isToday = date.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm hover:bg-white/20 ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<button key={day} onClick={() => onDayClick(date)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day + 1}</button>); })}</div></div></div>); };
 const DayDetailModal = ({ isOpen, onClose, date, onAddNote }) => { const { allEntries } = useContext(AppContext); if (!isOpen) return null; const entriesForDay = (allEntries || []).filter(entry => entry.practicedAt?.toDate().toDateString() === date.toDateString()); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">Atividades de {date.toLocaleDateString('pt-BR')}</h2><div className="max-h-48 overflow-y-auto space-y-3 pr-2 mt-4">{entriesForDay.length > 0 ? entriesForDay.map(entry => { const mantra = entry.type === 'mantra' ? MANTRAS_DATA.find(m => m.id === entry.mantraId) : null; return (<div key={entry.id} className="bg-black/20 p-3 rounded-lg text-sm">{mantra ? (<p className="font-light"><span className="text-[#FFD54F] font-normal">{mantra.nome}:</span> {entry.feelings}</p>) : (<p className="font-light"><span className="text-[#FFD54F] font-normal">Anotação:</span> {entry.note}</p>)}</div>) }) : <p className="text-white/70 text-sm font-light">Nenhuma prática registrada para este dia.</p>}</div><div className="pt-4 border-t border-white/10 mt-4"><button onClick={onAddNote} className="w-full btn-secondary">Adicionar Anotação</button></div></div></div>); };
-const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => { const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); const [note, setNote] = useState(''); const [isSubmitting, setIsSubmitting] = useState(false); const [status, setStatus] = useState({ type: '', message: '' }); useEffect(() => { setNote(noteToEdit ? noteToEdit.note : ''); }, [noteToEdit]); const handleSave = async (e) => { e.preventDefault(); if (!note.trim() || !userId) return; setIsSubmitting(true); setStatus({ type: '', message: '' }); try { if (noteToEdit) { const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); await updateDoc(noteRef, { note: note.trim() }); setStatus({ type: 'success', message: 'Anotação atualizada!' }); } else { const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; await addDoc(collection(db, `users/${userId}/entries`), noteData); setStatus({ type: 'success', message: 'Anotação salva!' }); } const updatedEntries = await fetchAllEntries(userId); await recalculateAndAndSetStreak(updatedEntries, userId); setNote(''); setTimeout(() => onSave(), 1500); } catch (error) { console.error("Error saving note:", error); setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); } finally { setIsSubmitting(false); } }; return (<div className="page-container"><PageTitle subtitle="Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.">{noteToEdit ? 'Editar Anotação' : 'Nova Anotação'}</PageTitle><form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><label className="text-white/80 flex items-center gap-2 font-light"><BookOpen size={18} className="text-[#FFD54F]/80" /><span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span></label><textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder="Escreva seus pensamentos, sentimentos ou insights do dia..." required /></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4"><button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button><button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>{isSubmitting ? 'Salvando...' : 'Salvar Anotação'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div>); };
+const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => { const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); const [note, setNote] = useState(''); const [isSubmitting, setIsSubmitting] = useState(false); const [status, setStatus] = useState({ type: '', message: '' }); useEffect(() => { setNote(noteToEdit ? noteToEdit.note : ''); }, [noteToEdit]); const handleSave = async (e) => { e.preventDefault(); if (!note.trim() || !userId) return; setIsSubmitting(true); setStatus({ type: '', message: '' }); try { if (noteToEdit) { const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); await updateDoc(noteRef, { note: note.trim() }); setStatus({ type: 'success', message: 'Anotação atualizada!' }); } else { const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; await addDoc(collection(db, `users/${userId}/entries`), noteData); setStatus({ type: 'success', message: 'Anotação salva!' }); } const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setNote(''); setTimeout(() => onSave(), 1500); } catch (error) { console.error("Error saving note:", error); setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); } finally { setIsSubmitting(false); } }; return (<div className="page-container"><PageTitle subtitle="Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.">{noteToEdit ? 'Editar Anotação' : 'Nova Anotação'}</PageTitle><form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><label className="text-white/80 flex items-center gap-2 font-light"><BookOpen size={18} className="text-[#FFD54F]/80" /><span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span></label><textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder="Escreva seus pensamentos, sentimentos ou insights do dia..." required /></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4"><button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button><button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>{isSubmitting ? 'Salvando...' : 'Salvar Anotação'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div>); };
 const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen) return null; const repetitionOptions = [12, 24, 36, 48, 108]; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white text-center" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h2><p className="text-white/70 my-4 text-center font-light">Quantas vezes você gostaria de repetir este mantra?</p><div className="space-y-3">{repetitionOptions.map(reps => (<button key={reps} onClick={() => onStart(reps)} className="w-full btn-secondary">{reps} repetições</button>))}</div><div className="text-center mt-4"><button onClick={onClose} className="text-sm text-white/60 hover:underline">Cancelar</button></div></div></div>); };
 
 // --- INÍCIO: NOVOS COMPONENTES E TELAS PARA "MEU SANTUÁRIO" ---
@@ -2245,14 +2278,98 @@ const AppContent = () => {
     const [playlistToPlay, setPlaylistToPlay] = useState(null);
     const [playlistToEdit, setPlaylistToEdit] = useState(null);
 
+    // --- ADICIONADO: Estado para o Modal de Notificação ---
+    const [showPushPermissionModal, setShowPushPermissionModal] = useState(false);
+
+    // --- ADICIONADO: Lógica de Notificação Push ---
+    const saveFcmToken = useCallback(async (fcmToken) => {
+        if (!userId || !db) return;
+        try {
+            const tokenRef = doc(db, `users/${userId}/fcmTokens/${fcmToken}`);
+            await setDoc(tokenRef, {
+                createdAt: Timestamp.now(),
+                userAgent: navigator.userAgent,
+            });
+            console.log('Token FCM salvo no Firestore.');
+        } catch (error) {
+            console.error('Erro ao salvar token FCM:', error);
+        }
+    }, [userId]);
+
+    const requestNotificationPermission = useCallback(async () => {
+        if (!messaging) {
+            console.error("Firebase Messaging não está inicializado.");
+            return;
+        }
+        
+        try {
+            const permission = await Notification.requestPermission();
+            
+            localStorage.setItem('pushPermissionRequested', 'true');
+            setShowPushPermissionModal(false);
+
+            if (permission === 'granted') {
+                console.log('Permissão para notificações concedida.');
+                const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY;
+                 if (!vapidKey) {
+                    console.error("VAPID key não encontrada. Defina REACT_APP_FIREBASE_VAPID_KEY no seu arquivo .env");
+                    alert("Configuração de notificação incompleta: VAPID Key faltando.");
+                    return;
+                }
+
+                const currentToken = await getToken(messaging, { vapidKey });
+                
+                if (currentToken) {
+                    console.log('Token FCM obtido:', currentToken);
+                    await saveFcmToken(currentToken);
+                } else {
+                    console.log('Não foi possível obter o token. A permissão foi concedida?');
+                }
+            } else {
+                console.log('Permissão para notificações negada.');
+            }
+        } catch (error) {
+            console.error('Ocorreu um erro ao solicitar permissão de notificação:', error);
+        }
+    }, [saveFcmToken]);
+
+    const triggerPushPermissionRequest = useCallback(() => {
+        setTimeout(() => {
+            const permissionRequested = localStorage.getItem('pushPermissionRequested');
+            if (permissionRequested === 'true' || !('Notification' in window) || !('serviceWorker' in navigator)) {
+                console.log('A permissão de notificação já foi solicitada ou não é suportada.');
+                return;
+            }
+            setShowPushPermissionModal(true);
+        }, 1000); // Atraso de 1s para o usuário perceber a conclusão da ação
+    }, []);
+
+    // Efeito para escutar mensagens de push com o app aberto
     useEffect(() => {
-        // ReactGA.send({ hitType: "pageview", page: `/${activeScreen}` }); // Removido para compilar no ambiente do editor
-        // console.log(`GA Pageview Enviado: /${activeScreen}`); // Removido para compilar no ambiente do editor
-    }, [activeScreen]);
+        if (!messaging) return;
+        
+        const unsubscribe = onMessage(messaging, (payload) => {
+            console.log('Mensagem recebida em primeiro plano: ', payload);
+            alert(`Lembrete: ${payload.notification.title}`); // Simples alerta para notificação em primeiro plano
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // --- Fim da Lógica de Notificação Push ---
 
     const handlePlayMantra = (mantra, repetitions, audioType) => { setPlayerData({ mantra, repetitions, audioType }); setRepetitionModalData({ isOpen: false, mantra: null }); };
+    
+    // CORREÇÃO: A função foi adicionada aqui.
     const handleSelectSpokenMantra = (mantra) => { setRepetitionModalData({ isOpen: true, mantra: mantra }); };
-    const handleSaveOrUpdate = () => { setEntryToEdit(null); setNoteToEdit(null); setActiveScreen('history'); };
+    
+    const handleSaveOrUpdate = () => { 
+        setEntryToEdit(null); 
+        setNoteToEdit(null); 
+        setActiveScreen('history'); 
+        triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+    };
+
     const handleDeleteEntry = async () => { if (!entryToDelete || !userId || !db) return; try { await deleteDoc(doc(db, `users/${userId}/entries`, entryToDelete.id)); const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setEntryToDelete(null); } catch (error) { console.error("Error deleting entry:", error); } };
     const handleDayClick = (day) => { setSelectedDate(day); setIsCalendarOpen(false); setIsDayDetailOpen(true); };
     const handleAddNoteForDate = () => { setNoteToEdit(null); setIsDayDetailOpen(false); setActiveScreen('noteEditor'); };
@@ -2268,7 +2385,7 @@ const AppContent = () => {
         switch (activeScreen) {
             case 'home': return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
             case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancelEdit={() => { setEntryToEdit(null); setActiveScreen('history'); }} openPremiumModal={openPremiumModal} />;
-            case 'gratitude': return <GratitudeScreen onSave={() => setActiveScreen('history')} onCancel={() => setActiveScreen('home')} />;
+            case 'gratitude': return <GratitudeScreen onSave={() => { setActiveScreen('history'); triggerPushPermissionRequest(); }} onCancel={() => setActiveScreen('home')} />;
             case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen('history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;
             case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} openPremiumModal={openPremiumModal} />;
@@ -2296,25 +2413,33 @@ const AppContent = () => {
         }
     };
     
-    const SparklesBackground = () => { const sparkles = Array.from({ length: 20 }); return (<div className="sparkles">{sparkles.map((_, i) => (<div key={i} className="sparkle" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 15}s`, animationDuration: `${5 + Math.random() * 10}s` }} />))}</div>); };
-
     return (
         <div className="modern-body premium-body">
-            {/* Adiciona o componente do sistema solar aqui, fora da hierarquia de telas */}
             <SolarSystemBackground />
             
             <Header setActiveScreen={setActiveScreen} />
             <ScreenAnimator screenKey={activeScreen}>{renderScreen()}</ScreenAnimator>
             <BottomNav activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
-            {playerData.mantra && <MantraPlayer currentMantra={playerData.mantra} totalRepetitions={playerData.repetitions} audioType={playerData.audioType} onClose={() => setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' })} onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} />}
+            
+            {playerData.mantra && <MantraPlayer 
+                currentMantra={playerData.mantra} 
+                totalRepetitions={playerData.repetitions} 
+                audioType={playerData.audioType} 
+                onClose={() => { 
+                    setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' }); 
+                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+                }} 
+                onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} 
+            />}
+            
             <RepetitionModal isOpen={repetitionModalData.isOpen} mantra={repetitionModalData.mantra} onClose={() => setRepetitionModalData({ isOpen: false, mantra: null })} onStart={(repetitions) => handlePlayMantra(repetitionModalData.mantra, repetitions, 'spoken')} />
             <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={handleDeleteEntry} title="Apagar Registro" message="Tem certeza que deseja apagar este registro? Esta ação não pode ser desfeita." />
             <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} onDayClick={handleDayClick} />
             <DayDetailModal isOpen={isDayDetailOpen} onClose={() => setIsDayDetailOpen(false)} date={selectedDate} onAddNote={handleAddNoteForDate} />
             <PremiumLockModal isOpen={isPremiumModalOpen} onClose={() => setIsPremiumModalOpen(false)} />
             
-            {/* NOVOS Players e Modais para "Meu Santuário" */}
             <AudioCreatorModal isOpen={isAudioCreatorOpen} onClose={() => setIsAudioCreatorOpen(false)} />
+
             {customAudioToPlay?.audio && <CustomRepetitionModal 
                 isOpen={isCustomRepModalOpen}
                 onClose={() => setIsCustomRepModalOpen(false)}
@@ -2327,12 +2452,29 @@ const AppContent = () => {
             {customAudioToPlay?.repeticoes && <CustomAudioPlayer 
                 singleAudio={customAudioToPlay.audio}
                 repetitions={customAudioToPlay.repeticoes}
-                onClose={() => setCustomAudioToPlay(null)}
+                onClose={() => {
+                    setCustomAudioToPlay(null);
+                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+                }}
             />}
             {playlistToPlay && <CustomAudioPlayer 
                 playlist={playlistToPlay}
-                onClose={() => setPlaylistToPlay(null)}
+                onClose={() => {
+                    setPlaylistToPlay(null);
+                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+                }}
             />}
+
+            {/* --- ADICIONADO: Renderização do Modal de Notificação --- */}
+            {showPushPermissionModal && (
+                <PushPermissionModal
+                    onAllow={requestNotificationPermission}
+                    onDeny={() => {
+                        localStorage.setItem('pushPermissionRequested', 'true');
+                        setShowPushPermissionModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -2351,7 +2493,6 @@ function AppWithAuthCheck() {
     if (isSplashVisible || loading) return <SplashScreen />;
     if (permissionError) return <PermissionErrorScreen type={permissionError} />;
     
-    // Roteamento principal
     if (!user) {
         return <AuthScreen />;
     }
@@ -2574,3 +2715,4 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
         </div>
     );
 };
+
