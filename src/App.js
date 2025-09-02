@@ -34,9 +34,36 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging'; // ADICIONADO: Para notificações
-import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, /* Lotus, */ Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify, KeyRound, Wind, TrendingUp } from 'lucide-react';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { Home, BookOpen, Star, History, Settings, Sparkles, LogOut, Trash2, Edit3, PlusCircle, CheckCircle, ChevronLeft, Play, Pause, X, BrainCircuit, Heart, GaugeCircle, Clock, MessageSquare, Camera, AlertTriangle, MoreHorizontal, ChevronDown, Repeat, Music, Mic2, Flame, Lock, UploadCloud, Save, Plus, Move, GripVertical, /* Lotus, */ Circle, PlayCircle, MessageCircleQuestion, HandCoins, Leaf, AlignJustify, KeyRound, Wind, TrendingUp, Map } from 'lucide-react'; // <-- ADICIONADO MAP
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
+
+// --- INÍCIO: CONFIGURAÇÃO DO TESTE A/B PARA O PAYWALL ---
+const paywallVariantA = {
+    title: "Acesso Premium",
+    subtitle: "Libere todo o potencial da sua jornada espiritual com a assinatura Mantras+.",
+    features: [
+        { icon: Music, text: "Acesso ilimitado a todas as Músicas Mântricas." },
+        { icon: Mic2, text: "Prática com todos os Mantras Falados." },
+        { icon: Leaf, text: "Crie seu Santuário com áudios e playlists ilimitadas." },
+        { icon: MessageCircleQuestion, text: "Receba insights exclusivos no \"Pergunte ao Astrólogo\"." },
+        { icon: Circle, text: "Desbloqueie a Meditação de Chakras completa." },
+        { icon: BrainCircuit, text: "Use o Oráculo dos Mantras sem limites." },
+    ]
+};
+
+const paywallVariantB = {
+    title: "Sua Transformação Começa Agora",
+    subtitle: "Menos ansiedade, mais clareza e paz interior. A assinatura Mantras+ é o seu guia diário para uma vida com mais propósito.",
+    features: [
+        { icon: Wind, text: "Encontre sua Calma: Tenha sempre à mão a meditação ideal para silenciar a mente e aliviar o estresse." },
+        { icon: Sparkles, text: "Aprofunde sua Prática: Crie rituais poderosos com seu santuário de áudios e playlists personalizadas." },
+        { icon: TrendingUp, text: "Receba Orientação Divina: Entenda sua missão de vida com análises astrológicas exclusivas para você." },
+        { icon: Heart, text: "Equilibre suas Energias: Harmonize seus centros de força com a meditação guiada dos 7 Chakras." },
+        { icon: Star, text: "Manifeste seus Desejos: Descubra o mantra certo para cada momento com o Oráculo e realize seus sonhos." },
+    ]
+};
+// --- FIM: CONFIGURAÇÃO DO TESTE A/B ---
 
 // --- SISTEMA SOLAR REACT ---
 // Componente separado para o sistema solar
@@ -257,6 +284,47 @@ const GlobalStyles = memo(() => (
   }
 }
 
+// CÓDIGO NOVO (SUBSTITUA TODO O BLOCO DE ESTILOS DO TEMA SERENIDADE POR ESTE)
+    /* --- INÍCIO: NOVO TEMA 'SERENIDADE' (BASEADO NO TEMA PADRÃO) --- */
+
+    /* 1. Define os novos gradientes de fundo com a paleta de azul */
+    .theme-serenity_theme.modern-body,
+    .theme-serenity_theme.premium-body {
+        background-size: 200% 200%;
+        animation: gradient-animation 25s ease-in-out infinite;
+        /* A cor do texto principal é herdada do .modern-body padrão */
+    }
+
+    .theme-serenity_theme.modern-body {
+        background: linear-gradient(220deg, #0b1a33, #0b2c4d, #1b3a57);
+    }
+    
+    .theme-serenity_theme.premium-body {
+         background: linear-gradient(220deg, #0b2c4d, #144a8c, #1b3a57);
+    }
+    
+    /* 2. Garante que o Sistema Solar, que era oculto no tema antigo, agora seja visível */
+    .theme-serenity_theme .solar-system-container {
+        display: flex;
+    }
+
+    /* 3. Altera a cor do texto dos botões primários para o novo tom de azul escuro */
+    .theme-serenity_theme .modern-btn-primary {
+        color: #0b2c4d; /* Substitui o roxo #2c0b4d */
+    }
+
+    /* 4. Ajusta a cor de texto do seletor de tema ativo (botão amarelo) nas Configurações */
+    .theme-serenity_theme button.bg-\[\#FFD54F\] {
+        color: #0b2c4d;
+    }
+
+    /* AVISO: Como removemos todas as regras do tema antigo que sobrescreviam
+      o .glass-card, .input-field, etc., eles agora herdarão automaticamente
+      os estilos do tema Padrão (com efeito de vidro), que é o comportamento desejado.
+    */
+
+    /* --- FIM: NOVO TEMA 'SERENIDADE' --- */
+
   `}</style>
 ));
 
@@ -345,6 +413,156 @@ const CHAKRAS_DATA = [
     }
 ];
 
+// --- NOVOS DADOS: JORNADAS (CONTEÚDO ESTRUTURADO E REATORADO) ---
+const JOURNEYS_DATA = [
+    {
+      id: 'jornada_paz',
+      title: 'Jornada da Paz Interior',
+      description: 'Uma sequência de 7 dias para acalmar a mente, aliviar o estresse e cultivar a serenidade no seu dia a dia.',
+      isPremium: false,
+      completionReward: {
+        type: 'theme',
+        value: 'serenity_theme',
+        message: "Parabéns! Você completou a Jornada da Paz e desbloqueou o tema visual 'Serenidade' para o app!"
+      },
+      days: [
+        { 
+            day: 1, 
+            title: 'A Intenção de Paz', 
+            introText: "Hoje, vamos começar plantando a semente da serenidade. Esta prática inicial alinha sua energia com a calma.",
+            type: 'mantra', 
+            details: { mantraId: 1, repetitions: 12 } 
+        },
+        { 
+            day: 2, 
+            title: 'Deixando Ir', 
+            introText: "A paz muitas vezes vem não ao adicionar, mas ao subtrair. Vamos refletir sobre o que podemos liberar hoje.",
+            type: 'reflexao_guiada', 
+            details: { prompt: "Escreva sobre 3 preocupações que você se permite 'deixar ir' apenas por hoje." } 
+        },
+        { 
+            day: 3, 
+            title: 'Encontrando a Leveza', 
+            introText: "A leveza emocional é um superpoder. Use este mantra para se conectar com a alegria e a tranquilidade.",
+            type: 'mantra', 
+            details: { mantraId: 12, repetitions: 24 } 
+        },
+        { 
+            day: 4, 
+            title: 'O Coração Tranquilo', 
+            introText: "O centro do nosso ser é o coração. Hoje, dedicaremos 5 minutos para acalmar e abrir nosso Chakra Cardíaco, o Anahata.",
+            type: 'meditacao_chakra', 
+            details: { chakraId: 4, durationInSeconds: 300 } 
+        },
+        { 
+            day: 5, 
+            title: 'A Gratidão Harmoniza', 
+            introText: "Reconhecer as bênçãos ao nosso redor é um caminho direto para a paz. Pelo que você é grato hoje?",
+            type: 'gratitude', 
+            details: {}
+        },
+        { 
+            day: 6, 
+            title: 'Paz em Ação', 
+            introText: "A serenidade cultivada internamente pode transbordar para o mundo. Vamos praticar um pequeno ato de paz.",
+            type: 'acao_consciente', 
+            details: { taskDescription: "Hoje, ofereça uma palavra gentil ou um elogio sincero a alguém, seja um familiar ou um estranho." } 
+        },
+        { 
+            day: 7, 
+            title: 'Consolidando a Paz', 
+            introText: "Para finalizar nossa jornada, usaremos um mantra poderoso que ativa a cura e a paz interior profunda.",
+            type: 'mantra', 
+            details: { mantraId: 9, repetitions: 108 } 
+        },
+      ]
+    },
+    {
+      id: 'jornada_abundancia',
+      title: 'Jornada da Abundância',
+      description: 'Uma jornada de 5 dias para alinhar sua vibração com a energia da prosperidade e atrair mais riqueza para sua vida.',
+      isPremium: true,
+      completionReward: {
+        type: 'badge',
+        value: 'magneto_da_abundancia',
+        message: "Você concluiu a Jornada da Abundância e ganhou a medalha 'Magneto da Prosperidade' em seu perfil!"
+      },
+      days: [
+        { 
+            day: 1, 
+            title: 'Removendo Obstáculos', 
+            introText: "O primeiro passo para atrair a abundância é limpar o caminho. Este mantra remove os bloqueios que impedem seu fluxo.",
+            type: 'mantra', 
+            details: { mantraId: 7, repetitions: 108 } 
+        },
+        { 
+            day: 2, 
+            title: 'Sua Relação com a Riqueza', 
+            introText: "Nossas crenças moldam nossa realidade. Vamos refletir sobre nossa mentalidade em relação à prosperidade.",
+            type: 'reflexao_guiada', 
+            details: { prompt: "O que a palavra 'riqueza' significa para você, além do dinheiro? Descreva uma vida rica e abundante em seus próprios termos." } 
+        },
+        { 
+            day: 3, 
+            title: 'Ativando a Prosperidade', 
+            introText: "Com o caminho limpo e a mente clara, é hora de ativar a energia da prosperidade com este mantra de cura.",
+            type: 'mantra', 
+            details: { mantraId: 9, repetitions: 108 } 
+        },
+        { 
+            day: 4, 
+            title: 'Consulte sua Intuição', 
+            introText: "O Oráculo pode nos dar insights valiosos. Pergunte sobre qual energia você deve focar para manifestar seus desejos.",
+            type: 'consulta_oraculo', 
+            details: { suggestedQuestion: "Qual o próximo passo para manifestar meus desejos?" } 
+        },
+        { 
+            day: 5, 
+            title: 'Sintonizando com a Riqueza', 
+            introText: "Para o último dia, um mantra específico para sintonizar sua vibração com a energia da riqueza, abundância e segurança.",
+            type: 'mantra', 
+            details: { mantraId: 11, repetitions: 36 } 
+        },
+      ]
+    },
+
+    // --- NOVA JORNADA ADICIONADA ---
+    {
+      id: 'jornada_foco',
+      title: 'Jornada do Foco e Clareza',
+      description: 'Uma prática curta de 3 dias para treinar sua mente, reduzir distrações e aumentar sua concentração.',
+      isPremium: true,
+      completionReward: {
+        type: 'badge',
+        value: 'mente_clara',
+        message: "Você concluiu a Jornada do Foco e ganhou a medalha 'Mente Clara' em seu perfil!"
+      },
+      days: [
+        { 
+            day: 1, 
+            title: 'Ancorando a Mente', 
+            introText: "Para encontrar o foco, primeiro precisamos acalmar as águas da mente. Este mantra serve como uma âncora para o momento presente.",
+            type: 'mantra', 
+            details: { mantraId: 10, repetitions: 24 } // Mantra de Foco e Memória
+        },
+        { 
+            day: 2, 
+            title: 'Identificando Distrações', 
+            introText: "A clareza surge quando entendemos o que nos tira do centro. Hoje, vamos observar nossos padrões de distração.",
+            type: 'reflexao_guiada', 
+            details: { prompt: "Quais são as 3 principais coisas que roubam sua atenção durante o dia? Escreva sobre como elas te afetam." } 
+        },
+        { 
+            day: 3, 
+            title: 'Prática de Atenção Plena', 
+            introText: "O foco é um músculo. Vamos treiná-lo com um exercício simples de atenção plena no aqui e agora.",
+            type: 'acao_consciente', 
+            details: { taskDescription: "Escolha uma tarefa rotineira de 5 minutos (como escovar os dentes ou lavar a louça) e execute-a com atenção total, focando em cada sensação, sem se distrair." } 
+        }
+      ]
+    }
+];
+
 // --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -376,7 +594,7 @@ const AppProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userId, setUserId] = useState(null);
-    const [currentUserData, setCurrentUserData] = useState(null); // <-- NOVO: Armazena dados do Firestore
+    const [currentUserData, setCurrentUserData] = useState(null);
     const [userName, setUserName] = useState('');
     const [favorites, setFavorites] = useState([]);
     const [streakData, setStreakData] = useState({ currentStreak: 0, lastPracticedDate: null });
@@ -390,7 +608,69 @@ const AppProvider = ({ children }) => {
     const [playlists, setPlaylists] = useState([]);
     const [astroProfile, setAstroProfile] = useState(null);
     const [astroHistory, setAstroHistory] = useState([]);
-    
+    const [userGoal, setUserGoal] = useState(null);
+    const [journeyProgress, setJourneyProgress] = useState({});
+
+    // --- NOVOS ESTADOS E FUNÇÕES PARA TEMAS ---
+    const [unlockedThemes, setUnlockedThemes] = useState(['default']);
+    const [activeTheme, setActiveThemeState] = useState('default');
+
+    const setActiveTheme = useCallback(async (themeId) => {
+        if (!userId || !db) return;
+        try {
+            setActiveThemeState(themeId); // Atualiza localmente para resposta imediata
+            const userRef = doc(db, `users/${userId}`);
+            await updateDoc(userRef, { activeTheme: themeId });
+        } catch (error) {
+            console.error("Erro ao definir tema ativo:", error);
+        }
+    }, [userId]);
+
+    const unlockTheme = useCallback(async (themeId) => {
+        if (!userId || !db || unlockedThemes.includes(themeId)) return;
+        try {
+            const newThemes = [...unlockedThemes, themeId];
+            setUnlockedThemes(newThemes); // Atualiza localmente
+            const userRef = doc(db, `users/${userId}`);
+            await updateDoc(userRef, { unlockedThemes: newThemes });
+            console.log(`Tema '${themeId}' desbloqueado!`);
+        } catch (error) {
+            console.error("Erro ao desbloquear tema:", error);
+        }
+    }, [userId, unlockedThemes]);
+
+    const fetchJourneyProgress = useCallback(async (uid) => {
+        if (!db || !uid) return;
+        try {
+            const progressCol = collection(db, `users/${uid}/journeyProgress`);
+            const snapshot = await getDocs(progressCol);
+            const progressData = {};
+            snapshot.forEach(doc => {
+                progressData[doc.id] = doc.data();
+            });
+            setJourneyProgress(progressData);
+        } catch (error) {
+            console.error("Erro ao buscar progresso das jornadas:", error);
+        }
+    }, []);
+
+    const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
+        if (!userId || !db) return;
+        const progressRef = doc(db, `users/${userId}/journeyProgress`, journeyId);
+        try {
+            const currentProgress = journeyProgress[journeyId] || { completedDays: [] };
+            if (!currentProgress.completedDays.includes(dayNumber)) {
+                const updatedDays = [...currentProgress.completedDays, dayNumber];
+                await setDoc(progressRef, { completedDays: updatedDays, lastUpdate: Timestamp.now() }, { merge: true });
+                setJourneyProgress(prev => ({
+                    ...prev,
+                    [journeyId]: { ...prev[journeyId], completedDays: updatedDays }
+                }));
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar progresso da jornada:", error);
+        }
+    }, [userId, journeyProgress]);
 
     const fetchAllEntries = useCallback(async (uid) => {
         if (!db || !uid) return [];
@@ -398,13 +678,7 @@ const AppProvider = ({ children }) => {
             const q = query(collection(db, `users/${uid}/entries`));
             const snapshot = await getDocs(q);
             let entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
-            entries.sort((a, b) => {
-                const dateA = a.practicedAt?.toDate() || 0;
-                const dateB = b.practicedAt?.toDate() || 0;
-                return dateB - dateA;
-            });
-
+            entries.sort((a, b) => (b.practicedAt?.toDate() || 0) - (a.practicedAt?.toDate() || 0));
             setAllEntries(entries);
             return entries;
         } catch (error) {
@@ -416,93 +690,6 @@ const AppProvider = ({ children }) => {
         }
     }, []);
 
-    const recalculateAndSetStreak = useCallback(async (entries, currentUserId) => {
-        if (!currentUserId || !db) return;
-        try {
-            const practiceEntries = entries
-                .filter(e => e.type === 'mantra' && e.practicedAt?.toDate)
-                .sort((a, b) => b.practicedAt.toDate() - a.practicedAt.toDate());
-
-            if (practiceEntries.length === 0) {
-                const newStreakData = { currentStreak: 0, lastPracticedDate: null };
-                setStreakData(newStreakData);
-                const userRef = doc(db, `users/${currentUserId}`);
-                await updateDoc(userRef, { 
-                    currentStreak: newStreakData.currentStreak, 
-                    lastPracticedDate: null 
-                });
-                return;
-            }
-
-            const uniquePracticeDays = [...new Set(practiceEntries.map(e => {
-                const d = e.practicedAt.toDate();
-                d.setHours(0, 0, 0, 0);
-                return d.getTime();
-            }))];
-
-            let calculatedStreak = 0;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const lastPracticeDay = new Date(uniquePracticeDays[0]);
-
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            
-            if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
-                calculatedStreak = 1;
-                let lastCheckedDate = new Date(lastPracticeDay);
-                for (let i = 1; i < uniquePracticeDays.length; i++) {
-                    const practiceDate = new Date(uniquePracticeDays[i]);
-                    const expectedPreviousDay = new Date(lastCheckedDate);
-                    expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
-
-                    if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
-                        calculatedStreak++;
-                        lastCheckedDate = practiceDate;
-                    } else {
-                        break; 
-                    }
-                }
-            } else {
-                calculatedStreak = 0;
-            }
-            
-            if (lastPracticeDay.getTime() === today.getTime() && calculatedStreak === 0) {
-                calculatedStreak = 1;
-            }
-
-            const newStreakData = {
-                currentStreak: calculatedStreak,
-                lastPracticedDate: lastPracticeDay,
-            };
-
-            setStreakData(newStreakData);
-            const userRef = doc(db, `users/${currentUserId}`);
-            await updateDoc(userRef, { 
-                currentStreak: newStreakData.currentStreak, 
-                lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) 
-            });
-        } catch (error) {
-            console.error("Error recalculating streak:", error);
-            if (error.code === 'permission-denied') {
-                setPermissionError("Firestore");
-            }
-        }
-    }, []);
-
-    // NOVA FUNÇÃO PARA ATUALIZAR STATUS DO ONBOARDING
-const updateOnboardingStatus = useCallback(async (status) => {
-    setOnboardingCompleted(status);
-    if (userId && db) {
-        try {
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { onboardingCompleted: status });
-        } catch (error) { console.error("Erro ao atualizar status do onboarding:", error); }
-    }
-}, [userId]);
-
-    // --- NOVAS FUNÇÕES PARA "MEU SANTUÁRIO" ---
     const fetchMeusAudios = useCallback(async (uid) => {
         if (!db || !uid) return;
         try {
@@ -527,7 +714,6 @@ const updateOnboardingStatus = useCallback(async (status) => {
         }
     }, []);
     
-    // --- NOVA FUNÇÃO PARA ASTROLOGER ---
     const fetchAstroHistory = useCallback(async (uid) => {
         if (!db || !uid) return;
         try {
@@ -537,36 +723,9 @@ const updateOnboardingStatus = useCallback(async (status) => {
             setAstroHistory(history);
         } catch (error) {
             console.error("Erro ao buscar histórico astral:", error);
-            // O erro de permissão é tratado no onAuthStateChanged principal, mas é bom ter aqui também
         }
-   }, []);
-
-// Atualização em tempo real do histórico do astrólogo
-useEffect(() => {
-
-        if (!db || !userId) return;
-        try {
-            const q = query(collection(db, `users/${userId}/astroHistory`), orderBy('createdAt', 'desc'));
-            const unsub = onSnapshot(
-                q,
-                (snap) => {
-                    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setAstroHistory(items);
-                },
-                (err) => {
-                    console.error('onSnapshot astroHistory', err);
-                    if (err?.code === 'permission-denied') {
-                        setPermissionError('Firestore. Verifique as regras ou autenticação.');
-                    }
-                }
-            );
-            return () => unsub();
-        } catch (e) {
-            console.error('Erro no listener de astroHistory:', e);
-        }
-    }, [db, userId]);
-
-    // Função para buscar todos os dados do usuário, incluindo os novos
+    }, []);
+    
     const fetchUserData = useCallback(async (uid) => {
         if (!db || !uid) return;
         try {
@@ -574,111 +733,195 @@ useEffect(() => {
             const docSnap = await getDoc(userRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                setCurrentUserData({ // <-- ATUALIZADO: Armazena todos os dados do usuário
-                    ...data,
-                    createdAt: data.createdAt?.toDate() // Converte Timestamp para Date
-                });
+                setCurrentUserData({ ...data, createdAt: data.createdAt?.toDate() });
                 setUserName(data.name);
                 setFavorites(data.favorites || []);
                 setPhotoURL(data.photoURL || null);
                 setIsSubscribed(data.isPremium || false);
                 setFreeQuestionUsed(!!data.freeQuestionUsed);
-                setOnboardingCompleted(!!data.onboardingCompleted); // ADICIONADO: carrega o status do onboarding
-                setStreakData({
-                    currentStreak: data.currentStreak || 0,
-                    lastPracticedDate: data.lastPracticedDate?.toDate() || null
-                });
-// --- ATUALIZAÇÃO DO ESTADO ASTROLOGER ---
-if (data.astroProfile) {
-    setAstroProfile(data.astroProfile);
-} else {
-    setAstroProfile(null);
-}
-} else if (auth.currentUser?.displayName) {
-    setUserName(auth.currentUser.displayName);
-    setIsSubscribed(false);
-    setAstroProfile(null);
-}
-await fetchAllEntries(uid);
-await fetchMeusAudios(uid);
-await fetchPlaylists(uid);
-await fetchAstroHistory(uid);
-} catch (error) {
-    console.error("Error fetching user data:", error);
-    if (error.code === 'permission-denied') {
-        setPermissionError("Firestore");
-    }
-}
-}, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
+                setOnboardingCompleted(!!data.onboardingCompleted);
+                setUserGoal(data.userGoal || null);
+                setStreakData({ currentStreak: data.currentStreak || 0, lastPracticedDate: data.lastPracticedDate?.toDate() || null });
+                if (data.astroProfile) setAstroProfile(data.astroProfile); else setAstroProfile(null);
+                
+                // LEITURA DOS DADOS DE TEMA
+                setUnlockedThemes(data.unlockedThemes || ['default']);
+                setActiveThemeState(data.activeTheme || 'default');
 
-useEffect(() => {
-    if (!auth) {
-        setLoading(false);
-        return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        try {
-            if (user) {
-                const fetchedUserId = user.uid;
-                setUserId(fetchedUserId);
-                setUser(user);
-
-                const ref = doc(db, "users", user.uid);
-                // setDoc é usado aqui para garantir que o documento do usuário exista
-                // A verificação `onboardingCompleted` é feita após buscar os dados com fetchUserData
-                await setDoc(ref, { createdAt: Timestamp.now() }, { merge: true });
-
-                await fetchUserData(fetchedUserId);
-
-            } else {
-                setUser(null);
-                setUserId(null);
-                setUserName('');
-                setFavorites([]);
-                setStreakData({ currentStreak: 0, lastPracticedDate: null });
-                setPhotoURL(null);
-                setAllEntries([]);
+            } else if (auth.currentUser?.displayName) {
+                setUserName(auth.currentUser.displayName);
                 setIsSubscribed(false);
-                setOnboardingCompleted(false); // ADICIONADO: Reseta ao deslogar
-                setMeusAudios([]);
-                setPlaylists([]);
                 setAstroProfile(null);
-                setAstroHistory([]);
             }
+            await Promise.all([fetchAllEntries(uid), fetchMeusAudios(uid), fetchPlaylists(uid), fetchAstroHistory(uid)]);
         } catch (error) {
-            console.error("Error during auth state change:", error);
+            console.error("Error fetching user data:", error);
+            if (error.code === 'permission-denied') setPermissionError("Firestore");
+        }
+    }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
+
+    const updateUserData = useCallback(async (dataToUpdate) => {
+        if (userId && db) {
+            try {
+                const userRef = doc(db, `users/${userId}`);
+                await updateDoc(userRef, dataToUpdate);
+                await fetchUserData(userId);
+            } catch (error) {
+                console.error("Erro ao atualizar dados do usuário:", error);
+            }
+        }
+    }, [userId, fetchUserData]);
+
+    const recalculateAndSetStreak = useCallback(async (entries, currentUserId) => {
+        if (!currentUserId || !db) return;
+        try {
+            const practiceEntries = entries.filter(e => e.type === 'mantra' && e.practicedAt?.toDate).sort((a, b) => b.practicedAt.toDate() - a.practicedAt.toDate());
+            if (practiceEntries.length === 0) {
+                const newStreakData = { currentStreak: 0, lastPracticedDate: null };
+                setStreakData(newStreakData);
+                const userRef = doc(db, `users/${currentUserId}`);
+                await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: null });
+                return;
+            }
+            const uniquePracticeDays = [...new Set(practiceEntries.map(e => {
+                const d = e.practicedAt.toDate();
+                d.setHours(0, 0, 0, 0);
+                return d.getTime();
+            }))];
+            let calculatedStreak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const lastPracticeDay = new Date(uniquePracticeDays[0]);
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
+                calculatedStreak = 1;
+                let lastCheckedDate = new Date(lastPracticeDay);
+                for (let i = 1; i < uniquePracticeDays.length; i++) {
+                    const practiceDate = new Date(uniquePracticeDays[i]);
+                    const expectedPreviousDay = new Date(lastCheckedDate);
+                    expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
+                    if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
+                        calculatedStreak++;
+                        lastCheckedDate = practiceDate;
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                calculatedStreak = 0;
+            }
+            if (lastPracticeDay.getTime() === today.getTime() && calculatedStreak === 0) {
+                calculatedStreak = 1;
+            }
+            const newStreakData = {
+                currentStreak: calculatedStreak,
+                lastPracticedDate: lastPracticeDay,
+            };
+            setStreakData(newStreakData);
+            const userRef = doc(db, `users/${currentUserId}`);
+            await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) });
+        } catch (error) {
+            console.error("Error recalculating streak:", error);
             if (error.code === 'permission-denied') {
                 setPermissionError("Firestore");
             }
-        } finally {
-            setLoading(false);
         }
-    });
+    }, []);
 
-    return () => unsubscribe();
-}, [fetchUserData]); // ADICIONADO: fetchUserData como dependência
+    const updateOnboardingStatus = useCallback(async (status) => {
+        setOnboardingCompleted(status);
+        if (userId && db) {
+            try {
+                const userRef = doc(db, `users/${userId}`);
+                await updateDoc(userRef, { onboardingCompleted: status });
+            } catch (error) { console.error("Erro ao atualizar status do onboarding:", error); }
+        }
+    }, [userId]);
 
-const updateFavorites = async (newFavorites) => {
-    setFavorites(newFavorites);
-    if (userId && db) {
-        const userRef = doc(db, `users/${userId}`);
-        await updateDoc(userRef, { favorites: newFavorites });
-    }
+    useEffect(() => {
+        if (!db || !userId) return;
+        try {
+            const q = query(collection(db, `users/${userId}/astroHistory`), orderBy('createdAt', 'desc'));
+            const unsub = onSnapshot(q, (snap) => {
+                const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setAstroHistory(items);
+            }, (err) => {
+                console.error('onSnapshot astroHistory', err);
+                if (err?.code === 'permission-denied') {
+                    setPermissionError('Firestore. Verifique as regras ou autenticação.');
+                }
+            });
+            return () => unsub();
+        } catch (e) {
+            console.error('Erro no listener de astroHistory:', e);
+        }
+    }, [db, userId]);
+
+    // CÓDIGO NOVO (SUBSTITUA PELO CÓDIGO ABAIXO)
+    useEffect(() => {
+        if (!auth) { setLoading(false); return; }
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            try {
+                if (user) {
+                    const fetchedUserId = user.uid;
+                    setUserId(fetchedUserId);
+                    setUser(user);
+
+                    // --- INÍCIO DA CORREÇÃO ---
+                    // 1. Referencia o documento do usuário
+                    const userRef = doc(db, "users", user.uid);
+                    // 2. Tenta ler o documento
+                    const docSnap = await getDoc(userRef);
+
+                    // 3. Se o documento NÃO existir, cria com os valores padrão de tema
+                    if (!docSnap.exists()) {
+                        console.log("Novo usuário detectado, criando documento com temas padrão.");
+                        await setDoc(userRef, {
+                            createdAt: Timestamp.now(),
+                            activeTheme: 'default',
+                            unlockedThemes: ['default']
+                        }, { merge: true }); // Merge é bom para caso outra função crie o doc primeiro
+                    }
+                    // --- FIM DA CORREÇÃO ---
+                    
+                    // Continua carregando todos os dados do usuário normalmente
+                    await Promise.all([fetchUserData(fetchedUserId), fetchJourneyProgress(fetchedUserId)]);
+
+                } else {
+                    // Limpa o estado quando o usuário desloga (lógica inalterada)
+                    setUser(null); setUserId(null); setUserName(''); setFavorites([]); setStreakData({ currentStreak: 0, lastPracticedDate: null }); setPhotoURL(null); setAllEntries([]); setIsSubscribed(false); setOnboardingCompleted(false); setUserGoal(null); setMeusAudios([]); setPlaylists([]); setAstroProfile(null); setAstroHistory([]); setJourneyProgress({});
+                    setUnlockedThemes(['default']); setActiveThemeState('default');
+                }
+            } catch (error) { 
+                console.error("Error during auth state change:", error); 
+                if (error.code === 'permission-denied') setPermissionError("Firestore"); 
+            } finally { 
+                setLoading(false); 
+            }
+        });
+        return () => unsubscribe();
+    }, [fetchUserData, fetchJourneyProgress]);
+    
+    const updateFavorites = async (newFavorites) => {
+        setFavorites(newFavorites);
+        if (userId && db) {
+            const userRef = doc(db, `users/${userId}`);
+            await updateDoc(userRef, { favorites: newFavorites });
+        }
+    };
+    
+    const value = { 
+        user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
+        meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
+        astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
+        onboardingCompleted, updateOnboardingStatus, currentUserData, userGoal, updateUserData, journeyProgress, updateJourneyProgress,
+        unlockedThemes, activeTheme, setActiveTheme, unlockTheme,
+    };
+
+    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-const value = { 
-    user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
-    meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
-    astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
-    onboardingCompleted,
-    updateOnboardingStatus,
-    currentUserData, // <-- NOVO: Fornece dados do usuário para o app
-
-};
-
-return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-};
 // --- TELAS E COMPONENTES EXISTENTES ---
 
 const SplashScreen = () => (
@@ -762,7 +1005,9 @@ const AuthScreen = () => {
                     currentStreak: 0,
                     lastPracticedDate: null,
                     createdAt: Timestamp.now(),
-                    onboardingCompleted: false // Adicione esta linha
+                    onboardingCompleted: false,
+                    activeTheme: 'default',
+                    unlockedThemes: ['default']
                 });
                 
                 if (isPremium) {
@@ -822,7 +1067,9 @@ const AuthScreen = () => {
                     currentStreak: 0,
                     lastPracticedDate: null,
                     createdAt: Timestamp.now(),
-                    onboardingCompleted: false // Adicione esta linha
+                    onboardingCompleted: false,
+                    activeTheme: 'default',
+                    unlockedThemes: ['default']
                 });
 
                 if (isPremium) setIsSubscribed(true);
@@ -918,9 +1165,9 @@ const AuthScreen = () => {
     );
 };
 
-// --- INÍCIO: NOVO COMPONENTE DE ONBOARDING ---
+// --- INÍCIO: COMPONENTE DE ONBOARDING ATUALIZADO ---
 const OnboardingScreen = () => {
-    const { userName, updateOnboardingStatus } = useContext(AppContext);
+    const { userName, updateOnboardingStatus, updateUserData } = useContext(AppContext);
     const [step, setStep] = useState(1);
     const [selectedGoal, setSelectedGoal] = useState(null);
     const [recommendedMantra, setRecommendedMantra] = useState(null);
@@ -930,13 +1177,16 @@ const OnboardingScreen = () => {
         { key: 'anxiety', label: "Reduzir ansiedade e estresse", icon: Wind, mantraId: 12 },
         { key: 'focus', label: "Melhorar foco e concentração", icon: BrainCircuit, mantraId: 10 },
         { key: 'prosperity', label: "Atrair mais prosperidade", icon: TrendingUp, mantraId: 11 },
-        { key: 'peace', label: "Aumentar a paz interior", icon: Leaf, mantraId: 1 } // Ícone corrigido de Lotus para Leaf
+        { key: 'peace', label: "Aumentar a paz interior", icon: Leaf, mantraId: 1 }
     ];
 
     const handleGoalSelect = (goal) => {
         setSelectedGoal(goal);
         const mantra = MANTRAS_DATA.find(m => m.id === goal.mantraId);
         setRecommendedMantra(mantra);
+        if (updateUserData) {
+            updateUserData({ userGoal: goal.key });
+        }
         setStep(2);
     };
 
@@ -944,6 +1194,7 @@ const OnboardingScreen = () => {
         setPlayerData({ mantra: recommendedMantra, repetitions: 1, audioType: 'library' });
     };
     
+    // ATUALIZADO: Agora leva para o passo 3 (Teaser do Santuário)
     const handlePlayerClose = () => {
         setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' });
         setStep(3);
@@ -953,6 +1204,7 @@ const OnboardingScreen = () => {
         updateOnboardingStatus(true);
     };
     
+    // ATUALIZADO: Lógica de renderização com os novos passos 3 e 4
     const renderStepContent = () => {
         switch (step) {
             case 1:
@@ -983,11 +1235,27 @@ const OnboardingScreen = () => {
                         )}
                     </div>
                 );
-            case 3:
+            case 3: // NOVO: Teaser do Santuário
+                return (
+                    <div className="text-center screen-animation">
+                        <Leaf className="mx-auto h-16 w-16 text-[#FFD54F]/80 mb-4" />
+                        <PageTitle subtitle="No Santuário, você poderá gravar seus próprios mantras, criar playlists de práticas e construir um ritual que é só seu.">Seu Espaço Sagrado e Pessoal</PageTitle>
+                        <button onClick={() => setStep(4)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Próximo</button>
+                    </div>
+                );
+            case 4: // NOVO: Teaser do Astrólogo
+                return (
+                    <div className="text-center screen-animation">
+                        <MessageCircleQuestion className="mx-auto h-16 w-16 text-[#FFD54F]/80 mb-4" />
+                        <PageTitle subtitle="Entenda sua missão de vida, carreira e relacionamentos com análises astrológicas exclusivas, feitas para o seu mapa astral.">Receba Orientação para sua Jornada</PageTitle>
+                        <button onClick={() => setStep(5)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Continuar</button>
+                    </div>
+                );
+            case 5: // Passo final, antiga etapa 3
                 return (
                      <div className="text-center screen-animation">
                         <CheckCircle className="mx-auto h-20 w-20 text-green-400" />
-                        <PageTitle subtitle="Você deu o primeiro passo na sua jornada de transformação. Continue a explorar e aprofundar sua prática.">Parabéns!</PageTitle>
+                        <PageTitle subtitle="Você conheceu o potencial da sua jornada de transformação. Continue a explorar e aprofundar sua prática.">Parabéns!</PageTitle>
                         <button onClick={handleFinishOnboarding} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Explorar o App</button>
                     </div>
                 );
@@ -1004,7 +1272,7 @@ const OnboardingScreen = () => {
         </>
     );
 };
-// --- FIM: NOVO COMPONENTE DE ONBOARDING ---
+// --- FIM: COMPONENTE DE ONBOARDING ATUALIZADO ---
 
 // --- COMPONENTES AUXILIARES ---
 const ScreenAnimator = ({ children, screenKey }) => (<div key={screenKey} className="screen-animation">{children}</div>);
@@ -1049,14 +1317,14 @@ const BottomNav = ({ activeScreen, setActiveScreen }) => {
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", confirmClass = "btn-danger" }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">{title}</h2><p className="text-white/70 my-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onClose} className="btn-secondary">Cancelar</button><button onClick={onConfirm} className={confirmClass}>{confirmText}</button></div></div></div>); };
 const ReauthModal = ({ isOpen, onClose, onConfirm, password, setPassword, isSubmitting, title, message, errorMessage }) => { if (!isOpen) return null; return (<div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div className="glass-modal w-full max-w-sm text-white" onClick={e => e.stopPropagation()}><h2 className="text-xl">{title}</h2><p className="text-white/70 my-4">{message}</p><form onSubmit={onConfirm} className="space-y-4"><div className="space-y-2"><label className="text-sm text-white/80" htmlFor="reauth-password">Sua Senha</label><input id="reauth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-field" required /></div>{errorMessage && <p className="text-sm text-center text-red-400">{errorMessage}</p>}<div className="flex justify-end gap-4 pt-4"><button type="button" onClick={onClose} className="btn-secondary" disabled={isSubmitting}>Cancelar</button><button type="submit" className="btn-danger" disabled={isSubmitting}>{isSubmitting ? 'Confirmando...' : 'Confirmar e Deletar'}</button></div></form></div></div>); };
 
-// --- ATUALIZADO: Modal de Bloqueio Premium com Oferta de Boas-Vindas ---
-const PremiumLockModal = ({ isOpen, onClose }) => {
+// --- ATUALIZADO: Modal de Bloqueio Premium com Lógica de Teste A/B ---
+const PremiumLockModal = ({ isOpen, onClose, variant }) => {
     const { currentUserData } = useContext(AppContext);
     const [isOfferActive, setIsOfferActive] = useState(false);
     const [timeLeft, setTimeLeft] = useState('');
 
     // SUBSTITUA ESTE LINK PELO SEU LINK DA OFERTA NA KIWIFY
-    const OFFER_URL = 'https://pay.kiwify.com.br/efohCIH'; 
+    const OFFER_URL = 'https://pay.kiwify.com.br/efohCIH';
     const REGULAR_URL = 'https://pay.kiwify.com.br/efohCIH';
 
     useEffect(() => {
@@ -1081,7 +1349,7 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
                     clearInterval(intervalId);
                 }
             };
-            
+
             updateTimer();
             intervalId = setInterval(updateTimer, 1000);
         }
@@ -1094,11 +1362,11 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
         onClose();
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !variant) return null; // Não renderiza se não houver variante
 
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
-            <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+            <div className="glass-modal w-full max-w-md text-center" onClick={e => e.stopPropagation()}>
                 {isOfferActive && (
                     <div className="bg-yellow-400/10 border border-yellow-400/30 text-yellow-300 text-sm rounded-lg p-3 mb-4">
                         <p className="font-bold">✨ OFERTA DE BOAS-VINDAS</p>
@@ -1108,10 +1376,21 @@ const PremiumLockModal = ({ isOpen, onClose }) => {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-900/50 border border-white/10 mb-5">
                     <Sparkles className="h-7 w-7 text-[#FFD54F]" />
                 </div>
-                <h2 className="text-xl text-white" style={{ fontFamily: "var(--font-display)" }}>Função Premium</h2>
-                <p className="text-white/70 my-3 font-light text-base">Desbloqueie esta e outras funcionalidades exclusivas com a sua assinatura.</p>
+                <h2 className="text-2xl text-white" style={{ fontFamily: "var(--font-display)" }}>{variant.title}</h2>
+                <p className="text-white/70 my-3 font-light text-base">{variant.subtitle}</p>
+                
+                {/* Lista de Benefícios/Funcionalidades */}
+                <div className="text-left my-6 space-y-3">
+                    {variant.features.map((feature, index) => (
+                        <div key={index} className="flex items-start gap-3">
+                            <feature.icon className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-white/80 font-light">{feature.text}</p>
+                        </div>
+                    ))}
+                </div>
+
                 <div className="flex flex-col gap-3 mt-6">
-                    <button onClick={handleSubscribe} className="w-full modern-btn-primary !py-3 !text-sm">
+                    <button onClick={handleSubscribe} className="w-full modern-btn-primary !py-3 !text-base">
                         {isOfferActive ? 'Aproveitar Oferta' : 'Assinar Agora'}
                     </button>
                     <button onClick={onClose} className="text-sm text-white/60 hover:underline py-2">
@@ -1206,27 +1485,222 @@ const PushPermissionModal = ({ onAllow, onDeny }) => (
     </div>
 );
 
+// --- INÍCIO: NOVO COMPONENTE DE SUGESTÃO PERSONALIZADA ---
+const PersonalizedSuggestionCard = ({ userGoal, onSelectMantra }) => {
+    const SUGGESTION_DATA = {
+        anxiety: {
+            title: "Para sua busca por calma",
+            text: "A ansiedade se dissipa quando focamos no agora. Este mantra é uma poderosa âncora para o presente.",
+            mantraId: 12 // Calma e Leveza
+        },
+        focus: {
+            title: "Para seu objetivo de foco",
+            text: "A clareza mental é como um farol na escuridão. Use este mantra para iluminar seus pensamentos.",
+            mantraId: 10 // Foco e Memória
+        },
+        prosperity: {
+            title: "Para sua jornada de prosperidade",
+            text: "A abundância é um estado de espírito. Sintonize sua vibração com a energia da riqueza universal.",
+            mantraId: 11 // Atrair Riquezas
+        },
+        peace: {
+            title: "Para nutrir sua paz interior",
+            text: "A verdadeira paz reside dentro de você. Este mantra ajuda a silenciar o ruído externo e a ouvir sua alma.",
+            mantraId: 1 // Afirmação da Paz
+        }
+    };
+
+    const suggestion = SUGGESTION_DATA[userGoal];
+    if (!suggestion) return null;
+
+    const mantra = MANTRAS_DATA.find(m => m.id === suggestion.mantraId);
+    if (!mantra) return null;
+
+    return (
+        <div className="w-full glass-card p-6 space-y-3 text-center mb-6 screen-animation">
+            <h2 className="text-xl text-white/90" style={{ fontFamily: "var(--font-display)" }}>{suggestion.title}</h2>
+            <p className="text-base text-white/70 font-light">{suggestion.text}</p>
+            <div className="pt-2 flex justify-center">
+                <button 
+                    onClick={() => onSelectMantra(mantra)}
+                    className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"
+                >
+                    <Mic2 className="h-4 w-4" /> Praticar {mantra.nome}
+                </button>
+            </div>
+        </div>
+    );
+};
+// --- FIM: NOVO COMPONENTE ---
+
 // --- TELAS EXISTENTES (alteradas para navegação) ---
-const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail }) => { const { userName, streakData, allEntries, isSubscribed } = useContext(AppContext); const dailyMessages = [ "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." ]; const premiumMessages = [ "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.", "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.", "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.", "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.", "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.", "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.", "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria." ]; const todayIndex = new Date().getDay(); const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex]; const messageColor = 'text-[#FFD54F]/80'; const WeekView = () => { const today = new Date(); const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; const days = Array.from({ length: 7 }).map((_, i) => { const date = new Date(today); date.setDate(today.getDate() - today.getDay() + i); return date; }); const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())); return (<div className="w-full glass-card p-4 space-y-3 premium-card-glow"><div className="flex justify-around">{days.map((day, index) => { const isPracticed = practicedDays.has(day.toDateString()); const isToday = day.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<div key={index} className="flex flex-col items-center gap-2"><span className={`text-sm font-light ${isToday ? 'text-[#FFD54F]' : 'text-white/60'}`}>{weekDays[day.getDay()]}</span><button onClick={() => openDayDetail(day)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day.getDate()}</button></div>); })}</div><div className="text-center pt-3 border-t border-white/10"><button onClick={openCalendar} className="text-sm text-[#FFD54F] hover:underline font-light">Ver calendário completo</button></div></div>); }; return (<div className="page-container text-center"><div><div className="flex items-center justify-center gap-3 flex-wrap"><h1 className="page-title !text-3xl !mb-0">Olá, {userName || "Ser de Luz"}</h1>{isSubscribed && (<div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]"><span>PREMIUM</span></div>)}</div><p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p></div>{streakData && streakData.currentStreak > 0 && (<div className="glass-card p-6 flex items-center justify-center gap-5 text-center premium-card-glow"><Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} /><div><p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p><p className="text-sm text-white/60 font-light">Continue assim!</p></div></div>)}<WeekView /><div className="w-full max-w-md mx-auto space-y-3"><button onClick={() => setActiveScreen('diary')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Prática de Mantra</button><button onClick={() => setActiveScreen('gratitude')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Gratidão Diária</button></div></div>); };
-const DiaryScreen = ({ entryToEdit, onSave, onCancelEdit, openPremiumModal }) => { const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); const [repetitions, setRepetitions] = useState(''); const [timeOfDay, setTimeOfDay] = useState([]); const [feelings, setFeelings] = useState(''); const [observations, setObservations] = useState(''); const [status, setStatus] = useState({ type: '', message: '' }); const [reflection, setReflection] = useState(''); const [isGenerating, setIsGenerating] = useState(false); const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); useEffect(() => { if (entryToEdit) { setSelectedMantra(entryToEdit.mantraId); setRepetitions(entryToEdit.repetitions); setTimeOfDay(entryToEdit.timeOfDay); setFeelings(entryToEdit.feelings); setObservations(entryToEdit.observations || ''); } }, [entryToEdit]); useEffect(() => { if (!entryToEdit) { const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); if (mantra) { setRepetitions(mantra.repeticoes); } } }, [selectedMantra, entryToEdit]); const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); const handleSubmit = async (e) => { e.preventDefault(); if (!selectedMantra || !repetitions || timeOfDay.length === 0 || !feelings) { setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); return; } if (!userId || !db) return; const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; try { if (entryToEdit) { await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); setStatus({ type: 'success', message: 'Registro atualizado!' }); } else { await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); setStatus({ type: 'success', message: 'Registro salvo!' }); } const entries = await fetchAllEntries(userId); await recalculateAndSetStreak(entries, userId); setTimeout(() => onSave(), 1500); } catch (error) { setStatus({ type: 'error', message: 'Erro ao salvar.' }); } }; const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; return (<><div className="page-container"><PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle><form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div><div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div><div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div><div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>{feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-semibold" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}{reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}<div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4">{entryToEdit && <button type="button" onClick={onCancelEdit} className="w-full btn-secondary">Cancelar</button>}<button type="submit" className="w-full modern-btn-primary h-14">{entryToEdit ? 'Atualizar' : 'Salvar'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div><MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} /></>); };
+const HomeScreen = ({ setActiveScreen, openCalendar, openDayDetail, onSelectMantra }) => { 
+    const { userName, streakData, allEntries, isSubscribed, userGoal } = useContext(AppContext); 
+    const dailyMessages = [ "A luz do Sol renasce em você. Que seu domingo seja de alma renovada.", "A força está em acolher-se por inteiro. Que sua segunda seja leve e clara.", "Coragem para agir com alma. A terça-feira pede passos verdadeiros.", "Palavras curam. Silêncios ensinam. Que sua quarta seja de conexão interna.", "Sabedoria está em ver beleza no simples. Que sua quinta seja próspera.", "Celebre suas conquistas, grandes e pequenas. A sexta-feira chegou!", "Silencie, desacelere, retorne ao centro. O sábado é um templo sagrado." ]; 
+    const premiumMessages = [ "Como membro Mantra+, sua jornada hoje é guiada pela energia da prosperidade.", "Sua assinatura ilumina o caminho. Que a prática de hoje aprofunde sua conexão.", "Agradecemos por ser Mantra+. Que sua intenção para hoje se manifeste com força.", "Seu apoio nos inspira. Que a vibração do universo ressoe em você hoje.", "Membro Mantra+, sua luz é essencial. Que hoje seja um dia de clareza e paz.", "Sua energia contribui para este espaço. Que a sexta-feira traga realizações.", "Aproveite o descanso, membro Mantra+. Sua paz interior é a nossa alegria." ]; 
+    const todayIndex = new Date().getDay(); 
+    const message = isSubscribed ? premiumMessages[todayIndex] : dailyMessages[todayIndex]; 
+    const messageColor = 'text-[#FFD54F]/80'; 
+    
+    const WeekView = () => { 
+        const today = new Date(); 
+        const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; 
+        const days = Array.from({ length: 7 }).map((_, i) => { const date = new Date(today); date.setDate(today.getDate() - today.getDay() + i); return date; }); 
+        const practicedDays = new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())); 
+        return (<div className="w-full glass-card p-4 space-y-3 premium-card-glow"><div className="flex justify-around">{days.map((day, index) => { const isPracticed = practicedDays.has(day.toDateString()); const isToday = day.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<div key={index} className="flex flex-col items-center gap-2"><span className={`text-sm font-light ${isToday ? 'text-[#FFD54F]' : 'text-white/60'}`}>{weekDays[day.getDay()]}</span><button onClick={() => openDayDetail(day)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day.getDate()}</button></div>); })}</div><div className="text-center pt-3 border-t border-white/10"><button onClick={openCalendar} className="text-sm text-[#FFD54F] hover:underline font-light">Ver calendário completo</button></div></div>); 
+    }; 
+    
+    return (
+        <div className="page-container text-center">
+            {userGoal && <PersonalizedSuggestionCard userGoal={userGoal} onSelectMantra={onSelectMantra} />}
+
+            <div>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <h1 className="page-title !text-3xl !mb-0">Olá, {userName || "Ser de Luz"}</h1>
+                    {isSubscribed && (<div className="bg-white/10 text-[#FFD54F] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-center mt-[-4px]"><span>PREMIUM</span></div>)}
+                </div>
+                <p className={`${messageColor} mt-1 mb-4 text-base italic font-light`}>"{message}"</p>
+            </div>
+            {streakData && streakData.currentStreak > 0 && (<div className="glass-card p-6 flex items-center justify-center gap-5 text-center premium-card-glow"><Flame className="h-10 w-10 text-[#FFD54F]" style={{ filter: 'drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))' }} /><div><p className="text-xl text-white">{streakData.currentStreak} {streakData.currentStreak > 1 ? 'dias' : 'dia'} de prática</p><p className="text-sm text-white/60 font-light">Continue assim!</p></div></div>)}
+            <WeekView />
+            <div className="w-full max-w-md mx-auto space-y-3">
+                <button onClick={() => setActiveScreen('diary')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Prática de Mantra</button>
+                <button onClick={() => setActiveScreen('gratitude')} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><PlusCircle className="h-6 w-6" /> Registrar Gratidão Diária</button>
+                {/* --- ALTERAÇÃO APLICADA AQUI --- */}
+                <button onClick={() => setActiveScreen('noteEditor', { from: 'home' })} className="w-full btn-secondary h-16 flex items-center justify-center gap-2"><BookOpen className="h-6 w-6" /> Registrar Anotação</button>
+            </div>
+        </div>
+    ); 
+};
+const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => { 
+    const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } = useContext(AppContext); 
+    const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id); 
+    const [repetitions, setRepetitions] = useState(''); 
+    const [timeOfDay, setTimeOfDay] = useState([]); 
+    const [feelings, setFeelings] = useState(''); 
+    const [observations, setObservations] = useState(''); 
+    const [status, setStatus] = useState({ type: '', message: '' }); 
+    const [reflection, setReflection] = useState(''); 
+    const [isGenerating, setIsGenerating] = useState(false); 
+    const [isMantraModalOpen, setIsMantraModalOpen] = useState(false); 
+
+    useEffect(() => { 
+        if (entryToEdit) { 
+            setSelectedMantra(entryToEdit.mantraId); 
+            setRepetitions(entryToEdit.repetitions); 
+            setTimeOfDay(entryToEdit.timeOfDay); 
+            setFeelings(entryToEdit.feelings); 
+            setObservations(entryToEdit.observations || ''); 
+        } 
+    }, [entryToEdit]); 
+
+    useEffect(() => { 
+        if (!entryToEdit) { 
+            const mantra = MANTRAS_DATA.find(m => m.id === selectedMantra); 
+            if (mantra) { 
+                setRepetitions(mantra.repeticoes); 
+            } 
+        } 
+    }, [selectedMantra, entryToEdit]); 
+
+    // Melhoria 2: Lógica para habilitar/desabilitar o botão Salvar
+    const canSave = selectedMantra && repetitions && timeOfDay.length > 0 && feelings.trim() !== '';
+
+    const handleGenerateReflection = async () => { if (!feelings) return; setIsGenerating(true); setReflection(''); try { const prompt = `Um usuário de um aplicativo de mantras descreveu seus sentimentos hoje como: "${feelings}". Escreva uma reflexão curta (máximo 3 frases), gentil e inspiradora em português, baseada nesse sentimento, para encorajá-lo em sua jornada espiritual. Não ofereça conselhos médicos.`; let chatHistory = []; chatHistory.push({ role: "user", parts: [{ text: prompt }] }); const payload = { contents: chatHistory }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); } const result = await response.json(); if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) { const text = result.candidates[0].content.parts[0].text; setReflection(text); } else { console.error("Unexpected API response structure:", result); setReflection("Não foi possível gerar uma reflexão no momento. Tente novamente."); } } catch (error) { console.error("Gemini API Error:", error); if (error.message.includes("403")) { setReflection("Erro de permissão (403). Verifique se a sua Chave de API está correta no código e se as restrições no Google Cloud estão configuradas corretamente."); } else if (error.message.includes("404")) { setReflection("Erro (404). O modelo de IA não foi encontrado. O nome pode estar incorreto."); } else { setReflection("Ocorreu um erro ao se conectar com a sabedoria interior. Tente novamente."); } } finally { setIsGenerating(false); } }; const handleTimeOfDayToggle = (time) => setTimeOfDay(prev => prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]); 
+    
+    const handleSubmit = async (e) => { 
+        e.preventDefault(); 
+        if (!canSave) { // Usa a nova variável de verificação
+            setStatus({ type: 'error', message: 'Preencha os campos obrigatórios.' }); 
+            return; 
+        } 
+        if (!userId || !db) return; 
+        const entryData = { type: 'mantra', mantraId: selectedMantra, repetitions: Number(repetitions), timeOfDay, feelings, observations, }; 
+        try { 
+            if (entryToEdit) { 
+                await updateDoc(doc(db, `users/${userId}/entries`, entryToEdit.id), entryData); 
+                setStatus({ type: 'success', message: 'Registro atualizado!' }); 
+            } else { 
+                await addDoc(collection(db, `users/${userId}/entries`), {...entryData, practicedAt: Timestamp.now()}); 
+                setStatus({ type: 'success', message: 'Registro salvo!' }); 
+            } 
+            const entries = await fetchAllEntries(userId); 
+            await recalculateAndSetStreak(entries, userId); 
+            setTimeout(() => onSave(), 1500); 
+        } catch (error) { 
+            setStatus({ type: 'error', message: 'Erro ao salvar.' }); 
+        } 
+    }; 
+    
+    const currentMantra = MANTRAS_DATA.find(m => m.id === selectedMantra); 
+    const LabelWithIcon = ({ icon: Icon, text }) => ( <label className="text-white/80 flex items-center gap-2 font-light"><Icon size={18} className="text-[#FFD54F]/80" /><span>{text}</span></label> ); 
+    const handleSelectMantraAndClose = (id) => { setSelectedMantra(id); setIsMantraModalOpen(false); }; 
+    
+    return (<>
+        <div className="page-container">
+            <PageTitle subtitle="Registre os detalhes da sua prática diária para acompanhar sua evolução e insights.">{entryToEdit ? 'Editar Registro' : 'Diário de Prática'}</PageTitle>
+            <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8">
+                <div className="space-y-3"><LabelWithIcon icon={Star} text="Mantra do Dia" /><div className="p-4 rounded-lg bg-black/20 text-center"><p className="italic text-white/80">"{currentMantra?.texto}"</p><button type="button" onClick={() => setIsMantraModalOpen(true)} className="text-sm text-[#FFD54F] hover:underline mt-2 font-light">Trocar Mantra</button></div></div>
+                <div className="space-y-3"><LabelWithIcon icon={GaugeCircle} text="Repetições" /><input type="number" value={repetitions} onChange={e => setRepetitions(e.target.value)} className="input-field" required /></div>
+                <div className="space-y-3"><LabelWithIcon icon={Clock} text="Horário da Prática" /><div className="grid grid-cols-3 gap-2">{['Manhã', 'Tarde', 'Noite'].map(time => (<button key={time} type="button" onClick={() => handleTimeOfDayToggle(time)} className={`p-3 rounded-lg flex flex-col items-center gap-1 transition-colors ${timeOfDay.includes(time) ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 hover:bg-white/10'}`}><span className="text-sm font-light">{time}</span></button>))}</div></div>
+                <div className="space-y-3"><LabelWithIcon icon={Heart} text="Como se sentiu?" /><textarea value={feelings} onChange={e => setFeelings(e.target.value)} className="textarea-field" rows="3" placeholder="Ex: Em paz, com a mente clara..." required></textarea></div>
+                {feelings && (<div className="text-center">{isSubscribed ? (<button type="button" onClick={handleGenerateReflection} className="modern-btn-primary !py-2 !px-4 !text-sm !font-semibold" disabled={isGenerating}><Sparkles className="h-5 w-5" />{isGenerating ? 'Gerando...' : '✨ Gerar Reflexão com IA'}</button>) : (<PremiumButton onClick={openPremiumModal}>Gerar Reflexão com IA (Premium)</PremiumButton>)}</div>)}
+                {reflection && (<div className="p-4 bg-black/20 rounded-lg italic text-white/80 text-center font-light"><p>{reflection}</p></div>)}
+                <div className="space-y-3"><LabelWithIcon icon={BookOpen} text="Observações" /><textarea value={observations} onChange={e => setObservations(e.target.value)} className="textarea-field" rows="3" placeholder="Algum insight, sincronicidade..."></textarea></div>
+                
+                {/* Melhoria 3: Botão Cancelar adicionado e botões atualizados */}
+                <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
+                    <div className="flex gap-4">
+                        <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
+                        <button type="submit" className="w-full modern-btn-primary h-14" disabled={!canSave}>
+                            {entryToEdit ? 'Atualizar' : 'Salvar'}
+                        </button>
+                    </div>
+                    {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
+                </div>
+            </form>
+        </div>
+        <MantraSelectionModal isOpen={isMantraModalOpen} onClose={() => setIsMantraModalOpen(false)} onSelectMantra={handleSelectMantraAndClose} currentMantraId={selectedMantra} />
+    </>); 
+};
 const MantraSelectionModal = ({ isOpen, onClose, onSelectMantra, currentMantraId }) => { if (!isOpen) return null; const handleSelect = (id) => { onSelectMantra(id); }; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-lg" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><h2 className="text-xl text-white" style={{fontFamily: "var(--font-display)"}}>Selecione um Mantra</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button></div><div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">{MANTRAS_DATA.map(mantra => (<div key={mantra.id} onClick={() => handleSelect(mantra.id)} className={`p-4 rounded-lg cursor-pointer transition-all ${currentMantraId === mantra.id ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><p>{mantra.nome}</p><p className={`text-sm font-light ${currentMantraId === mantra.id ? 'opacity-80' : 'text-white/70'}`}>{mantra.texto}</p></div>))}</div></div></div>); };
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Explore melodias sagradas para relaxar e meditar.">Músicas Mântricas</PageTitle><div className="grid grid-cols-2 gap-4 md:gap-6">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable" onClick={() => isLocked ? openPremiumModal() : onPlayMantra(mantra, 1, 'library')}><img src={mantra.imageSrc} alt={`Visual para ${mantra.nome}`} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'filter grayscale brightness-50' : ''}`} /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>{isLocked && (<div className="absolute inset-0 flex items-center justify-center bg-black/40"><Lock className="h-10 w-10 text-white/70" /></div>)}<div className="absolute bottom-0 left-0 p-4"><h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3></div></div>); })}</div></div>); };
 const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Escolha um mantra para focar e iniciar sua prática de repetição.">Mantras para Praticar</PageTitle><div className="space-y-4">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="glass-card !p-5 text-left"><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3><p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p><div className="mt-4 text-right">{isLocked ? (<PremiumButton onClick={openPremiumModal} className="!w-auto !py-2 !px-5 !text-sm !font-semibold">Praticar</PremiumButton>) : (<button onClick={() => onSelectMantra(mantra)} className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"><Mic2 className="h-4 w-4" />Praticar</button>)}</div></div>); })}</div></div>); };
 const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
     const { allEntries } = useContext(AppContext);
     const [expandedId, setExpandedId] = useState(null);
+
     const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
-    const entries = allEntries;
+
+    // Filtra as entradas por categoria
+    const praticas = allEntries.filter(e => e.type === 'mantra');
+    const gratidoes = allEntries.filter(e => e.type === 'gratitude');
+    const anotacoes = allEntries.filter(e => e.type === 'note');
+
+    // Componente auxiliar para renderizar cada seção e evitar repetição de código
+    const EntrySection = ({ title, entries, children }) => {
+        if (entries.length === 0) return null; // Não renderiza a seção se estiver vazia
+        return (
+            <div className="w-full space-y-4">
+                <h2 className="text-xl text-white/90 mt-6 border-b border-white/10 pb-2" style={{ fontFamily: "var(--font-display)" }}>
+                    {title}
+                </h2>
+                {children}
+            </div>
+        );
+    };
+
     return (
         <div className="page-container">
-            <PageTitle subtitle="Reveja todas as suas práticas e anotações passadas, organizadas por data.">Histórico de Práticas</PageTitle>
-            <div className="space-y-4">
-                {entries.length > 0 ? (
-                    entries.map(entry => {
-                        const isExpanded = expandedId === entry.id;
-                        if (entry.type === 'mantra') {
+            <PageTitle subtitle="Reveja todas as suas práticas, gratidões e anotações passadas.">Meu Diário</PageTitle>
+
+            {allEntries.length > 0 ? (
+                <>
+                    <EntrySection title="Práticas de Mantra" entries={praticas}>
+                        {praticas.map(entry => {
                             const mantra = MANTRAS_DATA.find(m => m.id === entry.mantraId);
                             if (!mantra || !entry.practicedAt?.toDate) return null;
+                            const isExpanded = expandedId === entry.id;
                             return (
                                 <div key={entry.id} className="glass-card !p-0 overflow-hidden">
                                     <div className="p-5 text-left cursor-pointer flex justify-between items-center" onClick={() => toggleExpand(entry.id)}>
@@ -1250,63 +1724,79 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                                     )}
                                 </div>
                             );
-                        }
-                        if (entry.type === 'gratitude') {
+                        })}
+                    </EntrySection>
+
+                    <EntrySection title="Pote da Gratidão" entries={gratidoes}>
+                        {gratidoes.map(entry => {
                             if (!entry.practicedAt?.toDate) return null;
+                            const isExpanded = expandedId === entry.id;
                             return (
-                                <div key={entry.id} className="glass-card !p-5 text-left">
-                                    <div className="flex justify-between items-start">
+                                <div key={entry.id} className="glass-card !p-0 overflow-hidden">
+                                    <div className="p-5 text-left cursor-pointer flex justify-between items-center" onClick={() => toggleExpand(entry.id)}>
                                         <div>
-                                            <p className="text-sm text-[#FFD54F] font-light">{entry.practicedAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
-                                            <h3 className="text-lg text-white mt-1" style={{fontFamily: "var(--font-display)"}}>Pote da Gratidão</h3>
-                                            <ul className="list-disc list-inside mt-2 space-y-1">
-                                                {entry.gratefulFor.map((item, index) => (
-                                                    <li key={index} className="italic text-white/70 text-sm font-light">"{item}"</li>
-                                                ))}
+                                            <p className="text-sm text-[#FFD54F] font-light">{entry.practicedAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                            <h3 className="text-lg text-white mt-1" style={{fontFamily: "var(--font-display)"}}>Registro de Gratidão</h3>
+                                        </div>
+                                        <ChevronDown className={`text-white/70 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </div>
+                                    {isExpanded && (
+                                        <div className="px-5 pb-5 pt-3 border-t border-white/10 space-y-2 text-sm font-light text-white/70">
+                                            <ul className="list-disc list-inside space-y-1">
+                                                {entry.gratefulFor.map((item, index) => ( <li key={index} className="italic">"{item}"</li> ))}
                                             </ul>
+                                            <div className="flex gap-2 pt-3">
+                                                <button onClick={() => onDelete(entry)} className="btn-danger-outline !text-xs !py-1 !px-3">Apagar</button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => onDelete(entry)} className="p-2 rounded-full text-white/60 hover:bg-white/10 transition-colors"><Trash2 size={16} /></button>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             );
-                        }
-                        if (entry.type === 'note') {
+                        })}
+                    </EntrySection>
+
+                    <EntrySection title="Anotações" entries={anotacoes}>
+                        {anotacoes.map(entry => {
                             if (!entry.practicedAt?.toDate) return null;
+                            const isExpanded = expandedId === entry.id;
                             return (
-                                <div key={entry.id} className="glass-card !p-5 text-left">
-                                    <div className="flex justify-between items-start">
+                                <div key={entry.id} className="glass-card !p-0 overflow-hidden">
+                                    <div className="p-5 text-left cursor-pointer flex justify-between items-center" onClick={() => toggleExpand(entry.id)}>
                                         <div>
-                                            <p className="text-sm text-[#FFD54F] font-light">{entry.practicedAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
-                                            <h3 className="text-lg text-white mt-1" style={{fontFamily: "var(--font-display)"}}>Anotação</h3>
-                                            <p className="italic text-white/70 text-sm mt-2 font-light">"{entry.note}"</p>
+                                            <p className="text-sm text-[#FFD54F] font-light">{entry.practicedAt.toDate().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                            <h3 className="text-lg text-white mt-1" style={{fontFamily: "var(--font-display)"}}>Anotação Pessoal</h3>
                                         </div>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => onEditNote(entry)} className="p-2 rounded-full text-white/60 hover:bg-white/10 transition-colors"><Edit3 size={16} /></button>
-                                            <button onClick={() => onDelete(entry)} className="p-2 rounded-full text-white/60 hover:bg-white/10 transition-colors"><Trash2 size={16} /></button>
-                                        </div>
+                                        <ChevronDown className={`text-white/70 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                     </div>
+                                    {isExpanded && (
+                                        <div className="px-5 pb-5 pt-3 border-t border-white/10 space-y-2 text-sm font-light text-white/70">
+                                            <p className="italic">"{entry.note}"</p>
+                                            <div className="flex gap-2 pt-3">
+                                                <button onClick={() => onEditNote(entry)} className="btn-secondary !text-xs !py-1 !px-3">Editar</button>
+                                                <button onClick={() => onDelete(entry)} className="btn-danger-outline !text-xs !py-1 !px-3">Apagar</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             );
-                        }
-                        return null;
-                    })
-                ) : (
-                    <div className="glass-card text-center mt-8">
-                        <History className="mx-auto h-12 w-12 text-white/50" />
-                        <p className="mt-4 text-white/70">Você ainda não tem registos.</p>
-                        <p className="text-sm text-white/50 font-light">Comece uma prática no Diário.</p>
-                    </div>
-                )}
-            </div>
+                        })}
+                    </EntrySection>
+                </>
+            ) : (
+                <div className="glass-card text-center mt-8">
+                    <History className="mx-auto h-12 w-12 text-white/50" />
+                    <p className="mt-4 text-white/70">Você ainda não tem registos.</p>
+                    <p className="text-sm text-white/50 font-light">Comece uma prática no Diário.</p>
+                </div>
+            )}
         </div>
     );
 };
 
 // --- TELA DE CONFIGURAÇÕES ATUALIZADA ---
-const SettingsScreen = ({ setActiveScreen }) => {
-    const { user, userName, photoURL, setPhotoURL, fetchUserData } = useContext(AppContext);
+    const SettingsScreen = ({ setActiveScreen }) => {
+    const { user, userName, photoURL, setPhotoURL, fetchUserData, unlockedThemes, activeTheme, setActiveTheme } = useContext(AppContext);
+    
     const [newName, setNewName] = useState(userName);
     const [nameMessage, setNameMessage] = useState({ type: '', text: '' });
     const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
@@ -1318,6 +1808,11 @@ const SettingsScreen = ({ setActiveScreen }) => {
     const [reauthError, setReauthError] = useState('');
     const fileInputRef = useRef(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+
+    const THEME_NAMES = {
+        'default': 'Padrão',
+        'serenity_theme': 'Serenidade'
+    };
 
     const handleNameUpdate = async (e) => {
         e.preventDefault();
@@ -1338,33 +1833,21 @@ const SettingsScreen = ({ setActiveScreen }) => {
     };
 
     const handlePhotoUpload = async (e) => { const file = e.target.files[0]; if (!file || !user || !storage || !db) return; setIsUploadingPhoto(true); try { const storageRef = ref(storage, `profilePictures/${user.uid}`); await uploadBytes(storageRef, file); const url = await getDownloadURL(storageRef); await updateProfile(user, { photoURL: url }); const userDocRef = doc(db, `users/${user.uid}`); await updateDoc(userDocRef, { photoURL: url }); setPhotoURL(url); } catch (error) { console.error("Photo Upload Error:", error); } finally { setIsUploadingPhoto(false); } };
-    
-    const handlePasswordReset = async () => { 
-        if (!auth || !user) return; 
-        setIsSubmitting(true); 
-        try { 
-            auth.languageCode = 'pt-BR'; 
-            await sendPasswordResetEmail(auth, user.email); 
-            setPasswordMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); 
-        } catch (error) { 
-            setPasswordMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); 
-        } finally { 
-            setIsSubmitting(false); 
-            setTimeout(() => setPasswordMessage({ type: '', text: '' }), 4000); 
-        } 
-    };
-
+    const handlePasswordReset = async () => { if (!auth || !user) return; setIsSubmitting(true); try { auth.languageCode = 'pt-BR'; await sendPasswordResetEmail(auth, user.email); setPasswordMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); } catch (error) { setPasswordMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); } finally { setIsSubmitting(false); setTimeout(() => setPasswordMessage({ type: '', text: '' }), 4000); } };
     const handleDeleteAccount = async () => { setIsDeleteModalOpen(false); if (!auth.currentUser) return; try { await deleteUser(auth.currentUser); } catch (error) { if (error.code === 'auth/requires-recent-login') { setIsReauthModalOpen(true); } } };
     const handleReauthenticateAndDelete = async (e) => { e.preventDefault(); const currentUser = auth.currentUser; if (!currentUser || !reauthPassword) return; setIsSubmitting(true); setReauthError(''); try { const credential = EmailAuthProvider.credential(currentUser.email, reauthPassword); await reauthenticateWithCredential(currentUser, credential); await deleteUser(currentUser); setIsReauthModalOpen(false); } catch (error) { setReauthError('Senha incorreta ou falha na reautenticação.'); } finally { setIsSubmitting(false); } };
+    const avatarBgColor = activeTheme === 'serenity_theme' ? '0b2c4d' : '2c0b4d';
+
     
     return (
         <>
             <div className="page-container">
                 <PageTitle subtitle="Personalize seu perfil, gerencie sua conta e entre em contato conosco.">Configurações</PageTitle>
                 <div className="glass-card space-y-8">
+                    {/* Seção de Perfil (sem alterações) */}
                     <div className="flex items-center gap-5">
                         <div className="relative">
-                            <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=2c0b4d&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" />
+                        <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=${avatarBgColor}&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" />
                             {isUploadingPhoto && (<div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/50 border-t-white rounded-full animate-spin"></div></div>)}
                             <button onClick={() => fileInputRef.current.click()} className="absolute bottom-0 right-0 bg-[#FFD54F] text-[#3A1B57] p-1.5 rounded-full" disabled={isUploadingPhoto}><Camera size={16} /></button>
                             <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
@@ -1375,6 +1858,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
                         </div>
                     </div>
 
+                    {/* Formulário de Nome (sem alterações) */}
                     <form onSubmit={handleNameUpdate} className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Nome de Usuário</label>
                         <div className="flex gap-2">
@@ -1383,6 +1867,26 @@ const SettingsScreen = ({ setActiveScreen }) => {
                         </div>
                         {nameMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${nameMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{nameMessage.text}</p>}
                     </form>
+                    
+                    {/* --- INÍCIO: NOVA SEÇÃO DE TEMAS COM NOVO DESIGN --- */}
+                    <div className="space-y-3">
+                        <label className="text-sm text-white/80 font-light">Tema Visual</label>
+                        <div className="flex w-full bg-black/20 rounded-full p-1">
+                            {(unlockedThemes || ['default']).map(themeId => {
+                                const isActive = activeTheme === themeId;
+                                return (
+                                    <button
+                                        key={themeId}
+                                        onClick={() => setActiveTheme(themeId)}
+                                        className={`w-full text-center py-2 rounded-full transition-all text-sm font-semibold ${isActive ? 'bg-[#FFD54F] text-[#2c0b4d] shadow-md' : 'bg-transparent text-white/70 hover:bg-white/10'}`}
+                                    >
+                                        {THEME_NAMES[themeId] || themeId}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    {/* --- FIM: NOVA SEÇÃO DE TEMAS --- */}
 
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Assinatura</label>
@@ -1394,6 +1898,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
                         </button>
                     </div>
 
+                    {/* Seções de Segurança e Contato (sem alterações) */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Segurança</label>
                         <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}>
@@ -1402,7 +1907,6 @@ const SettingsScreen = ({ setActiveScreen }) => {
                         </button>
                         {passwordMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${passwordMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{passwordMessage.text}</p>}
                     </div>
-
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Entre em contato</label>
                         <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between">
@@ -1413,6 +1917,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
                         </button>
                     </div>
 
+                    {/* Botões de Sair e Deletar (sem alterações) */}
                     <div className="space-y-4 pt-6 border-t border-white/10">
                         <button onClick={() => signOut(auth)} className="w-full btn-secondary flex items-center justify-center gap-2"><LogOut className="h-5 w-5" /> Sair da Conta</button>
                         <button onClick={() => setIsDeleteModalOpen(true)} className="w-full btn-danger-outline flex items-center justify-center gap-2"><Trash2 className="h-5 w-5" /> Deletar Conta</button>
@@ -1543,7 +2048,78 @@ const PracticeTimerModal = memo(({ activeTimer, onSetTimer, onClose }) => { cons
 const MantraVisualizer = memo(({ mantra, isPlaying }) => { const { isSubscribed } = useContext(AppContext); const [images, setImages] = useState([mantra.imageSrc]); const [currentIndex, setCurrentIndex] = useState(0); const hasStartedGenerating = useRef(false); useEffect(() => { const generateImages = async () => { if (hasStartedGenerating.current || !mantra.imagePrompt || !isSubscribed) return; hasStartedGenerating.current = true; try { const payload = { instances: [{ prompt: mantra.imagePrompt }], parameters: { "sampleCount": 4 } }; const apiKey = firebaseConfig.apiKey; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`API request failed`); const result = await response.json(); if (result.predictions && result.predictions.length > 0) { const newImageUrls = result.predictions.map(pred => `data:image/png;base64,${pred.bytesBase64Encoded}`); setImages(prev => [...prev, ...newImageUrls]); } } catch (error) { console.error("Slideshow Image Generation Error:", error); } finally { hasStartedGenerating.current = false; } }; if (isPlaying) { generateImages(); } }, [isPlaying, mantra.imagePrompt, isSubscribed]); useEffect(() => { let interval; if (isPlaying && images.length > 1) { interval = setInterval(() => { setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length); }, 8000); } return () => clearInterval(interval); }, [isPlaying, images]); return (<div className="absolute inset-0 w-full h-full overflow-hidden"><div className={`absolute inset-0 w-full h-full transition-transform duration-[20000ms] ease-linear ${isPlaying ? 'animate-ken-burns-outer' : ''}`}>{images.map((src, index) => (<div key={index} className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-[3000ms] ease-in-out" style={{ backgroundImage: `url(${src})`, opacity: index === currentIndex ? 0.35 : 0, }} />))}</div><div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div><style>{` @keyframes ken-burns-outer { 0% { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.15) translate(2%, -2%); } 100% { transform: scale(1) translate(0, 0); } } .animate-ken-burns-outer { animation: ken-burns-outer 20s ease-in-out infinite; } `}</style></div>); });
 const CalendarModal = ({ isOpen, onClose, onDayClick }) => { const { allEntries } = useContext(AppContext); const [currentDate, setCurrentDate] = useState(new Date()); const practicedDays = useMemo(() => new Set((allEntries || []).filter(e => e.practicedAt?.toDate).map(entry => entry.practicedAt.toDate().toDateString())), [allEntries]); if (!isOpen) return null; const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]; const daysOfWeek = ["D", "S", "T", "Q", "Q", "S", "S"]; const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(); const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(); const changeMonth = (offset) => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1)); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft/></button><h2 className="text-xl text-white">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2><button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="transform rotate-180"/></button></div><div className="grid grid-cols-7 gap-2 text-center text-sm text-white/60">{daysOfWeek.map((day, index) => <div key={index}>{day}</div>)}</div><div className="grid grid-cols-7 gap-2 mt-2 text-center">{Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`}></div>)}{Array.from({ length: daysInMonth }).map((_, day) => { const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day + 1); const isPracticed = practicedDays.has(date.toDateString()); const isToday = date.toDateString() === new Date().toDateString(); const buttonClasses = `w-10 h-10 flex items-center justify-center rounded-full transition-colors text-sm hover:bg-white/20 ${ isToday && isPracticed ? 'bg-yellow-400/20 ring-2 ring-[#FFD54F]' : isToday ? 'ring-2 ring-[#FFD54F] bg-white/10' : isPracticed ? 'bg-white/10 border-2 border-[#FFD54F]' : 'bg-white/10' }`; return (<button key={day} onClick={() => onDayClick(date)} className={buttonClasses}>{isToday ? <Flame className="text-yellow-400" size={16} /> : day + 1}</button>); })}</div></div></div>); };
 const DayDetailModal = ({ isOpen, onClose, date, onAddNote }) => { const { allEntries } = useContext(AppContext); if (!isOpen) return null; const entriesForDay = (allEntries || []).filter(entry => entry.practicedAt?.toDate().toDateString() === date.toDateString()); return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white">Atividades de {date.toLocaleDateString('pt-BR')}</h2><div className="max-h-48 overflow-y-auto space-y-3 pr-2 mt-4">{entriesForDay.length > 0 ? entriesForDay.map(entry => { const mantra = entry.type === 'mantra' ? MANTRAS_DATA.find(m => m.id === entry.mantraId) : null; return (<div key={entry.id} className="bg-black/20 p-3 rounded-lg text-sm">{mantra ? (<p className="font-light"><span className="text-[#FFD54F] font-normal">{mantra.nome}:</span> {entry.feelings}</p>) : (<p className="font-light"><span className="text-[#FFD54F] font-normal">Anotação:</span> {entry.note}</p>)}</div>) }) : <p className="text-white/70 text-sm font-light">Nenhuma prática registrada para este dia.</p>}</div><div className="pt-4 border-t border-white/10 mt-4"><button onClick={onAddNote} className="w-full btn-secondary">Adicionar Anotação</button></div></div></div>); };
-const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote }) => { const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); const [note, setNote] = useState(''); const [isSubmitting, setIsSubmitting] = useState(false); const [status, setStatus] = useState({ type: '', message: '' }); useEffect(() => { setNote(noteToEdit ? noteToEdit.note : ''); }, [noteToEdit]); const handleSave = async (e) => { e.preventDefault(); if (!note.trim() || !userId) return; setIsSubmitting(true); setStatus({ type: '', message: '' }); try { if (noteToEdit) { const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); await updateDoc(noteRef, { note: note.trim() }); setStatus({ type: 'success', message: 'Anotação atualizada!' }); } else { const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; await addDoc(collection(db, `users/${userId}/entries`), noteData); setStatus({ type: 'success', message: 'Anotação salva!' }); } const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setNote(''); setTimeout(() => onSave(), 1500); } catch (error) { console.error("Error saving note:", error); setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); } finally { setIsSubmitting(false); } }; return (<div className="page-container"><PageTitle subtitle="Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.">{noteToEdit ? 'Editar Anotação' : 'Nova Anotação'}</PageTitle><form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8"><div className="space-y-3"><label className="text-white/80 flex items-center gap-2 font-light"><BookOpen size={18} className="text-[#FFD54F]/80" /><span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span></label><textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder="Escreva seus pensamentos, sentimentos ou insights do dia..." required /></div><div className="flex flex-col gap-4 pt-6 border-t border-white/10"><div className="flex gap-4"><button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button><button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>{isSubmitting ? 'Salvando...' : 'Salvar Anotação'}</button></div>{status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}</div></form></div>); };
+const NoteEditorScreen = ({ onSave, onCancel, noteToEdit, dateForNewNote, journeyPrompt = null }) => { 
+    const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext); 
+    const [note, setNote] = useState(''); 
+    const [isSubmitting, setIsSubmitting] = useState(false); 
+    const [status, setStatus] = useState({ type: '', message: '' }); 
+    
+    useEffect(() => { 
+        setNote(noteToEdit ? noteToEdit.note : ''); 
+    }, [noteToEdit]); 
+    
+    const handleSave = async (e) => { 
+        e.preventDefault(); 
+        if (!note.trim() || !userId) return; 
+        setIsSubmitting(true); 
+        setStatus({ type: '', message: '' }); 
+        try { 
+            // Se for uma tarefa de jornada (onSave lida com o progresso) ou uma anotação normal
+            if (journeyPrompt) {
+                 onSave(note.trim()); // Passa a nota para a função de conclusão da jornada
+                 return; // Encerra aqui para tarefas de jornada
+            }
+
+            if (noteToEdit) { 
+                const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id); 
+                await updateDoc(noteRef, { note: note.trim() }); 
+                setStatus({ type: 'success', message: 'Anotação atualizada!' }); 
+            } else { 
+                const noteData = { type: 'note', note: note.trim(), practicedAt: Timestamp.fromDate(dateForNewNote) }; 
+                await addDoc(collection(db, `users/${userId}/entries`), noteData); 
+                setStatus({ type: 'success', message: 'Anotação salva!' }); 
+            } 
+            const updatedEntries = await fetchAllEntries(userId); 
+            await recalculateAndSetStreak(updatedEntries, userId); 
+            setNote(''); 
+            setTimeout(() => onSave(), 1500); // onSave aqui é a navegação
+        } catch (error) { 
+            console.error("Error saving note:", error); 
+            setStatus({ type: 'error', message: 'Erro ao salvar anotação.' }); 
+        } finally { 
+            setIsSubmitting(false); 
+        } 
+    }; 
+    
+    // Define o título e o subtítulo com base no contexto (jornada ou anotação normal)
+    const pageTitle = journeyPrompt ? "Reflexão do Dia" : (noteToEdit ? 'Editar Anotação' : 'Nova Anotação');
+    const pageSubtitle = journeyPrompt || "Um espaço para registrar seus pensamentos, sentimentos e sincronicidades do dia.";
+    const placeholderText = journeyPrompt ? "Escreva sua reflexão aqui..." : "Escreva seus pensamentos, sentimentos ou insights do dia...";
+
+    return (
+        <div className="page-container">
+            <PageTitle subtitle={pageSubtitle}>{pageTitle}</PageTitle>
+            <form onSubmit={handleSave} className="w-full max-w-lg mx-auto glass-card space-y-8">
+                <div className="space-y-3">
+                    <label className="text-white/80 flex items-center gap-2 font-light">
+                        <BookOpen size={18} className="text-[#FFD54F]/80" />
+                        <span>Sua anotação para {noteToEdit ? noteToEdit.practicedAt.toDate().toLocaleDateString('pt-BR') : dateForNewNote.toLocaleDateString('pt-BR')}</span>
+                    </label>
+                    <textarea value={note} onChange={e => setNote(e.target.value)} className="textarea-field" rows="8" placeholder={placeholderText} required />
+                </div>
+                <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
+                    <div className="flex gap-4">
+                        <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
+                        <button type="submit" className="w-full modern-btn-primary h-14" disabled={isSubmitting || !note.trim()}>
+                            {isSubmitting ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+                    {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
+                </div>
+            </form>
+        </div>
+    ); 
+};
 const RepetitionModal = ({ isOpen, onClose, onStart, mantra }) => { if (!isOpen) return null; const repetitionOptions = [12, 24, 36, 48, 108]; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}><h2 className="text-xl text-white text-center" style={{fontFamily: "var(--font-display)"}}>{mantra.nome}</h2><p className="text-white/70 my-4 text-center font-light">Quantas vezes você gostaria de repetir este mantra?</p><div className="space-y-3">{repetitionOptions.map(reps => (<button key={reps} onClick={() => onStart(reps)} className="w-full btn-secondary">{reps} repetições</button>))}</div><div className="text-center mt-4"><button onClick={onClose} className="text-sm text-white/60 hover:underline">Cancelar</button></div></div></div>); };
 
 // --- INÍCIO: NOVOS COMPONENTES E TELAS PARA "MEU SANTUÁRIO" ---
@@ -2024,30 +2600,49 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
         </div>
     );
 };
-const ChakraScreen = () => {
+const ChakraScreen = ({ preselectChakraId, onComplete }) => {
     const [selectedChakra, setSelectedChakra] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const backgroundAudioRef = useRef(null);
     const mantraAudioRef = useRef(null);
     const chakraPositions = { 1: '17%', 2: '27%', 3: '37%', 4: '47%', 5: '57%', 6: '67%', 7: '77%' };
+
+    const handleSelectChakra = useCallback((chakra) => {
+        setSelectedChakra(chakra);
+        setIsPlaying(true);
+    }, []);
+
+    // Efeito para pré-selecionar o chakra se vier de uma jornada
+    useEffect(() => {
+        if (preselectChakraId) {
+            const chakraToSelect = CHAKRAS_DATA.find(c => c.id === preselectChakraId);
+            if (chakraToSelect) {
+                // Timeout para dar tempo da tela animar antes do som começar
+                setTimeout(() => {
+                    handleSelectChakra(chakraToSelect);
+                }, 500);
+            }
+        }
+    }, [preselectChakraId, handleSelectChakra]);
+
     useEffect(() => {
         if (!backgroundAudioRef.current) {
             backgroundAudioRef.current = new Audio('https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/som-fundo.mp3');
             backgroundAudioRef.current.loop = true;
             backgroundAudioRef.current.volume = 0.5;
         }
-        backgroundAudioRef.current.play().catch(e => console.error("Erro ao tocar música de fundo:", e));
+        if (!isPlaying && !selectedChakra) {
+             backgroundAudioRef.current.play().catch(e => console.error("Erro ao tocar música de fundo:", e));
+        }
         return () => {
-            backgroundAudioRef.current.pause();
+            backgroundAudioRef.current?.pause();
         };
-    }, []);
-    const handleSelectChakra = (chakra) => {
-        setSelectedChakra(chakra);
-        setIsPlaying(true);
-    };
+    }, [isPlaying, selectedChakra]);
+
     const togglePlayPause = () => {
         setIsPlaying(prev => !prev);
     };
+
     useEffect(() => {
         if (!mantraAudioRef.current) {
             mantraAudioRef.current = new Audio();
@@ -2059,16 +2654,20 @@ const ChakraScreen = () => {
                 mantraAudioRef.current.src = selectedChakra.audioSrc;
                 mantraAudioRef.current.load();
             }
-            backgroundAudioRef.current.pause();
+            backgroundAudioRef.current?.pause();
             mantraAudioRef.current.play().catch(e => console.error("Erro ao tocar áudio do chakra:", e));
         } else {
             mantraAudioRef.current.pause();
-            backgroundAudioRef.current.play().catch(e => console.error("Erro ao retomar som de fundo:", e));
+             if (!onComplete) { // Só volta a tocar o som de fundo se não for uma jornada
+                backgroundAudioRef.current?.play().catch(e => console.error("Erro ao retomar som de fundo:", e));
+            }
         }
+        // Limpeza ao desmontar o componente
         return () => {
-            mantraAudioRef.current.pause();
+            mantraAudioRef.current?.pause();
         };
-    }, [isPlaying, selectedChakra]);
+    }, [isPlaying, selectedChakra, onComplete]);
+
     const orderedChakras = [...CHAKRAS_DATA].reverse();
     return (
         <div className="page-container" style={{backgroundColor: selectedChakra?.color ? `${selectedChakra.color}20` : 'transparent', transition: 'background-color 1s ease'}}>
@@ -2093,7 +2692,7 @@ const ChakraScreen = () => {
                                     marginLeft: '-0.7rem'
                                 }}
                                 className={`absolute left-[50%] w-8 h-8 rounded-full border-2 cursor-pointer transition-all duration-500 ${
-                                    selectedChakra?.id === chakra.id ? 'chakra-pulse-effect' : ''
+                                    selectedChakra?.id === chakra.id && isPlaying ? 'chakra-pulse-effect' : ''
                                 }`}
                                 onClick={() => handleSelectChakra(chakra)}
                             ></div>
@@ -2130,7 +2729,16 @@ const ChakraScreen = () => {
                             </div>
                         </div>
                         <button onClick={togglePlayPause} className="w-full modern-btn-primary !py-2 !px-4 !text-sm flex items-center justify-center">
-                            {isPlaying ? <><Pause size={20} /> Pausar Meditação</> : <><Play size={20} /> Iniciar Meditação</>}
+                            {isPlaying ? <><Pause size={20} /> Pausar Meditação</> : <><Play size={20} /> Retomar Meditação</>}
+                        </button>
+                    </div>
+                )}
+                {/* --- BOTÃO DE CONCLUSÃO ADICIONADO --- */}
+                {selectedChakra && onComplete && (
+                    <div className="mt-4 w-full max-w-md">
+                        <button onClick={onComplete} className="w-full modern-btn-primary !py-2 !text-sm flex items-center justify-center gap-2 !bg-green-500/80 hover:!filter-none">
+                        <CheckCircle size={18} /> {/* Opcional: Reduzir o ícone para combinar */}
+                            Concluir e Voltar para Jornada
                         </button>
                     </div>
                 )}
@@ -2335,14 +2943,121 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     );
 };
 
+// --- INÍCIO: NOVAS TELAS E COMPONENTES PARA JORNADAS ---
+const JourneysListScreen = ({ setActiveScreen, openPremiumModal }) => {
+    const { journeyProgress, isSubscribed } = useContext(AppContext);
+
+    const handleSelectJourney = (journey) => {
+        if (journey.isPremium && !isSubscribed) {
+            openPremiumModal();
+        } else {
+            setActiveScreen('journeyDetail', { journeyId: journey.id });
+        }
+    };
+
+    return (
+        <div className="page-container">
+            <PageTitle subtitle="Siga sequências guiadas de práticas diárias para atingir objetivos específicos.">Jornadas de Prática</PageTitle>
+            <div className="space-y-4">
+                {JOURNEYS_DATA.map(journey => {
+                    const progress = journeyProgress[journey.id]?.completedDays?.length || 0;
+                    const isLocked = journey.isPremium && !isSubscribed;
+                    return (
+                        <div key={journey.id} onClick={() => handleSelectJourney(journey)} className="glass-card !p-5 text-left clickable relative overflow-hidden">
+                             {isLocked && <div className="absolute top-2 right-2 bg-black/30 p-1.5 rounded-full"><Lock className="h-4 w-4 text-white/70" /></div>}
+                            <h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{journey.title}</h3>
+                            <p className="text-white/80 my-2 font-light text-sm">{journey.description}</p>
+                            <div className="flex items-center gap-4 mt-3 text-xs text-white/70">
+                                <span>{journey.days.length} DIAS</span>
+                                <div className="w-full bg-black/20 rounded-full h-2">
+                                    <div className="bg-[#FFD54F] h-2 rounded-full" style={{ width: `${(progress / journey.days.length) * 100}%` }}></div>
+                                </div>
+                                <span>{progress}/{journey.days.length}</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const JourneyDetailScreen = ({ journeyId, setActiveScreen, onStartJourneyTask }) => {
+    const { journeyProgress } = useContext(AppContext);
+    const journey = JOURNEYS_DATA.find(j => j.id === journeyId);
+    
+    if (!journey) return <div className="page-container text-center">Jornada não encontrada.</div>;
+
+    const completedDays = journeyProgress[journey.id]?.completedDays || [];
+    const currentDay = completedDays.length + 1;
+
+    // Função auxiliar para obter o ícone e a descrição da tarefa
+    const getTaskInfo = (dayInfo) => {
+        switch (dayInfo.type) {
+            case 'mantra':
+                return { icon: <Mic2 size={18} />, text: `Mantra - ${dayInfo.details.repetitions} repetições` };
+            case 'gratitude':
+                return { icon: <Heart size={18} />, text: 'Registro de Gratidão' };
+            case 'reflexao_guiada':
+                return { icon: <MessageSquare size={18} />, text: 'Reflexão Guiada' };
+            case 'meditacao_chakra':
+                return { icon: <Circle size={18} />, text: 'Meditação de Chakra' };
+            case 'consulta_oraculo':
+                return { icon: <BrainCircuit size={18} />, text: 'Consulta ao Oráculo' };
+            case 'acao_consciente':
+                return { icon: <Leaf size={18} />, text: 'Ação Consciente' };
+            case 'santuario_pessoal':
+                 return { icon: <Music size={18} />, text: 'Prática do Santuário' };
+            default:
+                return { icon: <Star size={18} />, text: 'Tarefa Especial' };
+        }
+    };
+
+    return (
+        <div className="page-container">
+            <button onClick={() => setActiveScreen('journeysList')} className="flex items-center gap-2 text-sm text-[#FFD54F] mb-4"><ChevronLeft size={16}/> Voltar para Jornadas</button>
+            <PageTitle subtitle={journey.description}>{journey.title}</PageTitle>
+            <div className="space-y-3">
+                {journey.days.map(dayInfo => {
+                    const isCompleted = completedDays.includes(dayInfo.day);
+                    const isCurrent = dayInfo.day === currentDay;
+                    const isLocked = dayInfo.day > currentDay;
+                    const taskInfo = getTaskInfo(dayInfo);
+                    
+                    return (
+                        <div key={dayInfo.day} onClick={() => isCurrent && onStartJourneyTask(journey.id, dayInfo)} 
+                             className={`glass-card !p-4 flex items-center justify-between transition-all 
+                                ${isCompleted ? 'opacity-50' : ''}
+                                ${isCurrent ? 'border-[#FFD54F] clickable' : ''}
+                                ${isLocked ? 'opacity-30 cursor-default' : ''}`}>
+                            <div className="flex items-center gap-4">
+                                {isCompleted ? <CheckCircle size={24} className="text-green-400"/> : <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isCurrent ? 'bg-[#FFD54F]/20 text-[#FFD54F]' : 'bg-black/20 text-white/50'}`}>{dayInfo.day}</div>}
+                                <div>
+                                    <p className={`text-base ${isCurrent ? 'text-white' : 'text-white/80'}`}>{dayInfo.title}</p>
+                                    <p className="text-xs text-white/60 font-light flex items-center gap-1.5">
+                                        {taskInfo.icon} {taskInfo.text}
+                                    </p>
+                                </div>
+                            </div>
+                            {isCurrent && <ChevronLeft className="transform rotate-180"/>}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// --- FIM: NOVAS TELAS E COMPONENTES PARA JORNADAS ---
 
 // --- NOVA TELA "MAIS" PARA AGRUPAR ITENS DE NAVEGAÇÃO ---
 const MoreScreen = ({ setActiveScreen }) => {
     const secondaryNavItems = [
+        { id: 'journeysList', icon: Map, label: 'Jornadas de Prática' },
         { id: 'chakras', icon: Circle, label: 'Meditação de Chakras' },
         { id: 'mantras', icon: Music, label: 'Músicas Mântricas' },
         { id: 'astrologer', icon: MessageCircleQuestion, label: 'Pergunte ao Astrólogo' },
-        { id: 'history', icon: History, label: 'Histórico de Práticas' },
+        { id: 'history', icon: BookOpen, label: 'Meu Diário' }, // <-- CORREÇÃO APLICADA AQUI
         { id: 'oracle', icon: BrainCircuit, label: 'Oráculo dos Mantras' }
     ];
 
@@ -2365,33 +3080,110 @@ const MoreScreen = ({ setActiveScreen }) => {
     );
 };
 
+// Hook simulado para manter o código limpo, adicione isso ANTES de AppContent
+const usePushNotifications = () => {
+    const { userId } = useContext(AppContext);
+    // As funções que estavam em AppContent podem ser movidas para cá.
+    // Para simplificar, vamos assumir que elas existem no escopo.
+    // Nenhuma mudança funcional aqui, apenas organização.
+    const saveFcmToken = useCallback(async (fcmToken) => {
+        if (!userId || !db) return;
+        try {
+            const tokenRef = doc(db, `users/${userId}/fcmTokens/${fcmToken}`);
+            await setDoc(tokenRef, {
+                createdAt: Timestamp.now(),
+                userAgent: navigator.userAgent,
+            });
+            console.log('Token FCM salvo no Firestore.');
+        } catch (error) {
+            console.error('Erro ao salvar token FCM:', error);
+        }
+    }, [userId]);
 
-// --- COMPONENTE PRINCIPAL (ATUALIZADO com navegação para Gratidão) ---
+    const requestNotificationPermission = useCallback(async () => {
+        if (!messaging) return;
+        try {
+            const permission = await Notification.requestPermission();
+            localStorage.setItem('pushPermissionRequested', 'true');
+            if (permission === 'granted') {
+                const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY;
+                if (!vapidKey) return;
+                const currentToken = await getToken(messaging, { vapidKey });
+                if (currentToken) await saveFcmToken(currentToken);
+            }
+        } catch (error) {
+            console.error('Erro ao solicitar permissão de notificação:', error);
+        }
+    }, [saveFcmToken]);
+
+    const triggerPushPermissionRequest = useCallback(() => {
+        setTimeout(() => {
+            const permissionRequested = localStorage.getItem('pushPermissionRequested');
+            if (permissionRequested === 'true' || !('Notification' in window)) return;
+            // A lógica de mostrar o modal será controlada pelo AppContent
+        }, 1000);
+    }, []);
+
+    return { saveFcmToken, requestNotificationPermission, triggerPushPermissionRequest };
+};
+
+// --- COMPONENTE PRINCIPAL (ATUALIZADO com lógica de Jornadas) ---
 const AppContent = () => {
-    const { isSubscribed } = useContext(AppContext);
-    const [activeScreen, setActiveScreen] = useState('home');
+    // ESTADO DE NAVEGAÇÃO ATUALIZADO para lidar com parâmetros
+    const [activeScreen, setActiveScreenInternal] = useState({ screen: 'home', payload: null });
+    const setActiveScreen = (screen, payload = null) => setActiveScreenInternal({ screen, payload });
+
+    // ESTADO PARA RASTREAR TAREFA ATIVA DA JORNADA
+    const [activeJourneyTask, setActiveJourneyTask] = useState(null);
+
+    // --- ADICIONE OS NOVOS ESTADOS AQUI ---
+    const [introTaskModalData, setIntroTaskModalData] = useState(null);
+    const [consciousActionModalData, setConsciousActionModalData] = useState(null);
     const [playerData, setPlayerData] = useState({ mantra: null, repetitions: 1, audioType: 'library' });
-    const [repetitionModalData, setRepetitionModalData] = useState({ isOpen: false, mantra: null });
+
+    // Contexto e outros estados existentes
+    const { isSubscribed, userId, journeyProgress, fetchAllEntries, recalculateAndSetStreak, updateJourneyProgress, unlockTheme, activeTheme } = useContext(AppContext);    const [repetitionModalData, setRepetitionModalData] = useState({ isOpen: false, mantra: null });
     const [entryToEdit, setEntryToEdit] = useState(null);
     const [noteToEdit, setNoteToEdit] = useState(null);
     const [entryToDelete, setEntryToDelete] = useState(null);
-    const { userId, fetchAllEntries, recalculateAndSetStreak } = useContext(AppContext);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isDayDetailOpen, setIsDayDetailOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
-    
-    // --- NOVOS ESTADOS PARA "MEU SANTUÁRIO" ---
     const [isAudioCreatorOpen, setIsAudioCreatorOpen] = useState(false);
     const [customAudioToPlay, setCustomAudioToPlay] = useState(null);
     const [isCustomRepModalOpen, setIsCustomRepModalOpen] = useState(false);
     const [playlistToPlay, setPlaylistToPlay] = useState(null);
     const [playlistToEdit, setPlaylistToEdit] = useState(null);
-
-    // --- ADICIONADO: Estado para o Modal de Notificação ---
     const [showPushPermissionModal, setShowPushPermissionModal] = useState(false);
 
-    // --- ADICIONADO: Lógica de Notificação Push ---
+    // --- INÍCIO: LÓGICA DO TESTE A/B ---
+    const [paywallVariant, setPaywallVariant] = useState(null);
+
+    useEffect(() => {
+        // Esta lógica é executada apenas uma vez para atribuir o usuário a um grupo.
+        let assignedGroup = localStorage.getItem('paywallVariantGroup');
+        if (!assignedGroup) {
+            assignedGroup = Math.random() < 0.5 ? 'A' : 'B';
+            localStorage.setItem('paywallVariantGroup', assignedGroup);
+        }
+        setPaywallVariant(assignedGroup === 'A' ? paywallVariantA : paywallVariantB);
+    }, []); // O array vazio garante que isso execute apenas uma vez.
+
+    const openPremiumModal = () => {
+        // Simulação do evento de analytics
+        const variantGroup = localStorage.getItem('paywallVariantGroup');
+        console.log(`Analytics Event: view_paywall | variant: ${variantGroup}`);
+        
+        // ReactGA.event({ category: 'ecommerce', action: 'view_paywall', label: `variant_${variantGroup}` }); // Exemplo com ReactGA
+        
+        setIsPremiumModalOpen(true);
+    };
+    // --- FIM: LÓGICA DO TESTE A/B ---
+
+
+    // --- INÍCIO: LÓGICA DE NOTIFICAÇÃO PUSH ---
+
     const saveFcmToken = useCallback(async (fcmToken) => {
         if (!userId || !db) return;
         try {
@@ -2466,20 +3258,90 @@ const AppContent = () => {
         return () => unsubscribe();
     }, []);
 
-    // --- Fim da Lógica de Notificação Push ---
+    // --- FIM DA LÓGICA DE NOTIFICAÇÃO PUSH ---
 
     const handlePlayMantra = (mantra, repetitions, audioType) => { setPlayerData({ mantra, repetitions, audioType }); setRepetitionModalData({ isOpen: false, mantra: null }); };
-    
-    // CORREÇÃO: A função foi adicionada aqui.
+    const handleSaveOrUpdate = () => {
+        // Ação padrão após salvar uma anotação, gratidão ou prática (fora de uma jornada)
+        setActiveScreen('history');
+        // Mantém a consistência chamando o gatilho de permissão de notificação
+        triggerPushPermissionRequest();
+    };
     const handleSelectSpokenMantra = (mantra) => { setRepetitionModalData({ isOpen: true, mantra: mantra }); };
     
-    const handleSaveOrUpdate = () => { 
-        setEntryToEdit(null); 
-        setNoteToEdit(null); 
-        setActiveScreen('history'); 
-        triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+    // FUNÇÃO ATUALIZADA para lidar com a conclusão da tarefa
+    const handleTaskCompletion = () => {
+        if (activeJourneyTask) {
+            const { journeyId, dayInfo } = activeJourneyTask;
+            updateJourneyProgress(journeyId, dayInfo.day);
+            setActiveJourneyTask(null);
+
+            const journey = JOURNEYS_DATA.find(j => j.id === journeyId);
+            const progress = journeyProgress[journeyId]?.completedDays || [];
+            const isNowComplete = progress.length + 1 === journey.days.length;
+
+            if (isNowComplete) {
+                // --- LÓGICA DE DESBLOQUEIO ADICIONADA AQUI ---
+                if (journey.completionReward?.type === 'theme') {
+                    unlockTheme(journey.completionReward.value);
+                }
+                setActiveScreen('journeyCompletion', { journey });
+            } else {
+                setActiveScreen('journeyDetail', { journeyId });
+            }
+        } else {
+            setActiveScreen('history');
+        }
+        triggerPushPermissionRequest();
     };
 
+    // FUNÇÃO PARA INICIAR UMA TAREFA DA JORNADA
+    const handleStartJourneyTask = (journeyId, dayInfo) => {
+    const startTask = () => {
+        setIntroTaskModalData(null); // Fecha o modal de introdução
+        setActiveJourneyTask({ journeyId, dayInfo }); // Mantém o estado da tarefa ativa
+
+        switch (dayInfo.type) {
+            case 'mantra':
+                const mantra = MANTRAS_DATA.find(m => m.id === dayInfo.details.mantraId);
+                if (mantra) {
+                    handlePlayMantra(mantra, dayInfo.details.repetitions, 'spoken');
+                }
+                break;
+
+            case 'gratitude':
+                setActiveScreen('gratitude');
+                break;
+
+            case 'reflexao_guiada':
+                setActiveScreen('journeyReflection', { prompt: dayInfo.details.prompt });
+                break;
+
+            case 'meditacao_chakra':
+                // Lógica a ser implementada futuramente
+                setActiveScreen('chakras', { preselect: dayInfo.details.chakraId });
+                break;
+
+            case 'acao_consciente':
+                // Lógica a ser implementada futuramente
+                setConsciousActionModalData(dayInfo.details);
+                break;
+
+            case 'consulta_oraculo':
+                 // Lógica a ser implementada futuramente
+                setActiveScreen('oracle', { suggestedQuestion: dayInfo.details.suggestedQuestion });
+                break;
+
+            default:
+                console.error("Tipo de tarefa de jornada desconhecido:", dayInfo.type);
+                setActiveJourneyTask(null);
+        }
+    };
+
+    // Mostra o modal de introdução antes de iniciar a tarefa
+    setIntroTaskModalData({ dayInfo, onStart: startTask });
+};
+    
     const handleDeleteEntry = async () => { if (!entryToDelete || !userId || !db) return; try { await deleteDoc(doc(db, `users/${userId}/entries`, entryToDelete.id)); const updatedEntries = await fetchAllEntries(userId); await recalculateAndSetStreak(updatedEntries, userId); setEntryToDelete(null); } catch (error) { console.error("Error deleting entry:", error); } };
     const handleDayClick = (day) => { setSelectedDate(day); setIsCalendarOpen(false); setIsDayDetailOpen(true); };
     const handleAddNoteForDate = () => { setNoteToEdit(null); setIsDayDetailOpen(false); setActiveScreen('noteEditor'); };
@@ -2487,49 +3349,45 @@ const AppContent = () => {
     const handleEditPlaylist = (playlist) => { setPlaylistToEdit(playlist); setActiveScreen('playlistEditor'); };
     const handleAddPlaylist = () => { setPlaylistToEdit({}); setActiveScreen('playlistEditor'); };
     const handleSavePlaylist = () => { setPlaylistToEdit(null); setActiveScreen('meuSantuario'); };
-    
+
     const renderScreen = () => {
-        if (entryToEdit && activeScreen !== 'diary') setEntryToEdit(null);
-        if (noteToEdit && activeScreen !== 'noteEditor') setNoteToEdit(null);
+        if (entryToEdit && activeScreen.screen !== 'diary') setEntryToEdit(null);
+        if (noteToEdit && activeScreen.screen !== 'noteEditor') setNoteToEdit(null);
         const openPremiumModal = () => setIsPremiumModalOpen(true);
-        switch (activeScreen) {
-            case 'home': return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
-            case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancelEdit={() => { setEntryToEdit(null); setActiveScreen('history'); }} openPremiumModal={openPremiumModal} />;
-            case 'gratitude': return <GratitudeScreen onSave={() => { setActiveScreen('history'); triggerPushPermissionRequest(); }} onCancel={() => setActiveScreen('home')} />;
-            case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen('history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;
+
+        switch (activeScreen.screen) {
+            case 'home': return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} onSelectMantra={handleSelectSpokenMantra} />;
+            case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancel={() => { setEntryToEdit(null); setActiveScreen(entryToEdit ? 'history' : 'home'); }} openPremiumModal={openPremiumModal} />;            
+            case 'gratitude': return <GratitudeScreen onSave={activeJourneyTask ? handleTaskCompletion : handleSaveOrUpdate} onCancel={() => activeJourneyTask ? setActiveScreen('journeyDetail', { journeyId: activeJourneyTask.journeyId }) : setActiveScreen('home')} />;            case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen(activeScreen.payload?.from === 'home' ? 'home' : 'history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;            
             case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} openPremiumModal={openPremiumModal} />;
-            case 'meuSantuario': return <MeuSantuarioScreen
-                onStartPlaylist={setPlaylistToPlay}
-                onEditPlaylist={handleEditPlaylist}
-                onStartAudio={handleStartCustomAudio}
-                onAddAudio={() => setIsAudioCreatorOpen(true)}
-                onAddPlaylist={handleAddPlaylist}
-                openPremiumModal={openPremiumModal}
-            />;
-            case 'playlistEditor': return <PlaylistEditorScreen
-                playlistToEdit={playlistToEdit}
-                onSave={handleSavePlaylist}
-                onCancel={handleSavePlaylist}
-            />;
+            case 'meuSantuario': return <MeuSantuarioScreen onStartPlaylist={setPlaylistToPlay} onEditPlaylist={handleEditPlaylist} onStartAudio={handleStartCustomAudio} onAddAudio={() => setIsAudioCreatorOpen(true)} onAddPlaylist={handleAddPlaylist} openPremiumModal={openPremiumModal} />;
+            case 'playlistEditor': return <PlaylistEditorScreen playlistToEdit={playlistToEdit} onSave={handleSavePlaylist} onCancel={handleSavePlaylist} />;
             case 'history': return <HistoryScreen onEditMantra={(entry) => { setEntryToEdit(entry); setActiveScreen('diary'); }} onEditNote={(note) => { setNoteToEdit(note); setActiveScreen('noteEditor'); }} onDelete={(entry) => setEntryToDelete(entry)} />;
             case 'settings': return <SettingsScreen setActiveScreen={setActiveScreen} />;
             case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
-            case 'chakras': return <ChakraScreen />;
+            case 'chakras': return <ChakraScreen
+                preselectChakraId={activeScreen.payload?.preselect}
+                onComplete={activeJourneyTask ? handleTaskCompletion : null}
+            />;            
             case 'astrologer': return <AstrologerScreen openPremiumModal={openPremiumModal} />;
+            case 'journeysList': return <JourneysListScreen setActiveScreen={setActiveScreen} openPremiumModal={openPremiumModal} />;
+            case 'journeyDetail': return <JourneyDetailScreen journeyId={activeScreen.payload.journeyId} setActiveScreen={setActiveScreen} onStartJourneyTask={handleStartJourneyTask} />;
+            case 'journeyReflection': return <NoteEditorScreen onSave={(noteText) => { handleTaskCompletion() /* Aqui poderia salvar o 'noteText' se quisesse */ }} onCancel={() => { setActiveJourneyTask(null); setActiveScreen('journeyDetail', { journeyId: activeJourneyTask?.journeyId }) }} journeyPrompt={activeScreen.payload.prompt} dateForNewNote={new Date()} />;
+            case 'journeyCompletion': return <JourneyCompletionScreen journey={activeScreen.payload.journey} onNext={() => setActiveScreen('journeysList')} />;
             case 'more': return <MoreScreen setActiveScreen={setActiveScreen} />;
-            default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} />;
+            default: return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} onSelectMantra={handleSelectSpokenMantra} />;
         }
     };
-    
+
     return (
-        <div className="modern-body premium-body">
+        <div className={`modern-body premium-body theme-${activeTheme}`}>
             <SolarSystemBackground />
             
             <Header setActiveScreen={setActiveScreen} />
-            <ScreenAnimator screenKey={activeScreen}>{renderScreen()}</ScreenAnimator>
-            <BottomNav activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
+            <ScreenAnimator screenKey={activeScreen.screen}>{renderScreen()}</ScreenAnimator>
+            <BottomNav activeScreen={activeScreen.screen} setActiveScreen={setActiveScreen} />
             
             {playerData.mantra && <MantraPlayer 
                 currentMantra={playerData.mantra} 
@@ -2537,7 +3395,7 @@ const AppContent = () => {
                 audioType={playerData.audioType} 
                 onClose={() => { 
                     setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' }); 
-                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
+                    handleTaskCompletion();
                 }} 
                 onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} 
             />}
@@ -2546,49 +3404,29 @@ const AppContent = () => {
             <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={handleDeleteEntry} title="Apagar Registro" message="Tem certeza que deseja apagar este registro? Esta ação não pode ser desfeita." />
             <CalendarModal isOpen={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} onDayClick={handleDayClick} />
             <DayDetailModal isOpen={isDayDetailOpen} onClose={() => setIsDayDetailOpen(false)} date={selectedDate} onAddNote={handleAddNoteForDate} />
-            <PremiumLockModal isOpen={isPremiumModalOpen} onClose={() => setIsPremiumModalOpen(false)} />
+            
+            {paywallVariant && <PremiumLockModal 
+                isOpen={isPremiumModalOpen} 
+                onClose={() => setIsPremiumModalOpen(false)} 
+                variant={paywallVariant} 
+            />}
             
             <AudioCreatorModal isOpen={isAudioCreatorOpen} onClose={() => setIsAudioCreatorOpen(false)} />
-
-            {customAudioToPlay?.audio && <CustomRepetitionModal 
-                isOpen={isCustomRepModalOpen}
-                onClose={() => setIsCustomRepModalOpen(false)}
-                audio={customAudioToPlay.audio}
-                onStart={(repetitions) => {
-                    setCustomAudioToPlay(prev => ({ ...prev, repeticoes: repetitions }));
-                    setIsCustomRepModalOpen(false);
-                }}
-            />}
-            {customAudioToPlay?.repeticoes && <CustomAudioPlayer 
-                singleAudio={customAudioToPlay.audio}
-                repetitions={customAudioToPlay.repeticoes}
-                onClose={() => {
-                    setCustomAudioToPlay(null);
-                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
-                }}
-            />}
-            {playlistToPlay && <CustomAudioPlayer 
-                playlist={playlistToPlay}
-                onClose={() => {
-                    setPlaylistToPlay(null);
-                    triggerPushPermissionRequest(); // <-- GATILHO ADICIONADO
-                }}
-            />}
-
-            {/* --- ADICIONADO: Renderização do Modal de Notificação --- */}
-            {showPushPermissionModal && (
-                <PushPermissionModal
-                    onAllow={requestNotificationPermission}
-                    onDeny={() => {
-                        localStorage.setItem('pushPermissionRequested', 'true');
-                        setShowPushPermissionModal(false);
-                    }}
-                />
-            )}
+            {customAudioToPlay?.audio && <CustomRepetitionModal isOpen={isCustomRepModalOpen} onClose={() => setIsCustomRepModalOpen(false)} audio={customAudioToPlay.audio} onStart={(repetitions) => { setCustomAudioToPlay(prev => ({ ...prev, repeticoes: repetitions })); setIsCustomRepModalOpen(false); }} />}
+            {customAudioToPlay?.repeticoes && <CustomAudioPlayer singleAudio={customAudioToPlay.audio} repetitions={customAudioToPlay.repeticoes} onClose={() => { setCustomAudioToPlay(null); triggerPushPermissionRequest(); }} />}
+            {playlistToPlay && <CustomAudioPlayer playlist={playlistToPlay} onClose={() => { setPlaylistToPlay(null); triggerPushPermissionRequest(); }} />}
+            
+            {/* --- ADICIONE OS NOVOS MODAIS AQUI --- */}
+            <IntroTaskModal isOpen={!!introTaskModalData} onClose={() => setIntroTaskModalData(null)} dayInfo={introTaskModalData?.dayInfo} onStart={introTaskModalData?.onStart} />
+            <ConsciousActionModal isOpen={!!consciousActionModalData} onClose={() => setConsciousActionModalData(null)} taskDescription={consciousActionModalData?.taskDescription} onComplete={() => { setConsciousActionModalData(null); handleTaskCompletion(); }} />
+            
+            {showPushPermissionModal && (<PushPermissionModal onAllow={requestNotificationPermission} onDeny={() => { localStorage.setItem('pushPermissionRequested', 'true'); setShowPushPermissionModal(false); }} />)}
         </div>
     );
 };
+
 const PermissionErrorScreen = ({ type }) => (<div className="min-h-screen flex items-center justify-center p-4 modern-body"><div className="glass-card w-full max-w-lg text-center"><AlertTriangle className="mx-auto h-16 w-16 text-red-400" /><h2 className="text-xl text-white mt-4">Erro de Permissão do Firebase</h2><p className="text-white/70 mt-2">O aplicativo não conseguiu acessar seus dados devido a um problema de permissão com o Firebase {type}.</p><p className="text-white/70 mt-2">Para corrigir, acesse seu console do Firebase, vá até as Regras (Rules) do <strong>{type}</strong> e cole as regras adequadas para permitir a leitura/escrita autenticada.</p></div></div>);
+
 
 // --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL (COM LÓGICA DE ONBOARDING) ---
 function AppWithAuthCheck() {
@@ -2630,6 +3468,9 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
   const [items, setItems] = useState(["", "", ""]);
   const { userId, fetchAllEntries } = useContext(AppContext);
   const [status, setStatus] = useState({ type: '', message: '' });
+
+  // --- LÓGICA ADICIONADA ---
+  const canSave = items.some(item => item.trim() !== "");
 
   const handleItemChange = (index, value) => {
     const newItems = [...items];
@@ -2681,7 +3522,8 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
         <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
             <div className="flex gap-4">
                 <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
-                <button type="submit" className="w-full modern-btn-primary h-14">Salvar Gratidão</button>
+                {/* --- BOTÃO ATUALIZADO --- */}
+                <button type="submit" className="w-full modern-btn-primary h-14" disabled={!canSave}>Salvar Gratidão</button>
             </div>
             {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
         </div>
@@ -2825,4 +3667,78 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
         </div>
     );
 };
+// --- INÍCIO: NOVOS COMPONENTES PARA JORNADAS ---
 
+// Modal que introduz a tarefa do dia
+const IntroTaskModal = ({ isOpen, onClose, dayInfo, onStart }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
+            <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <p className="text-sm text-[#FFD54F] font-light">Jornada - Dia {dayInfo.day}</p>
+                <h2 className="text-2xl text-white mt-2" style={{ fontFamily: "var(--font-display)" }}>{dayInfo.title}</h2>
+                <p className="text-white/70 my-4 font-light text-base">{dayInfo.introText}</p>
+                <div className="flex flex-col gap-3 mt-6">
+                    <button onClick={onStart} className="w-full modern-btn-primary !py-3 !text-base">
+                        Começar
+                    </button>
+                    <button onClick={onClose} className="text-sm text-white/60 hover:underline py-2">
+                        Agora não
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Modal para tarefas do tipo "Ação Consciente"
+const ConsciousActionModal = ({ isOpen, onClose, taskDescription, onComplete }) => {
+    if (!isOpen) return null;
+     return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 screen-animation" onClick={onClose}>
+            <div className="glass-modal w-full max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <Leaf className="mx-auto h-14 w-14 text-[#FFD54F]/80 mb-4" />
+                <h2 className="text-xl text-white" style={{ fontFamily: "var(--font-display)" }}>Ação Consciente</h2>
+                <p className="text-white/70 my-4 font-light text-base">{taskDescription}</p>
+                <button onClick={onComplete} className="w-full modern-btn-primary !py-3 !text-base">
+                    Marcar como concluído
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// Tela a ser exibida ao completar uma jornada
+const JourneyCompletionScreen = ({ journey, onNext }) => {
+    const rewardIcon = () => {
+        switch (journey.completionReward?.type) {
+            case 'theme': return <Sparkles className="h-8 w-8 text-white" />;
+            case 'badge': return <Star className="h-8 w-8 text-white" />;
+            default: return <CheckCircle className="h-8 w-8 text-white" />;
+        }
+    };
+
+    return (
+        <div className="page-container flex flex-col items-center justify-center text-center">
+            <div className="glass-card">
+                <CheckCircle className="mx-auto h-20 w-20 text-green-400" />
+                <h1 className="page-title !text-3xl mt-4">Jornada Concluída!</h1>
+                <p className="page-subtitle">Você completou com sucesso a "{journey.title}".</p>
+                
+                {journey.completionReward && (
+                    <div className="mt-6 bg-black/20 p-4 rounded-lg">
+                        <p className="text-sm font-light text-white/70">Sua recompensa:</p>
+                        <div className="flex items-center justify-center gap-3 mt-2">
+                            <p className="text-white text-base">{journey.completionReward.message}</p>
+                        </div>
+                    </div>
+                )}
+                <button onClick={onNext} className="w-full modern-btn-primary h-14 mt-8">
+                    Ver outras jornadas
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// --- FIM: NOVOS COMPONENTES PARA JORNADAS ---
