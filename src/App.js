@@ -3049,26 +3049,19 @@ const JourneyDetailScreen = ({ journeyId, setActiveScreen, onStartJourneyTask })
 
     const completedDays = journeyProgress[journey.id]?.completedDays || [];
     const currentDay = completedDays.length + 1;
+    // --- LÓGICA DE MELHORIA ADICIONADA AQUI ---
+    const isJourneyComplete = completedDays.length === journey.days.length;
 
-    // Função auxiliar para obter o ícone e a descrição da tarefa
     const getTaskInfo = (dayInfo) => {
         switch (dayInfo.type) {
-            case 'mantra':
-                return { icon: <Mic2 size={18} />, text: `Mantra - ${dayInfo.details.repetitions} repetições` };
-            case 'gratitude':
-                return { icon: <Heart size={18} />, text: 'Registro de Gratidão' };
-            case 'reflexao_guiada':
-                return { icon: <MessageSquare size={18} />, text: 'Reflexão Guiada' };
-            case 'meditacao_chakra':
-                return { icon: <Circle size={18} />, text: 'Meditação de Chakra' };
-            case 'consulta_oraculo':
-                return { icon: <BrainCircuit size={18} />, text: 'Consulta ao Oráculo' };
-            case 'acao_consciente':
-                return { icon: <Leaf size={18} />, text: 'Ação Consciente' };
-            case 'santuario_pessoal':
-                 return { icon: <Music size={18} />, text: 'Prática do Santuário' };
-            default:
-                return { icon: <Star size={18} />, text: 'Tarefa Especial' };
+            case 'mantra': return { icon: <Mic2 size={18} />, text: `Mantra - ${dayInfo.details.repetitions} repetições` };
+            case 'gratitude': return { icon: <Heart size={18} />, text: 'Registro de Gratidão' };
+            case 'reflexao_guiada': return { icon: <MessageSquare size={18} />, text: 'Reflexão Guiada' };
+            case 'meditacao_chakra': return { icon: <Circle size={18} />, text: 'Meditação de Chakra' };
+            case 'consulta_oraculo': return { icon: <BrainCircuit size={18} />, text: 'Consulta ao Oráculo' };
+            case 'acao_consciente': return { icon: <Leaf size={18} />, text: 'Ação Consciente' };
+            case 'santuario_pessoal': return { icon: <Music size={18} />, text: 'Prática do Santuário' };
+            default: return { icon: <Star size={18} />, text: 'Tarefa Especial' };
         }
     };
 
@@ -3079,16 +3072,19 @@ const JourneyDetailScreen = ({ journeyId, setActiveScreen, onStartJourneyTask })
             <div className="space-y-3">
                 {journey.days.map(dayInfo => {
                     const isCompleted = completedDays.includes(dayInfo.day);
-                    const isCurrent = dayInfo.day === currentDay;
-                    const isLocked = dayInfo.day > currentDay;
+                    const isCurrent = !isJourneyComplete && dayInfo.day === currentDay;
+                    // Um dia só está bloqueado se for futuro E a jornada não estiver completa.
+                    const isLocked = !isJourneyComplete && dayInfo.day > currentDay;
                     const taskInfo = getTaskInfo(dayInfo);
                     
                     return (
-                        <div key={dayInfo.day} onClick={() => isCurrent && onStartJourneyTask(journey.id, dayInfo)} 
+                        <div key={dayInfo.day} 
+                             // Permite o clique se não estiver bloqueado (ou seja, completo ou atual)
+                             onClick={() => !isLocked && onStartJourneyTask(journey.id, dayInfo)} 
                              className={`glass-card !p-4 flex items-center justify-between transition-all 
-                                ${isCompleted ? 'opacity-50' : ''}
-                                ${isCurrent ? 'border-[#FFD54F] clickable' : ''}
-                                ${isLocked ? 'opacity-30 cursor-default' : ''}`}>
+                                ${isCurrent ? 'border-[#FFD54F]' : ''}
+                                ${isCompleted ? 'opacity-70' : ''}
+                                ${!isLocked ? 'clickable' : 'opacity-40 cursor-default'}`}>
                             <div className="flex items-center gap-4">
                                 {isCompleted ? <CheckCircle size={24} className="text-green-400"/> : <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isCurrent ? 'bg-[#FFD54F]/20 text-[#FFD54F]' : 'bg-black/20 text-white/50'}`}>{dayInfo.day}</div>}
                                 <div>
@@ -3098,7 +3094,7 @@ const JourneyDetailScreen = ({ journeyId, setActiveScreen, onStartJourneyTask })
                                     </p>
                                 </div>
                             </div>
-                            {isCurrent && <ChevronLeft className="transform rotate-180"/>}
+                            {!isLocked && <ChevronLeft className="transform rotate-180"/>}
                         </div>
                     );
                 })}
@@ -3512,18 +3508,18 @@ const PermissionErrorScreen = ({ type }) => (<div className="min-h-screen flex i
 
 // --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL (COM LÓGICA DE ONBOARDING) ---
 function AppWithAuthCheck() {
-    // --- MUDANÇA AQUI: Obtendo os novos estados de carregamento do contexto ---
-    const { user, isAuthLoading, isUserDataLoading, permissionError, onboardingCompleted } = useContext(AppContext);
+    // Adicionamos 'currentUserData' para saber quando os dados do usuário foram carregados
+    const { user, loading, permissionError, onboardingCompleted, currentUserData } = useContext(AppContext);
     const [isSplashVisible, setIsSplashVisible] = useState(true);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsSplashVisible(false), 2000); // Duração MÍNIMA do splash
+        const timer = setTimeout(() => setIsSplashVisible(false), 4000); // Mantém a duração mínima do splash
         return () => clearTimeout(timer);
     }, []);
 
-    // --- LÓGICA DE CARREGAMENTO FINAL ---
-    // A SplashScreen agora espera o auth (isAuthLoading) E os dados do usuário (isUserDataLoading)
-    if (isSplashVisible || isAuthLoading || isUserDataLoading) {
+    // --- LÓGICA DE CARREGAMENTO CORRIGIDA ---
+    // A SplashScreen agora espera o auth (loading) E TAMBÉM os dados do usuário (currentUserData)
+    if (isSplashVisible || loading || (user && !currentUserData)) {
         return <SplashScreen />;
     }
     
@@ -3533,7 +3529,7 @@ function AppWithAuthCheck() {
         return <AuthScreen />;
     }
 
-    // Neste ponto, temos 100% de certeza do valor real de 'onboardingCompleted'
+    // Neste ponto, já temos certeza do valor real de 'onboardingCompleted'
     if (!onboardingCompleted) {
         return <OnboardingScreen />;
     }
