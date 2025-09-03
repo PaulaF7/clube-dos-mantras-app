@@ -237,3 +237,32 @@ exports.cleanupUserData = functions.auth.user().onDelete(async (user) => {
   logger.log(`Limpeza de dados para o usuário ${uid} concluída.`);
   return null;
 });
+
+//--------------------------------------------------------------------------------------------------
+// Função 5: Deleta o usuário da Autenticação (chamada pelo cliente após reautenticar).
+//--------------------------------------------------------------------------------------------------
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  // Garante que a função foi chamada por um usuário autenticado.
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "É preciso estar autenticado para deletar a conta."
+    );
+  }
+
+  const uid = context.auth.uid;
+  const logger = functions.logger;
+
+  try {
+    // A exclusão do usuário aqui irá disparar a função 'cleanupUserData' automaticamente.
+    await admin.auth().deleteUser(uid);
+    logger.log(`Usuário ${uid} deletado com sucesso da Autenticação.`);
+    return { success: true, message: "Conta de usuário deletada com sucesso." };
+  } catch (error) {
+    logger.error(`Erro ao deletar o usuário ${uid} da Autenticação:`, error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Ocorreu um erro no servidor ao tentar deletar a conta."
+    );
+  }
+});

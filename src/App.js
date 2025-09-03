@@ -592,9 +592,12 @@ try {
 const AppContext = createContext(null);
 
 const AppProvider = ({ children }) => {
-    // Estados existentes
+    // --- MUDANÇA AQUI: 'loading' renomeado e novo estado de carregamento adicionado ---
+    const [isAuthLoading, setIsAuthLoading] = useState(true); // Antigo 'loading'
+    const [isUserDataLoading, setIsUserDataLoading] = useState(true); // Novo estado para dados
+    
+    // ... (outros estados permanecem iguais) ...
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [userId, setUserId] = useState(null);
     const [currentUserData, setCurrentUserData] = useState(null);
     const [userName, setUserName] = useState('');
@@ -612,33 +615,26 @@ const AppProvider = ({ children }) => {
     const [astroHistory, setAstroHistory] = useState([]);
     const [userGoal, setUserGoal] = useState(null);
     const [journeyProgress, setJourneyProgress] = useState({});
-
-    // --- NOVOS ESTADOS E FUNÇÕES PARA TEMAS ---
     const [unlockedThemes, setUnlockedThemes] = useState(['default']);
     const [activeTheme, setActiveThemeState] = useState('default');
 
     const setActiveTheme = useCallback(async (themeId) => {
         if (!userId || !db) return;
         try {
-            setActiveThemeState(themeId); // Atualiza localmente para resposta imediata
+            setActiveThemeState(themeId);
             const userRef = doc(db, `users/${userId}`);
             await updateDoc(userRef, { activeTheme: themeId });
-        } catch (error) {
-            console.error("Erro ao definir tema ativo:", error);
-        }
+        } catch (error) { console.error("Erro ao definir tema ativo:", error); }
     }, [userId]);
 
     const unlockTheme = useCallback(async (themeId) => {
         if (!userId || !db || unlockedThemes.includes(themeId)) return;
         try {
             const newThemes = [...unlockedThemes, themeId];
-            setUnlockedThemes(newThemes); // Atualiza localmente
+            setUnlockedThemes(newThemes);
             const userRef = doc(db, `users/${userId}`);
             await updateDoc(userRef, { unlockedThemes: newThemes });
-            console.log(`Tema '${themeId}' desbloqueado!`);
-        } catch (error) {
-            console.error("Erro ao desbloquear tema:", error);
-        }
+        } catch (error) { console.error("Erro ao desbloquear tema:", error); }
     }, [userId, unlockedThemes]);
 
     const fetchJourneyProgress = useCallback(async (uid) => {
@@ -647,13 +643,9 @@ const AppProvider = ({ children }) => {
             const progressCol = collection(db, `users/${uid}/journeyProgress`);
             const snapshot = await getDocs(progressCol);
             const progressData = {};
-            snapshot.forEach(doc => {
-                progressData[doc.id] = doc.data();
-            });
+            snapshot.forEach(doc => { progressData[doc.id] = doc.data(); });
             setJourneyProgress(progressData);
-        } catch (error) {
-            console.error("Erro ao buscar progresso das jornadas:", error);
-        }
+        } catch (error) { console.error("Erro ao buscar progresso das jornadas:", error); }
     }, []);
 
     const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
@@ -664,14 +656,9 @@ const AppProvider = ({ children }) => {
             if (!currentProgress.completedDays.includes(dayNumber)) {
                 const updatedDays = [...currentProgress.completedDays, dayNumber];
                 await setDoc(progressRef, { completedDays: updatedDays, lastUpdate: Timestamp.now() }, { merge: true });
-                setJourneyProgress(prev => ({
-                    ...prev,
-                    [journeyId]: { ...prev[journeyId], completedDays: updatedDays }
-                }));
+                setJourneyProgress(prev => ({ ...prev, [journeyId]: { ...prev[journeyId], completedDays: updatedDays } }));
             }
-        } catch (error) {
-            console.error("Erro ao atualizar progresso da jornada:", error);
-        }
+        } catch (error) { console.error("Erro ao atualizar progresso da jornada:", error); }
     }, [userId, journeyProgress]);
 
     const fetchAllEntries = useCallback(async (uid) => {
@@ -729,7 +716,10 @@ const AppProvider = ({ children }) => {
     }, []);
     
     const fetchUserData = useCallback(async (uid) => {
-        if (!db || !uid) return;
+        if (!db || !uid) {
+            setIsUserDataLoading(false); // Adicionado para garantir que o loading pare se não houver UID
+            return;
+        }
         try {
             const userRef = doc(db, `users/${uid}`);
             const docSnap = await getDoc(userRef);
@@ -745,11 +735,8 @@ const AppProvider = ({ children }) => {
                 setUserGoal(data.userGoal || null);
                 setStreakData({ currentStreak: data.currentStreak || 0, lastPracticedDate: data.lastPracticedDate?.toDate() || null });
                 if (data.astroProfile) setAstroProfile(data.astroProfile); else setAstroProfile(null);
-                
-                // LEITURA DOS DADOS DE TEMA
                 setUnlockedThemes(data.unlockedThemes || ['default']);
                 setActiveThemeState(data.activeTheme || 'default');
-
             } else if (auth.currentUser?.displayName) {
                 setUserName(auth.currentUser.displayName);
                 setIsSubscribed(false);
@@ -759,6 +746,8 @@ const AppProvider = ({ children }) => {
         } catch (error) {
             console.error("Error fetching user data:", error);
             if (error.code === 'permission-denied') setPermissionError("Firestore");
+        } finally {
+            setIsUserDataLoading(false);
         }
     }, [fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchAstroHistory]);
 
@@ -860,46 +849,47 @@ const AppProvider = ({ children }) => {
         }
     }, [db, userId]);
 
-    // CÓDIGO NOVO (SUBSTITUA PELO CÓDIGO ABAIXO)
     useEffect(() => {
-        if (!auth) { setLoading(false); return; }
+        if (!auth) { setIsAuthLoading(false); setIsUserDataLoading(false); return; }
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
+                    setIsUserDataLoading(true);
                     const fetchedUserId = user.uid;
                     setUserId(fetchedUserId);
                     setUser(user);
-
-                    // --- INÍCIO DA CORREÇÃO ---
-                    // 1. Referencia o documento do usuário
                     const userRef = doc(db, "users", user.uid);
-                    // 2. Tenta ler o documento
                     const docSnap = await getDoc(userRef);
-
-                    // 3. Se o documento NÃO existir, cria com os valores padrão de tema
                     if (!docSnap.exists()) {
-                        console.log("Novo usuário detectado, criando documento com temas padrão.");
-                        await setDoc(userRef, {
-                            createdAt: Timestamp.now(),
-                            activeTheme: 'default',
-                            unlockedThemes: ['default']
-                        }, { merge: true }); // Merge é bom para caso outra função crie o doc primeiro
+                        await setDoc(userRef, { createdAt: Timestamp.now(), activeTheme: 'default', unlockedThemes: ['default'] }, { merge: true });
                     }
-                    // --- FIM DA CORREÇÃO ---
-                    
-                    // Continua carregando todos os dados do usuário normalmente
                     await Promise.all([fetchUserData(fetchedUserId), fetchJourneyProgress(fetchedUserId)]);
-
                 } else {
-                    // Limpa o estado quando o usuário desloga (lógica inalterada)
-                    setUser(null); setUserId(null); setUserName(''); setFavorites([]); setStreakData({ currentStreak: 0, lastPracticedDate: null }); setPhotoURL(null); setAllEntries([]); setIsSubscribed(false); setOnboardingCompleted(false); setUserGoal(null); setMeusAudios([]); setPlaylists([]); setAstroProfile(null); setAstroHistory([]); setJourneyProgress({});
-                    setUnlockedThemes(['default']); setActiveThemeState('default');
+                    setUser(null);
+                    setUserId(null);
+                    setUserName('');
+                    setFavorites([]);
+                    setStreakData({ currentStreak: 0, lastPracticedDate: null });
+                    setPhotoURL(null);
+                    setAllEntries([]);
+                    setIsSubscribed(false);
+                    setOnboardingCompleted(false);
+                    setUserGoal(null);
+                    setMeusAudios([]);
+                    setPlaylists([]);
+                    setAstroProfile(null);
+                    setAstroHistory([]);
+                    setJourneyProgress({});
+                    setUnlockedThemes(['default']);
+                    setActiveThemeState('default');
+                    setIsUserDataLoading(false);
                 }
             } catch (error) { 
                 console.error("Error during auth state change:", error); 
                 if (error.code === 'permission-denied') setPermissionError("Firestore"); 
+                setIsUserDataLoading(false);
             } finally { 
-                setLoading(false); 
+                setIsAuthLoading(false);
             }
         });
         return () => unsubscribe();
@@ -914,7 +904,7 @@ const AppProvider = ({ children }) => {
     };
     
     const value = { 
-        user, loading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
+        user, isAuthLoading, isUserDataLoading, userId, userName, fetchUserData, favorites, updateFavorites, streakData, allEntries, fetchAllEntries, recalculateAndSetStreak, photoURL, setPhotoURL, permissionError, isSubscribed, setIsSubscribed,
         meusAudios, playlists, fetchMeusAudios, fetchPlaylists,
         astroProfile, setAstroProfile, astroHistory, fetchAstroHistory, freeQuestionUsed, setFreeQuestionUsed,
         onboardingCompleted, updateOnboardingStatus, currentUserData, userGoal, updateUserData, journeyProgress, updateJourneyProgress,
@@ -1676,7 +1666,7 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
 const MantraSelectionModal = ({ isOpen, onClose, onSelectMantra, currentMantraId }) => { if (!isOpen) return null; const handleSelect = (id) => { onSelectMantra(id); }; return (<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}><div className="glass-modal w-full max-w-lg" onClick={e => e.stopPropagation()}><div className="flex justify-between items-center mb-4"><h2 className="text-xl text-white" style={{fontFamily: "var(--font-display)"}}>Selecione um Mantra</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button></div><div className="space-y-3 overflow-y-auto max-h-[60vh] pr-2">{MANTRAS_DATA.map(mantra => (<div key={mantra.id} onClick={() => handleSelect(mantra.id)} className={`p-4 rounded-lg cursor-pointer transition-all ${currentMantraId === mantra.id ? 'bg-[#FFD54F] text-[#3A1B57]' : 'bg-white/5 text-white hover:bg-white/10'}`}><p>{mantra.nome}</p><p className={`text-sm font-light ${currentMantraId === mantra.id ? 'opacity-80' : 'text-white/70'}`}>{mantra.texto}</p></div>))}</div></div></div>); };
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Explore melodias sagradas para relaxar e meditar.">Músicas Mântricas</PageTitle><div className="grid grid-cols-2 gap-4 md:gap-6">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable" onClick={() => isLocked ? openPremiumModal() : onPlayMantra(mantra, 1, 'library')}><img src={mantra.imageSrc} alt={`Visual para ${mantra.nome}`} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isLocked ? 'filter grayscale brightness-50' : ''}`} /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>{isLocked && (<div className="absolute inset-0 flex items-center justify-center bg-black/40"><Lock className="h-10 w-10 text-white/70" /></div>)}<div className="absolute bottom-0 left-0 p-4"><h3 className="text-white text-base leading-tight" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3></div></div>); })}</div></div>); };
 const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => { const { isSubscribed } = useContext(AppContext); const FREE_MANTRA_IDS = [1, 2]; return (<div className="page-container"><PageTitle subtitle="Escolha um mantra para focar e iniciar sua prática de repetição.">Mantras para Praticar</PageTitle><div className="space-y-4">{MANTRAS_DATA.map((mantra) => { const isLocked = !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id); return (<div key={mantra.id} className="glass-card !p-5 text-left"><h3 className="text-lg text-[#FFD54F]" style={{ fontFamily: "var(--font-display)" }}>{mantra.nome}</h3><p className="text-white/80 my-3 font-light italic">"{mantra.texto}"</p><div className="mt-4 text-right">{isLocked ? (<PremiumButton onClick={openPremiumModal} className="!w-auto !py-2 !px-5 !text-sm !font-semibold">Praticar</PremiumButton>) : (<button onClick={() => onSelectMantra(mantra)} className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold"><Mic2 className="h-4 w-4" />Praticar</button>)}</div></div>); })}</div></div>); };
-const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
+const HistoryScreen = ({ onEditMantra, onEditNote, onDelete, onEditGratitude }) => { // Adicionado onEditGratitude
     const { allEntries } = useContext(AppContext);
     const [expandedId, setExpandedId] = useState(null);
 
@@ -1755,7 +1745,9 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                                             <ul className="list-disc list-inside space-y-1">
                                                 {entry.gratefulFor.map((item, index) => ( <li key={index} className="italic">"{item}"</li> ))}
                                             </ul>
+                                            {/* --- MUDANÇA AQUI: Botão de Editar Adicionado --- */}
                                             <div className="flex gap-2 pt-3">
+                                                <button onClick={() => onEditGratitude(entry)} className="btn-secondary !text-xs !py-1 !px-3">Editar</button>
                                                 <button onClick={() => onDelete(entry)} className="btn-danger-outline !text-xs !py-1 !px-3">Apagar</button>
                                             </div>
                                         </div>
@@ -3195,7 +3187,7 @@ const usePushNotifications = () => {
 };
 
 // --- COMPONENTE PRINCIPAL (ATUALIZADO com lógica de Jornadas) ---
-const AppContent = () => {
+    const AppContent = () => {
     // ESTADO DE NAVEGAÇÃO ATUALIZADO para lidar com parâmetros
     const [activeScreen, setActiveScreenInternal] = useState({ screen: 'home', payload: null });
     const setActiveScreen = (screen, payload = null) => setActiveScreenInternal({ screen, payload });
@@ -3226,6 +3218,13 @@ const AppContent = () => {
 
     // --- INÍCIO: LÓGICA DO TESTE A/B ---
     const [paywallVariant, setPaywallVariant] = useState(null);
+
+     // --- NOVO ESTADO E FUNÇÃO PARA EDIÇÃO DE GRATIDÃO ---
+    const [gratitudeToEdit, setGratitudeToEdit] = useState(null);
+    const handleEditGratitude = (entry) => {
+        setGratitudeToEdit(entry);
+        setActiveScreen('gratitude');
+    };
 
     useEffect(() => {
         // Esta lógica é executada apenas uma vez para atribuir o usuário a um grupo.
@@ -3425,12 +3424,23 @@ const AppContent = () => {
         switch (activeScreen.screen) {
             case 'home': return <HomeScreen setActiveScreen={setActiveScreen} openCalendar={() => setIsCalendarOpen(true)} openDayDetail={handleDayClick} onSelectMantra={handleSelectSpokenMantra} />;
             case 'diary': return <DiaryScreen onSave={handleSaveOrUpdate} entryToEdit={entryToEdit} onCancel={() => { setEntryToEdit(null); setActiveScreen(entryToEdit ? 'history' : 'home'); }} openPremiumModal={openPremiumModal} />;            
-            case 'gratitude': return <GratitudeScreen onSave={activeJourneyTask ? handleTaskCompletion : handleSaveOrUpdate} onCancel={() => activeJourneyTask ? setActiveScreen('journeyDetail', { journeyId: activeJourneyTask.journeyId }) : setActiveScreen('home')} />;            case 'noteEditor': return <NoteEditorScreen onSave={handleSaveOrUpdate} onCancel={() => { setNoteToEdit(null); setActiveScreen(activeScreen.payload?.from === 'home' ? 'home' : 'history'); }} noteToEdit={noteToEdit} dateForNewNote={selectedDate} />;            
+            // --- MUDANÇA AQUI: Passando dados de edição para a GratitudeScreen ---
+            case 'gratitude': return <GratitudeScreen 
+                onSave={handleSaveOrUpdate} 
+                onCancel={() => { setGratitudeToEdit(null); activeJourneyTask ? setActiveScreen('journeyDetail', { journeyId: activeJourneyTask.journeyId }) : setActiveScreen('history'); }}
+                entryToEdit={gratitudeToEdit}
+            />;            
             case 'mantras': return <MantrasScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'spokenMantras': return <SpokenMantrasScreen onSelectMantra={handleSelectSpokenMantra} openPremiumModal={openPremiumModal} />;
             case 'meuSantuario': return <MeuSantuarioScreen onStartPlaylist={setPlaylistToPlay} onEditPlaylist={handleEditPlaylist} onStartAudio={handleStartCustomAudio} onAddAudio={() => setIsAudioCreatorOpen(true)} onAddPlaylist={handleAddPlaylist} openPremiumModal={openPremiumModal} />;
             case 'playlistEditor': return <PlaylistEditorScreen playlistToEdit={playlistToEdit} onSave={handleSavePlaylist} onCancel={handleSavePlaylist} />;
-            case 'history': return <HistoryScreen onEditMantra={(entry) => { setEntryToEdit(entry); setActiveScreen('diary'); }} onEditNote={(note) => { setNoteToEdit(note); setActiveScreen('noteEditor'); }} onDelete={(entry) => setEntryToDelete(entry)} />;
+            // --- MUDANÇA AQUI: Passando a nova função para a HistoryScreen ---
+            case 'history': return <HistoryScreen 
+                onEditMantra={(entry) => { setEntryToEdit(entry); setActiveScreen('diary'); }} 
+                onEditNote={(note) => { setNoteToEdit(note); setActiveScreen('noteEditor'); }}
+                onEditGratitude={handleEditGratitude} 
+                onDelete={(entry) => setEntryToDelete(entry)} 
+            />;            
             case 'settings': return <SettingsScreen setActiveScreen={setActiveScreen} />;
             case 'oracle': return <OracleScreen onPlayMantra={handlePlayMantra} openPremiumModal={openPremiumModal} />;
             case 'favorites': return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
@@ -3502,21 +3512,28 @@ const PermissionErrorScreen = ({ type }) => (<div className="min-h-screen flex i
 
 // --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL (COM LÓGICA DE ONBOARDING) ---
 function AppWithAuthCheck() {
-    const { user, loading, permissionError, onboardingCompleted } = useContext(AppContext);
+    // --- MUDANÇA AQUI: Obtendo os novos estados de carregamento do contexto ---
+    const { user, isAuthLoading, isUserDataLoading, permissionError, onboardingCompleted } = useContext(AppContext);
     const [isSplashVisible, setIsSplashVisible] = useState(true);
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsSplashVisible(false), 4000);
+        const timer = setTimeout(() => setIsSplashVisible(false), 2000); // Duração MÍNIMA do splash
         return () => clearTimeout(timer);
     }, []);
 
-    if (isSplashVisible || loading) return <SplashScreen />;
+    // --- LÓGICA DE CARREGAMENTO FINAL ---
+    // A SplashScreen agora espera o auth (isAuthLoading) E os dados do usuário (isUserDataLoading)
+    if (isSplashVisible || isAuthLoading || isUserDataLoading) {
+        return <SplashScreen />;
+    }
+    
     if (permissionError) return <PermissionErrorScreen type={permissionError} />;
     
     if (!user) {
         return <AuthScreen />;
     }
 
+    // Neste ponto, temos 100% de certeza do valor real de 'onboardingCompleted'
     if (!onboardingCompleted) {
         return <OnboardingScreen />;
     }
@@ -3536,12 +3553,23 @@ export default function App() {
 // GratitudeScreen e PlaylistEditorScreen precisam ser definidos se não estiverem
 // no código original. Vou adicionar placeholders funcionais para eles.
 
-const GratitudeScreen = ({ onSave, onCancel }) => {
+const GratitudeScreen = ({ onSave, onCancel, entryToEdit }) => { // Adicionado entryToEdit
   const [items, setItems] = useState(["", "", ""]);
   const { userId, fetchAllEntries } = useContext(AppContext);
   const [status, setStatus] = useState({ type: '', message: '' });
 
-  // --- LÓGICA ADICIONADA ---
+  // Efeito para preencher os campos quando estiver editando
+  useEffect(() => {
+    if (entryToEdit) {
+      const existingItems = entryToEdit.gratefulFor || [];
+      // Garante que o array tenha sempre 3 posições para os 3 inputs
+      const filledItems = [...existingItems, "", "", ""].slice(0, 3);
+      setItems(filledItems);
+    } else {
+      setItems(["", "", ""]); // Limpa os campos para um novo registro
+    }
+  }, [entryToEdit]);
+
   const canSave = items.some(item => item.trim() !== "");
 
   const handleItemChange = (index, value) => {
@@ -3557,14 +3585,23 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
         setStatus({ type: 'error', message: 'Preencha pelo menos um campo.' });
         return;
     }
-
+    
     try {
-      await addDoc(collection(db, `users/${userId}/entries`), {
-        type: 'gratitude',
-        gratefulFor,
-        practicedAt: Timestamp.now()
-      });
-      setStatus({ type: 'success', message: 'Gratidão registrada!' });
+      if (entryToEdit) {
+        // --- LÓGICA DE ATUALIZAÇÃO ---
+        const entryRef = doc(db, `users/${userId}/entries`, entryToEdit.id);
+        await updateDoc(entryRef, { gratefulFor });
+        setStatus({ type: 'success', message: 'Gratidão atualizada!' });
+      } else {
+        // --- LÓGICA DE CRIAÇÃO (EXISTENTE) ---
+        await addDoc(collection(db, `users/${userId}/entries`), {
+          type: 'gratitude',
+          gratefulFor,
+          practicedAt: Timestamp.now()
+        });
+        setStatus({ type: 'success', message: 'Gratidão registrada!' });
+      }
+      
       await fetchAllEntries(userId);
       setTimeout(onSave, 1500);
     } catch (error) {
@@ -3575,7 +3612,9 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
 
   return (
     <div className="page-container">
-      <PageTitle subtitle="Dedique um momento para reconhecer as bênçãos em sua vida.">Pote da Gratidão</PageTitle>
+      <PageTitle subtitle="Dedique um momento para reconhecer as bênçãos em sua vida.">
+        {entryToEdit ? 'Editar Gratidão' : 'Pote da Gratidão'}
+      </PageTitle>
       <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto glass-card space-y-8">
         <div className="space-y-4">
           {[0, 1, 2].map(index => (
@@ -3594,8 +3633,9 @@ const GratitudeScreen = ({ onSave, onCancel }) => {
         <div className="flex flex-col gap-4 pt-6 border-t border-white/10">
             <div className="flex gap-4">
                 <button type="button" onClick={onCancel} className="w-full btn-secondary">Cancelar</button>
-                {/* --- BOTÃO ATUALIZADO --- */}
-                <button type="submit" className="w-full modern-btn-primary h-14" disabled={!canSave}>Salvar Gratidão</button>
+                <button type="submit" className="w-full modern-btn-primary h-14" disabled={!canSave}>
+                  {entryToEdit ? 'Atualizar Gratidão' : 'Salvar Gratidão'}
+                </button>
             </div>
             {status.message && <p className={`p-3 rounded-lg text-center text-sm ${status.type === 'success' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-400'}`}>{status.message}</p>}
         </div>
