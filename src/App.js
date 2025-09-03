@@ -1819,7 +1819,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
     const fileInputRef = useRef(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     
-    // --- LÓGICA DA MELHORIA ADICIONADA AQUI ---
     const THEMES = [
         { id: 'default', name: 'Padrão' },
         { id: 'serenity_theme', name: 'Serenidade' }
@@ -1847,8 +1846,51 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
 
     const handlePhotoUpload = async (e) => { const file = e.target.files[0]; if (!file || !user || !storage || !db) return; setIsUploadingPhoto(true); try { const storageRef = ref(storage, `profilePictures/${user.uid}`); await uploadBytes(storageRef, file); const url = await getDownloadURL(storageRef); await updateProfile(user, { photoURL: url }); const userDocRef = doc(db, `users/${user.uid}`); await updateDoc(userDocRef, { photoURL: url }); setPhotoURL(url); } catch (error) { console.error("Photo Upload Error:", error); } finally { setIsUploadingPhoto(false); } };
     const handlePasswordReset = async () => { if (!auth || !user) return; setIsSubmitting(true); try { auth.languageCode = 'pt-BR'; await sendPasswordResetEmail(auth, user.email); setPasswordMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); } catch (error) { setPasswordMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); } finally { setIsSubmitting(false); setTimeout(() => setPasswordMessage({ type: '', text: '' }), 4000); } };
-    const handleDeleteAccount = async () => { setIsDeleteModalOpen(false); if (!auth.currentUser) return; try { await deleteUser(auth.currentUser); } catch (error) { if (error.code === 'auth/requires-recent-login') { setIsReauthModalOpen(true); } } };
-    const handleReauthenticateAndDelete = async (e) => { e.preventDefault(); const currentUser = auth.currentUser; if (!currentUser || !reauthPassword) return; setIsSubmitting(true); setReauthError(''); try { const credential = EmailAuthProvider.credential(currentUser.email, reauthPassword); await reauthenticateWithCredential(currentUser, credential); await deleteUser(currentUser); setIsReauthModalOpen(false); } catch (error) { setReauthError('Senha incorreta ou falha na reautenticação.'); } finally { setIsSubmitting(false); } };
+    
+    // --- INÍCIO DA LÓGICA DE EXCLUSÃO CORRIGIDA ---
+    const reauthenticateAndDelete = async () => {
+        setIsDeleteModalOpen(false);
+        if (!auth.currentUser) return;
+
+        const providerId = auth.currentUser.providerData[0]?.providerId;
+
+        try {
+            if (providerId === 'password') {
+                // Abre o modal de senha para usuários de email
+                setIsReauthModalOpen(true); 
+            } else if (providerId === 'google.com') {
+                // Inicia o fluxo de pop-up para usuários Google
+                const provider = new GoogleAuthProvider();
+                await reauthenticateWithPopup(auth.currentUser, provider);
+                await deleteUser(auth.currentUser); // Dispara a Cloud Function
+            } else {
+                throw new Error('Método de login não suportado para exclusão.');
+            }
+        } catch (error) {
+            console.error("Erro na reautenticação:", error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert('Ocorreu um erro durante a reautenticação. Tente novamente.');
+            }
+        }
+    };
+    
+    const handlePasswordReauthAndDelete = async (e) => {
+        e.preventDefault();
+        if (!auth.currentUser || !reauthPassword) return;
+        setIsSubmitting(true);
+        setReauthError('');
+        try {
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, reauthPassword);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            await deleteUser(auth.currentUser); // Dispara a Cloud Function
+            setIsReauthModalOpen(false);
+        } catch (error) {
+            setReauthError('Senha incorreta ou falha na reautenticação.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    // --- FIM DA LÓGICA DE EXCLUSÃO CORRIGIDA ---
     
     return (
         <>
@@ -1879,7 +1921,7 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                         {nameMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${nameMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{nameMessage.text}</p>}
                     </form>
                     
-                    {/* --- INÍCIO: SEÇÃO DE TEMAS ATUALIZADA --- */}
+                    {/* Seção de Temas (Preservada) */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Tema Visual</label>
                         <div className="flex w-full bg-black/20 rounded-full p-1">
@@ -1913,8 +1955,8 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                             </p>
                         )}
                     </div>
-                    {/* --- FIM: SEÇÃO DE TEMAS ATUALIZADA --- */}
-
+                   
+                    {/* O resto do JSX continua idêntico */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Assinatura</label>
                         <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full btn-secondary text-left flex items-center justify-between">
@@ -1924,8 +1966,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                             <ChevronLeft className="transform rotate-180" />
                         </button>
                     </div>
-
-                    {/* Seções de Segurança e Contato */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Segurança</label>
                         <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}>
@@ -1943,8 +1983,6 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                             <ChevronLeft className="transform rotate-180" />
                         </button>
                     </div>
-
-                    {/* Botões de Sair e Deletar */}
                     <div className="space-y-4 pt-6 border-t border-white/10">
                         <button onClick={() => signOut(auth)} className="w-full btn-secondary flex items-center justify-center gap-2"><LogOut className="h-5 w-5" /> Sair da Conta</button>
                         <button onClick={() => setIsDeleteModalOpen(true)} className="w-full btn-danger-outline flex items-center justify-center gap-2"><Trash2 className="h-5 w-5" /> Deletar Conta</button>
@@ -1953,8 +1991,10 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
             </div>
             
             <SubscriptionManagementModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
-            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteAccount} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
-            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handleReauthenticateAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
+            {/* O onConfirm foi renomeado para maior clareza */}
+            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={reauthenticateAndDelete} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
+            {/* O onConfirm aqui também foi renomeado */}
+            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handlePasswordReauthAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
         </>
     );
 };
