@@ -45,6 +45,7 @@ const paywallVariantA = {
     features: [
         { icon: Music, text: "Acesso ilimitado a todas as Músicas Mântricas." },
         { icon: Mic2, text: "Prática com todos os Mantras Falados." },
+        { icon: Map, text: "Siga Jornadas de Prática guiadas para atingir seus objetivos." }, // <-- ADICIONADO AQUI
         { icon: Leaf, text: "Crie seu Santuário com áudios e playlists ilimitadas." },
         { icon: MessageCircleQuestion, text: "Receba insights exclusivos no \"Pergunte ao Astrólogo\"." },
         { icon: Circle, text: "Desbloqueie a Meditação de Chakras completa." },
@@ -56,6 +57,7 @@ const paywallVariantB = {
     title: "Sua Transformação Começa Agora",
     subtitle: "Menos ansiedade, mais clareza e paz interior. A assinatura Mantras+ é o seu guia diário para uma vida com mais propósito.",
     features: [
+        { icon: Map, text: "Transforme sua Rotina: Cumpra jornadas diárias e sinta a evolução na sua paz interior e clareza mental." }, // <-- ADICIONADO AQUI
         { icon: Wind, text: "Encontre sua Calma: Tenha sempre à mão a meditação ideal para silenciar a mente e aliviar o estresse." },
         { icon: Sparkles, text: "Aprofunde sua Prática: Crie rituais poderosos com seu santuário de áudios e playlists personalizadas." },
         { icon: TrendingUp, text: "Receba Orientação Divina: Entenda sua missão de vida com análises astrológicas exclusivas para você." },
@@ -423,7 +425,7 @@ const JOURNEYS_DATA = [
       completionReward: {
         type: 'theme',
         value: 'serenity_theme',
-        message: "Parabéns! Você completou a Jornada da Paz e desbloqueou o tema visual 'Serenidade' para o app!"
+        message: "Parabéns! Você completou a Jornada da Paz e desbloqueou o tema 'Serenidade'. Você pode ativá-lo na tela de Configurações."
       },
       days: [
         { 
@@ -1194,17 +1196,17 @@ const OnboardingScreen = () => {
         setPlayerData({ mantra: recommendedMantra, repetitions: 1, audioType: 'library' });
     };
     
-    // ATUALIZADO: Agora leva para o passo 3 (Teaser do Santuário)
+    // ATUALIZADO: Agora leva para o passo 3 (Jornadas)
     const handlePlayerClose = () => {
         setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' });
-        setStep(3);
+        setStep(3); // MUDANÇA AQUI
     };
 
     const handleFinishOnboarding = () => {
         updateOnboardingStatus(true);
     };
     
-    // ATUALIZADO: Lógica de renderização com os novos passos 3 e 4
+    // ATUALIZADO: Lógica de renderização com os novos passos
     const renderStepContent = () => {
         switch (step) {
             case 1:
@@ -1235,23 +1237,31 @@ const OnboardingScreen = () => {
                         )}
                     </div>
                 );
-            case 3: // NOVO: Teaser do Santuário
+            case 3: // <-- NOVO PASSO ADICIONADO AQUI
+                return (
+                    <div className="text-center screen-animation">
+                        <Map className="mx-auto h-16 w-16 text-[#FFD54F]/80 mb-4" />
+                        <PageTitle subtitle="Siga sequências guiadas de 7, 5 ou 3 dias para cultivar a paz, a prosperidade e o foco de forma estruturada.">Descubra um Caminho Guiado</PageTitle>
+                        <button onClick={() => setStep(4)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Próximo</button>
+                    </div>
+                );
+            case 4: // Antigo passo 3
                 return (
                     <div className="text-center screen-animation">
                         <Leaf className="mx-auto h-16 w-16 text-[#FFD54F]/80 mb-4" />
                         <PageTitle subtitle="No Santuário, você poderá gravar seus próprios mantras, criar playlists de práticas e construir um ritual que é só seu.">Seu Espaço Sagrado e Pessoal</PageTitle>
-                        <button onClick={() => setStep(4)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Próximo</button>
+                        <button onClick={() => setStep(5)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Próximo</button>
                     </div>
                 );
-            case 4: // NOVO: Teaser do Astrólogo
+            case 5: // Antigo passo 4
                 return (
                     <div className="text-center screen-animation">
                         <MessageCircleQuestion className="mx-auto h-16 w-16 text-[#FFD54F]/80 mb-4" />
                         <PageTitle subtitle="Entenda sua missão de vida, carreira e relacionamentos com análises astrológicas exclusivas, feitas para o seu mapa astral.">Receba Orientação para sua Jornada</PageTitle>
-                        <button onClick={() => setStep(5)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Continuar</button>
+                        <button onClick={() => setStep(6)} className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-8">Continuar</button>
                     </div>
                 );
-            case 5: // Passo final, antiga etapa 3
+            case 6: // Antigo passo 5
                 return (
                      <div className="text-center screen-animation">
                         <CheckCircle className="mx-auto h-20 w-20 text-green-400" />
@@ -1808,11 +1818,10 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
     const [reauthError, setReauthError] = useState('');
     const fileInputRef = useRef(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-
-    const THEME_NAMES = {
-        'default': 'Padrão',
-        'serenity_theme': 'Serenidade'
-    };
+    
+    const THEMES = [ { id: 'default', name: 'Padrão' }, { id: 'serenity_theme', name: 'Serenidade' } ];
+    const isSerenityLocked = !unlockedThemes.includes('serenity_theme');
+    const avatarBgColor = activeTheme === 'serenity_theme' ? '0b2c4d' : '2c0b4d';
 
     const handleNameUpdate = async (e) => {
         e.preventDefault();
@@ -1834,20 +1843,58 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
 
     const handlePhotoUpload = async (e) => { const file = e.target.files[0]; if (!file || !user || !storage || !db) return; setIsUploadingPhoto(true); try { const storageRef = ref(storage, `profilePictures/${user.uid}`); await uploadBytes(storageRef, file); const url = await getDownloadURL(storageRef); await updateProfile(user, { photoURL: url }); const userDocRef = doc(db, `users/${user.uid}`); await updateDoc(userDocRef, { photoURL: url }); setPhotoURL(url); } catch (error) { console.error("Photo Upload Error:", error); } finally { setIsUploadingPhoto(false); } };
     const handlePasswordReset = async () => { if (!auth || !user) return; setIsSubmitting(true); try { auth.languageCode = 'pt-BR'; await sendPasswordResetEmail(auth, user.email); setPasswordMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); } catch (error) { setPasswordMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); } finally { setIsSubmitting(false); setTimeout(() => setPasswordMessage({ type: '', text: '' }), 4000); } };
-    const handleDeleteAccount = async () => { setIsDeleteModalOpen(false); if (!auth.currentUser) return; try { await deleteUser(auth.currentUser); } catch (error) { if (error.code === 'auth/requires-recent-login') { setIsReauthModalOpen(true); } } };
-    const handleReauthenticateAndDelete = async (e) => { e.preventDefault(); const currentUser = auth.currentUser; if (!currentUser || !reauthPassword) return; setIsSubmitting(true); setReauthError(''); try { const credential = EmailAuthProvider.credential(currentUser.email, reauthPassword); await reauthenticateWithCredential(currentUser, credential); await deleteUser(currentUser); setIsReauthModalOpen(false); } catch (error) { setReauthError('Senha incorreta ou falha na reautenticação.'); } finally { setIsSubmitting(false); } };
-    const avatarBgColor = activeTheme === 'serenity_theme' ? '0b2c4d' : '2c0b4d';
+    
+    // --- LÓGICA DE EXCLUSÃO ATUALIZADA ---
+    const reauthenticateAndDelete = async () => {
+        setIsDeleteModalOpen(false);
+        if (!auth.currentUser) return;
 
+        const providerId = auth.currentUser.providerData[0]?.providerId;
+
+        try {
+            if (providerId === 'password') {
+                setIsReauthModalOpen(true); // Abre o modal de senha para usuários de email
+            } else if (providerId === 'google.com') {
+                const provider = new GoogleAuthProvider();
+                await reauthenticateWithPopup(auth.currentUser, provider);
+                await deleteUser(auth.currentUser); // Dispara a Cloud Function
+            } else {
+                throw new Error('Método de login não suportado para exclusão.');
+            }
+        } catch (error) {
+            console.error("Erro na reautenticação:", error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert('Ocorreu um erro durante a reautenticação. Tente novamente.');
+            }
+        }
+    };
+    
+    const handlePasswordReauthAndDelete = async (e) => {
+        e.preventDefault();
+        if (!auth.currentUser || !reauthPassword) return;
+        setIsSubmitting(true);
+        setReauthError('');
+        try {
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, reauthPassword);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            await deleteUser(auth.currentUser); // Dispara a Cloud Function
+            setIsReauthModalOpen(false);
+        } catch (error) {
+            setReauthError('Senha incorreta ou falha na reautenticação.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
     
     return (
         <>
             <div className="page-container">
                 <PageTitle subtitle="Personalize seu perfil, gerencie sua conta e entre em contato conosco.">Configurações</PageTitle>
                 <div className="glass-card space-y-8">
-                    {/* Seção de Perfil (sem alterações) */}
+                    {/* Seção de Perfil */}
                     <div className="flex items-center gap-5">
                         <div className="relative">
-                        <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=${avatarBgColor}&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" />
+                            <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=${avatarBgColor}&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" />
                             {isUploadingPhoto && (<div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center"><div className="w-8 h-8 border-2 border-white/50 border-t-white rounded-full animate-spin"></div></div>)}
                             <button onClick={() => fileInputRef.current.click()} className="absolute bottom-0 right-0 bg-[#FFD54F] text-[#3A1B57] p-1.5 rounded-full" disabled={isUploadingPhoto}><Camera size={16} /></button>
                             <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
@@ -1857,9 +1904,8 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                             <p className="text-sm text-white/60 font-light">{user.email}</p>
                         </div>
                     </div>
-
-                    {/* Formulário de Nome (sem alterações) */}
-                    <form onSubmit={handleNameUpdate} className="space-y-3">
+                    {/* ... (outras seções do formulário permanecem iguais) ... */}
+                     <form onSubmit={handleNameUpdate} className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Nome de Usuário</label>
                         <div className="flex gap-2">
                             <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="input-field flex-1" />
@@ -1867,57 +1913,24 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                         </div>
                         {nameMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${nameMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{nameMessage.text}</p>}
                     </form>
-                    
-                    {/* --- INÍCIO: NOVA SEÇÃO DE TEMAS COM NOVO DESIGN --- */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Tema Visual</label>
-                        <div className="flex w-full bg-black/20 rounded-full p-1">
-                            {(unlockedThemes || ['default']).map(themeId => {
-                                const isActive = activeTheme === themeId;
-                                return (
-                                    <button
-                                        key={themeId}
-                                        onClick={() => setActiveTheme(themeId)}
-                                        className={`w-full text-center py-2 rounded-full transition-all text-sm font-semibold ${isActive ? 'bg-[#FFD54F] text-[#2c0b4d] shadow-md' : 'bg-transparent text-white/70 hover:bg-white/10'}`}
-                                    >
-                                        {THEME_NAMES[themeId] || themeId}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <div className="flex w-full bg-black/20 rounded-full p-1">{THEMES.map(theme => {const isActive = activeTheme === theme.id; const isLocked = theme.id === 'serenity_theme' && isSerenityLocked; if (isLocked) {return (<button key={theme.id} disabled className="w-full text-center py-2 rounded-full text-sm font-semibold bg-transparent text-white/40 cursor-not-allowed flex items-center justify-center gap-2"><Lock size={14}/><span>{theme.name}</span></button>);}return (<button key={theme.id} onClick={() => setActiveTheme(theme.id)} className={`w-full text-center py-2 rounded-full transition-all text-sm font-semibold ${isActive?'bg-[#FFD54F] text-[#2c0b4d] shadow-md':'bg-transparent text-white/70 hover:bg-white/10'}`}>{theme.name}</button>);})}{isSerenityLocked && (<p className="text-center text-xs text-white/60 font-light pt-2">Complete a "Jornada da Paz" para desbloquear.</p>)}</div>
                     </div>
-                    {/* --- FIM: NOVA SEÇÃO DE TEMAS --- */}
-
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Assinatura</label>
-                        <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full btn-secondary text-left flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Sparkles /> <span>Premium</span>
-                            </div>
-                            <ChevronLeft className="transform rotate-180" />
-                        </button>
+                        <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full btn-secondary text-left flex items-center justify-between"><div className="flex items-center gap-3"><Sparkles/><span>Premium</span></div><ChevronLeft className="transform rotate-180"/></button>
                     </div>
-
-                    {/* Seções de Segurança e Contato (sem alterações) */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Segurança</label>
-                        <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}>
-                            <KeyRound />
-                            <span>Alterar senha</span>
-                        </button>
-                        {passwordMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${passwordMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{passwordMessage.text}</p>}
+                        <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}><KeyRound/><span>Alterar senha</span></button>
+                        {passwordMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${passwordMessage.type === 'success'?'bg-green-500/20 text-green-300':'bg-red-500/20 text-red-400'}`}>{passwordMessage.text}</p>}
                     </div>
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Entre em contato</label>
-                        <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <MessageSquare /> <span>Dar feedback</span>
-                            </div>
-                            <ChevronLeft className="transform rotate-180" />
-                        </button>
+                        <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between"><div className="flex items-center gap-3"><MessageSquare/><span>Dar feedback</span></div><ChevronLeft className="transform rotate-180"/></button>
                     </div>
-
-                    {/* Botões de Sair e Deletar (sem alterações) */}
+                    {/* Botões de Sair e Deletar */}
                     <div className="space-y-4 pt-6 border-t border-white/10">
                         <button onClick={() => signOut(auth)} className="w-full btn-secondary flex items-center justify-center gap-2"><LogOut className="h-5 w-5" /> Sair da Conta</button>
                         <button onClick={() => setIsDeleteModalOpen(true)} className="w-full btn-danger-outline flex items-center justify-center gap-2"><Trash2 className="h-5 w-5" /> Deletar Conta</button>
@@ -1926,8 +1939,8 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
             </div>
             
             <SubscriptionManagementModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
-            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteAccount} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
-            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handleReauthenticateAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
+            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={reauthenticateAndDelete} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
+            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handlePasswordReauthAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
         </>
     );
 };
@@ -3390,15 +3403,20 @@ const AppContent = () => {
             <BottomNav activeScreen={activeScreen.screen} setActiveScreen={setActiveScreen} />
             
             {playerData.mantra && <MantraPlayer 
-                currentMantra={playerData.mantra} 
-                totalRepetitions={playerData.repetitions} 
-                audioType={playerData.audioType} 
-                onClose={() => { 
-                    setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' }); 
-                    handleTaskCompletion();
-                }} 
-                onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} 
-            />}
+            currentMantra={playerData.mantra} 
+            totalRepetitions={playerData.repetitions} 
+             audioType={playerData.audioType} 
+            onClose={() => { 
+            setPlayerData({ mantra: null, repetitions: 1, audioType: 'library' });
+             // CORREÇÃO APLICADA AQUI:
+             // Só executa a conclusão da tarefa se a música fazia parte de uma jornada ativa.
+            if (activeJourneyTask && activeJourneyTask.dayInfo.type === 'mantra') {
+            handleTaskCompletion();
+            
+             }
+        }} 
+    onMantraChange={(newMantra) => setPlayerData(prev => ({ ...prev, mantra: newMantra }))} 
+/>}
             
             <RepetitionModal isOpen={repetitionModalData.isOpen} mantra={repetitionModalData.mantra} onClose={() => setRepetitionModalData({ isOpen: false, mantra: null })} onStart={(repetitions) => handlePlayMantra(repetitionModalData.mantra, repetitions, 'spoken')} />
             <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={handleDeleteEntry} title="Apagar Registro" message="Tem certeza que deseja apagar este registro? Esta ação não pode ser desfeita." />

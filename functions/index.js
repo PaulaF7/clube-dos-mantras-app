@@ -1,9 +1,10 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-// Inicializa o Firebase Admin SDK para ter acesso ao Firestore.
+// Inicializa o Firebase Admin SDK para ter acesso aos serviços.
 admin.initializeApp();
 const db = admin.firestore();
+const bucket = admin.storage().bucket(); // <-- ADICIONADO: Inicialização do Storage
 
 //---------------------------------------------------------------------
 // Função 1: Trata o webhook da Kiwify quando uma compra é feita.
@@ -19,13 +20,11 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
     functions.logger.info("Webhook da Kiwify recebido!", { event });
 
     // PREMIUM AUTOMATION START
-    // Implementação da lógica de automação para aprovação de pedidos.
     if (event.webhook_event_type === "order_approved") {
       const purchaseData = event;
       const customerEmail = purchaseData.Customer?.email;
       const orderId = purchaseData.order_id;
 
-      // Valida se o e-mail do cliente foi recebido no webhook.
       if (!customerEmail) {
         functions.logger.warn("Webhook 'order_approved' recebido sem e-mail do cliente.", { orderId });
         return res.status(400).json({ error: "E-mail do cliente ausente." });
@@ -34,24 +33,19 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
       functions.logger.info(`Processando aprovação de pedido para o e-mail: ${customerEmail}`);
 
       try {
-        // Procura por um usuário existente com o mesmo e-mail.
         const usersRef = db.collection("users");
         const userQuery = await usersRef.where("email", "==", customerEmail).limit(1).get();
 
         if (!userQuery.empty) {
-          // Cenário 1: Usuário já registrado no app.
-          // Atualiza o documento do usuário para conceder o status premium.
           const userDoc = userQuery.docs[0];
           await userDoc.ref.update({ isPremium: true });
           functions.logger.info(`Usuário ${userDoc.id} (${customerEmail}) encontrado. Status premium atualizado para true.`);
         } else {
-          // Cenário 2: Usuário novo (ainda não se registrou).
-          // Cria um documento na coleção 'pendingPremium' para aguardar o registro.
           const pendingPremiumRef = db.collection("pendingPremium");
           await pendingPremiumRef.add({
             email: customerEmail,
             status: "pending",
-            purchaseDate: admin.firestore.FieldValue.serverTimestamp(), // Usa o timestamp do servidor
+            purchaseDate: admin.firestore.FieldValue.serverTimestamp(),
             orderId: orderId,
           });
           functions.logger.info(`Usuário com e-mail ${customerEmail} não encontrado. Criado registro em pendingPremium.`);
@@ -63,7 +57,7 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
     }
     // PREMIUM AUTOMATION END
     
-    // --- INÍCIO DA NOVA IMPLEMENTAÇÃO: LÓGICA DE CANCELAMENTO ---
+    // --- LÓGICA DE CANCELAMENTO ---
     if (event.webhook_event_type === "subscription_canceled" || event.webhook_event_type === "subscription_expired") {
         const customerEmail = event.Customer?.email;
 
@@ -90,7 +84,6 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
             return res.status(500).json({ error: "Erro ao processar o cancelamento no banco de dados." });
         }
     }
-    // --- FIM DA NOVA IMPLEMENTAÇÃO ---
 
     if (event.webhook_event_type === "order_refunded") {
       functions.logger.info(`Pedido reembolsado: ${event.order_id}`);
@@ -106,7 +99,7 @@ exports.kiwifyWebhookHandler = functions.https.onRequest(async (req, res) => {
 
 
 //--------------------------------------------------------------------------------------------------
-// Função 2: É acionada quando um novo usuário é criado para ativar o premium se houver compra pendente.
+// Função 2: É acionada quando um novo usuário é criado para ativar o premium.
 //--------------------------------------------------------------------------------------------------
 exports.activatePremiumOnUserCreation = functions.firestore
   .document('users/{userId}')
@@ -142,25 +135,18 @@ exports.activatePremiumOnUserCreation = functions.firestore
 
 
 //--------------------------------------------------------------------------------------------------
-// Função 3: Perguntas para o Astrólogo (chamada pelo frontend com httpsCallable).
+// Função 3: Perguntas para o Astrólogo.
 //--------------------------------------------------------------------------------------------------
 exports.askAstrologer = functions.https.onCall(async (data, context) => {
   try {
     const { userId, question, astroProfile } = data;
 
-    // Autenticação básica
     if (!context.auth || context.auth.uid !== userId) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "Usuário não autenticado ou não autorizado."
-      );
+      throw new functions.https.HttpsError("permission-denied", "Usuário não autenticado.");
     }
 
     if (!question) {
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        "A pergunta é obrigatória."
-      );
+      throw new functions.https.HttpsError("invalid-argument", "A pergunta é obrigatória.");
     }
 
     const userRef = db.collection("users").doc(userId);
@@ -174,18 +160,13 @@ exports.askAstrologer = functions.https.onCall(async (data, context) => {
       const isPremium = !!u.isPremium;
       const freeUsed = !!u.freeQuestionUsed;
 
-      // Se não assinante e já usou a pergunta grátis, bloquear
       if (!isPremium && freeUsed) {
-        throw new functions.https.HttpsError(
-          "failed-precondition",
-          "A pergunta grátis já foi utilizada. Assine para enviar novas perguntas."
-        );
+        throw new functions.https.HttpsError("failed-precondition", "A pergunta grátis já foi utilizada.");
       }
 
       const astroHistoryRef = userRef.collection("astroHistory");
       const newDocRef = astroHistoryRef.doc();
 
-      // Cria o registro da pergunta
       t.set(newDocRef, {
         question,
         response: null,
@@ -195,7 +176,6 @@ exports.askAstrologer = functions.https.onCall(async (data, context) => {
         saved: false,
       });
 
-      // Marca o uso do crédito grátis se aplicável
       if (!isPremium && !freeUsed) {
         t.update(userRef, { freeQuestionUsed: true });
       }
@@ -209,4 +189,51 @@ exports.askAstrologer = functions.https.onCall(async (data, context) => {
     }
     throw new functions.https.HttpsError("internal", "Erro interno.");
   }
+});
+
+
+//--------------------------------------------------------------------------------------------------
+// Função 4: Limpa os dados do usuário no Firestore e Storage após a exclusão da conta.  <-- NOVA FUNÇÃO
+//--------------------------------------------------------------------------------------------------
+exports.cleanupUserData = functions.auth.user().onDelete(async (user) => {
+  const { uid } = user;
+  const logger = functions.logger;
+
+  logger.log(`Iniciando limpeza de dados para o usuário: ${uid}`);
+
+  // 1. Deletar todos os arquivos do usuário no Storage
+  const userAudioPath = `userAudios/${uid}`;
+  const profilePicPath = `profilePictures/${uid}`;
+  
+  try {
+    await bucket.deleteFiles({ prefix: userAudioPath });
+    await bucket.deleteFiles({ prefix: profilePicPath });
+    logger.log(`Arquivos do Storage em '${userAudioPath}' e '${profilePicPath}' deletados.`);
+  } catch (error) {
+    logger.error(`Erro ao deletar arquivos do Storage para o usuário ${uid}:`, error);
+  }
+
+  // 2. Deletar todos os documentos e subcoleções no Firestore
+  const userDocRef = db.collection("users").doc(uid);
+  try {
+    const collections = ["entries", "astroHistory", "fcmTokens", "journeyProgress", "meusAudios", "playlists"];
+    for (const collection of collections) {
+        const snapshot = await db.collection("users").doc(uid).collection(collection).get();
+        if (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+            await batch.commit();
+            logger.log(`Subcoleção '${collection}' do usuário ${uid} deletada.`);
+        }
+    }
+
+    await userDocRef.delete();
+    logger.log(`Documento principal do usuário ${uid} deletado.`);
+
+  } catch (error) {
+    logger.error(`Erro ao deletar dados do Firestore para o usuário ${uid}:`, error);
+  }
+  
+  logger.log(`Limpeza de dados para o usuário ${uid} concluída.`);
+  return null;
 });
