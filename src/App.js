@@ -1819,7 +1819,11 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
     const fileInputRef = useRef(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     
-    const THEMES = [ { id: 'default', name: 'Padrão' }, { id: 'serenity_theme', name: 'Serenidade' } ];
+    // --- LÓGICA DA MELHORIA ADICIONADA AQUI ---
+    const THEMES = [
+        { id: 'default', name: 'Padrão' },
+        { id: 'serenity_theme', name: 'Serenidade' }
+    ];
     const isSerenityLocked = !unlockedThemes.includes('serenity_theme');
     const avatarBgColor = activeTheme === 'serenity_theme' ? '0b2c4d' : '2c0b4d';
 
@@ -1843,55 +1847,15 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
 
     const handlePhotoUpload = async (e) => { const file = e.target.files[0]; if (!file || !user || !storage || !db) return; setIsUploadingPhoto(true); try { const storageRef = ref(storage, `profilePictures/${user.uid}`); await uploadBytes(storageRef, file); const url = await getDownloadURL(storageRef); await updateProfile(user, { photoURL: url }); const userDocRef = doc(db, `users/${user.uid}`); await updateDoc(userDocRef, { photoURL: url }); setPhotoURL(url); } catch (error) { console.error("Photo Upload Error:", error); } finally { setIsUploadingPhoto(false); } };
     const handlePasswordReset = async () => { if (!auth || !user) return; setIsSubmitting(true); try { auth.languageCode = 'pt-BR'; await sendPasswordResetEmail(auth, user.email); setPasswordMessage({ type: 'success', text: `E-mail de redefinição enviado.` }); } catch (error) { setPasswordMessage({ type: 'error', text: 'Erro ao enviar e-mail.' }); } finally { setIsSubmitting(false); setTimeout(() => setPasswordMessage({ type: '', text: '' }), 4000); } };
-    
-    // --- LÓGICA DE EXCLUSÃO ATUALIZADA ---
-    const reauthenticateAndDelete = async () => {
-        setIsDeleteModalOpen(false);
-        if (!auth.currentUser) return;
-
-        const providerId = auth.currentUser.providerData[0]?.providerId;
-
-        try {
-            if (providerId === 'password') {
-                setIsReauthModalOpen(true); // Abre o modal de senha para usuários de email
-            } else if (providerId === 'google.com') {
-                const provider = new GoogleAuthProvider();
-                await reauthenticateWithPopup(auth.currentUser, provider);
-                await deleteUser(auth.currentUser); // Dispara a Cloud Function
-            } else {
-                throw new Error('Método de login não suportado para exclusão.');
-            }
-        } catch (error) {
-            console.error("Erro na reautenticação:", error);
-            if (error.code !== 'auth/popup-closed-by-user') {
-                alert('Ocorreu um erro durante a reautenticação. Tente novamente.');
-            }
-        }
-    };
-    
-    const handlePasswordReauthAndDelete = async (e) => {
-        e.preventDefault();
-        if (!auth.currentUser || !reauthPassword) return;
-        setIsSubmitting(true);
-        setReauthError('');
-        try {
-            const credential = EmailAuthProvider.credential(auth.currentUser.email, reauthPassword);
-            await reauthenticateWithCredential(auth.currentUser, credential);
-            await deleteUser(auth.currentUser); // Dispara a Cloud Function
-            setIsReauthModalOpen(false);
-        } catch (error) {
-            setReauthError('Senha incorreta ou falha na reautenticação.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    const handleDeleteAccount = async () => { setIsDeleteModalOpen(false); if (!auth.currentUser) return; try { await deleteUser(auth.currentUser); } catch (error) { if (error.code === 'auth/requires-recent-login') { setIsReauthModalOpen(true); } } };
+    const handleReauthenticateAndDelete = async (e) => { e.preventDefault(); const currentUser = auth.currentUser; if (!currentUser || !reauthPassword) return; setIsSubmitting(true); setReauthError(''); try { const credential = EmailAuthProvider.credential(currentUser.email, reauthPassword); await reauthenticateWithCredential(currentUser, credential); await deleteUser(currentUser); setIsReauthModalOpen(false); } catch (error) { setReauthError('Senha incorreta ou falha na reautenticação.'); } finally { setIsSubmitting(false); } };
     
     return (
         <>
             <div className="page-container">
                 <PageTitle subtitle="Personalize seu perfil, gerencie sua conta e entre em contato conosco.">Configurações</PageTitle>
                 <div className="glass-card space-y-8">
-                    {/* Seção de Perfil */}
+                    {/* Seção de Perfil (com avatar dinâmico) */}
                     <div className="flex items-center gap-5">
                         <div className="relative">
                             <img src={photoURL || `https://ui-avatars.com/api/?name=${userName || '?'}&background=${avatarBgColor}&color=f3e5f5&bold=false`} alt="Perfil" className="w-20 h-20 rounded-full object-cover border-2 border-white/20" />
@@ -1904,8 +1868,9 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                             <p className="text-sm text-white/60 font-light">{user.email}</p>
                         </div>
                     </div>
-                    {/* ... (outras seções do formulário permanecem iguais) ... */}
-                     <form onSubmit={handleNameUpdate} className="space-y-3">
+
+                    {/* Formulário de Nome */}
+                    <form onSubmit={handleNameUpdate} className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Nome de Usuário</label>
                         <div className="flex gap-2">
                             <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="input-field flex-1" />
@@ -1913,23 +1878,72 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
                         </div>
                         {nameMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${nameMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{nameMessage.text}</p>}
                     </form>
+                    
+                    {/* --- INÍCIO: SEÇÃO DE TEMAS ATUALIZADA --- */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Tema Visual</label>
-                        <div className="flex w-full bg-black/20 rounded-full p-1">{THEMES.map(theme => {const isActive = activeTheme === theme.id; const isLocked = theme.id === 'serenity_theme' && isSerenityLocked; if (isLocked) {return (<button key={theme.id} disabled className="w-full text-center py-2 rounded-full text-sm font-semibold bg-transparent text-white/40 cursor-not-allowed flex items-center justify-center gap-2"><Lock size={14}/><span>{theme.name}</span></button>);}return (<button key={theme.id} onClick={() => setActiveTheme(theme.id)} className={`w-full text-center py-2 rounded-full transition-all text-sm font-semibold ${isActive?'bg-[#FFD54F] text-[#2c0b4d] shadow-md':'bg-transparent text-white/70 hover:bg-white/10'}`}>{theme.name}</button>);})}{isSerenityLocked && (<p className="text-center text-xs text-white/60 font-light pt-2">Complete a "Jornada da Paz" para desbloquear.</p>)}</div>
+                        <div className="flex w-full bg-black/20 rounded-full p-1">
+                            {THEMES.map(theme => {
+                                const isActive = activeTheme === theme.id;
+                                const isLocked = theme.id === 'serenity_theme' && isSerenityLocked;
+
+                                if (isLocked) {
+                                    return (
+                                        <button key={theme.id} disabled className="w-full text-center py-2 rounded-full text-sm font-semibold bg-transparent text-white/40 cursor-not-allowed flex items-center justify-center gap-2">
+                                            <Lock size={14} />
+                                            <span>{theme.name}</span>
+                                        </button>
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        key={theme.id}
+                                        onClick={() => setActiveTheme(theme.id)}
+                                        className={`w-full text-center py-2 rounded-full transition-all text-sm font-semibold ${isActive ? 'bg-[#FFD54F] text-[#2c0b4d] shadow-md' : 'bg-transparent text-white/70 hover:bg-white/10'}`}
+                                    >
+                                        {theme.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {isSerenityLocked && (
+                            <p className="text-center text-xs text-white/60 font-light pt-2">
+                                Complete a "Jornada da Paz" para desbloquear.
+                            </p>
+                        )}
                     </div>
+                    {/* --- FIM: SEÇÃO DE TEMAS ATUALIZADA --- */}
+
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Assinatura</label>
-                        <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full btn-secondary text-left flex items-center justify-between"><div className="flex items-center gap-3"><Sparkles/><span>Premium</span></div><ChevronLeft className="transform rotate-180"/></button>
+                        <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full btn-secondary text-left flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Sparkles /> <span>Premium</span>
+                            </div>
+                            <ChevronLeft className="transform rotate-180" />
+                        </button>
                     </div>
+
+                    {/* Seções de Segurança e Contato */}
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Segurança</label>
-                        <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}><KeyRound/><span>Alterar senha</span></button>
-                        {passwordMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${passwordMessage.type === 'success'?'bg-green-500/20 text-green-300':'bg-red-500/20 text-red-400'}`}>{passwordMessage.text}</p>}
+                        <button onClick={handlePasswordReset} className="w-full btn-secondary text-left flex items-center gap-3" disabled={isSubmitting}>
+                            <KeyRound />
+                            <span>Alterar senha</span>
+                        </button>
+                        {passwordMessage.text && <p className={`mt-3 p-3 rounded-lg text-center text-sm ${passwordMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'}`}>{passwordMessage.text}</p>}
                     </div>
                     <div className="space-y-3">
                         <label className="text-sm text-white/80 font-light">Entre em contato</label>
-                        <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between"><div className="flex items-center gap-3"><MessageSquare/><span>Dar feedback</span></div><ChevronLeft className="transform rotate-180"/></button>
+                        <button onClick={() => window.open('mailto:contato.evoluo.ir@gmail.com?subject=Mantras%2B%20-%20Feedback')} className="btn-secondary w-full flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <MessageSquare /> <span>Dar feedback</span>
+                            </div>
+                            <ChevronLeft className="transform rotate-180" />
+                        </button>
                     </div>
+
                     {/* Botões de Sair e Deletar */}
                     <div className="space-y-4 pt-6 border-t border-white/10">
                         <button onClick={() => signOut(auth)} className="w-full btn-secondary flex items-center justify-center gap-2"><LogOut className="h-5 w-5" /> Sair da Conta</button>
@@ -1939,8 +1953,8 @@ const HistoryScreen = ({ onEditMantra, onEditNote, onDelete }) => {
             </div>
             
             <SubscriptionManagementModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
-            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={reauthenticateAndDelete} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
-            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handlePasswordReauthAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
+            <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteAccount} title="Deletar Conta" message="Tem certeza de que deseja deletar sua conta? Esta ação é permanente e não pode ser desfeita." />
+            <ReauthModal isOpen={isReauthModalOpen} onClose={() => setIsReauthModalOpen(false)} onConfirm={handleReauthenticateAndDelete} password={reauthPassword} setPassword={setReauthPassword} isSubmitting={isSubmitting} title="Confirme sua identidade" message="Para sua segurança, por favor, insira sua senha novamente para deletar sua conta." errorMessage={reauthError} />
         </>
     );
 };
