@@ -558,7 +558,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Afirmac%CC%A7a%CC%83o%20da%20paz.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz%20novo.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz%20fade.MP3",
     imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png",
     imagePrompt:
       "A serene and ethereal visual representation of inner peace. Abstract art, soft glowing light, calming energy, spiritual, high resolution, beautiful.",
@@ -572,7 +572,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Chama%20Violeta.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Chama%20Violeta%20novo.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/chama%20violeta%20fade.MP3",
     imageSrc: "https://i.postimg.cc/BvJ4vhDt/violet.png",
     imagePrompt:
       "An abstract representation of the violet flame of transmutation. Swirls of purple, magenta, and indigo light, cleansing energy, spiritual fire, high resolution, ethereal.",
@@ -585,7 +585,7 @@ const MANTRAS_DATA = [
     finalidade: "Cultiva a paz interior e a harmonia com os outros.",
     repeticoes: 12,
     libraryAudioSrc: null, // Sem versão musical por enquanto
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/1.MP3",
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/1%20fade.MP3",
     imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
     imagePrompt: "The calming and universal presence of peace.",
   },
@@ -596,7 +596,7 @@ const MANTRAS_DATA = [
     finalidade: "Afirma a força vital e a capacidade de renovação.",
     repeticoes: 12,
     libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/2.MP3",
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/2%20fade.MP3",
     imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
     imagePrompt: "The eternal cycle of renewal and life force.",
   },
@@ -607,7 +607,7 @@ const MANTRAS_DATA = [
     finalidade: "Para abrir caminhos e remover bloqueios percebidos.",
     repeticoes: 12,
     libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/3.MP3",
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/3%20fade.MP3",
     imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png",
     imagePrompt: "An open door shimmering with golden light and opportunities.",
   },
@@ -618,7 +618,7 @@ const MANTRAS_DATA = [
     finalidade: "Atrai acontecimentos positivos e abre a percepção para o bem.",
     repeticoes: 12,
     libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/4.MP3",
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/4%20fade.MP3",
     imageSrc: "https://i.postimg.cc/vBLPZzr8/manifestation.png",
     imagePrompt: "A beautiful sunrise with sparkles of magic in the air.",
   },
@@ -629,7 +629,7 @@ const MANTRAS_DATA = [
     finalidade: "Reforça a gratidão e a percepção de um momento presente próspero.",
     repeticoes: 12,
     libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/5.MP3",
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/5%20fade.MP3",
     imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png",
     imagePrompt: "A person with arms outstretched, joyfully embracing the present moment.",
   },
@@ -3928,17 +3928,12 @@ const MantraPlayer = ({
     duration: null,
   });
   const [repetitionCount, setRepetitionCount] = useState(1);
+
+  // --- Refs ---
   const audioRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
   const repetitionCountRef = useRef(1);
   const practiceTimerRef = useRef(practiceTimer);
-  
-  // --- NOVAS REFS E CONSTANTES PARA O FADE ---
-  const fadeIntervalRef = useRef(null);
-  const isFadingRef = useRef(false);
-  const FADE_DURATION_MS = 1000; // 1 segundo para o fade
-  const FADE_STEP_MS = 50; // Intervalo de atualização do volume
-  const FADE_TRIGGER_SECONDS = 1.2; // Começa o fade 1.2s antes do fim
 
   useEffect(() => {
     practiceTimerRef.current = practiceTimer;
@@ -3950,82 +3945,107 @@ const MantraPlayer = ({
     audioType === "spoken"
       ? currentMantra.spokenAudioSrc
       : currentMantra.libraryAudioSrc;
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
-  const touchEndX = useRef(null);
-  const touchEndY = useRef(null);
-  const minSwipeDistance = 50;
 
-  const handleTouchStart = (e) => {
-    if (e.target.type === "range") return;
-    touchStartX.current = e.target.touches[0].clientX;
-    touchStartY.current = e.target.touches[0].clientY;
-    touchEndX.current = null;
-    touchEndY.current = null;
-  };
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.target.touches[0].clientX;
-    touchEndY.current = e.target.touches[0].clientY;
-  };
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distanceX = touchStartX.current - touchEndX.current;
-    const distanceY = touchStartY.current - touchEndY.current;
-    if (Math.abs(distanceX) < Math.abs(distanceY)) return;
-    const isLeftSwipe = distanceX > minSwipeDistance;
-    const isRightSwipe = distanceX < -minSwipeDistance;
-    const currentIndex = MANTRAS_DATA.findIndex(
-      (m) => m.id === currentMantra.id
-    );
-    if (isLeftSwipe) {
-      const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length;
-      onMantraChange(MANTRAS_DATA[nextIndex]);
-    } else if (isRightSwipe) {
-      const prevIndex =
-        (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length;
-      onMantraChange(MANTRAS_DATA[prevIndex]);
+  // --- LÓGICA DE REPRODUÇÃO E EVENTOS (SIMPLIFICADA) ---
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Reset de estados
+    repetitionCountRef.current = 1;
+    setRepetitionCount(1);
+    setCurrentTime(0);
+    setDuration(0);
+
+    const setAudioData = () => setDuration(audio.duration);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+
+    const handleAudioEnd = () => {
+      // Lógica de repetição para mantras falados
+      if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) {
+        repetitionCountRef.current += 1;
+        setRepetitionCount(repetitionCountRef.current);
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
+
+      // Lógica para timer de prática
+      const timer = practiceTimerRef.current;
+      if (timer && timer.endTime && Date.now() < timer.endTime) {
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
+
+      // Se nenhuma das condições acima for atendida, finaliza a reprodução
+      setIsPlaying(false);
+      clearTimeout(hideControlsTimeoutRef.current);
+      setAreControlsVisible(true);
+    };
+
+    // Inicialização
+    audio.play().catch(e => console.error("Audio play failed:", e));
+    setIsPlaying(true);
+
+    audio.addEventListener("loadedmetadata", setAudioData);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener('ended', handleAudioEnd);
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", setAudioData);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener('ended', handleAudioEnd);
+    };
+  }, [audioSrc, totalRepetitions, isSpokenPractice]);
+
+  const togglePlayPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      // Se o áudio terminou, reinicia do começo
+      if (audio.currentTime >= audio.duration) {
+        repetitionCountRef.current = 1;
+        setRepetitionCount(1);
+        audio.currentTime = 0;
+      }
+      audio.play();
     }
-    touchStartX.current = null;
-    touchEndX.current = null;
-    touchStartY.current = null;
-    touchEndY.current = null;
-  };
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  // --- Funções de UI e Gestos ---
   const showControls = useCallback(() => {
     clearTimeout(hideControlsTimeoutRef.current);
     setAreControlsVisible(true);
-    if (
-      !isSpokenPractice &&
-      !isOptionsMenuOpen &&
-      !showSpeedModal &&
-      !showTimerModal
-    ) {
-      hideControlsTimeoutRef.current = setTimeout(() => {
-        setAreControlsVisible(false);
-      }, 4000);
+    if (!isSpokenPractice && !isOptionsMenuOpen && !showSpeedModal && !showTimerModal) {
+      hideControlsTimeoutRef.current = setTimeout(() => setAreControlsVisible(false), 4000);
     }
   }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]);
-
+  
   useEffect(() => {
     showControls();
     return () => clearTimeout(hideControlsTimeoutRef.current);
   }, [showControls]);
 
   const toggleFavorite = useCallback(() => {
-    const newFavorites = isFavorite
-      ? favorites.filter((id) => id !== currentMantra.id)
-      : [...favorites, currentMantra.id];
+    const newFavorites = isFavorite ? favorites.filter((id) => id !== currentMantra.id) : [...favorites, currentMantra.id];
     updateFavorites(newFavorites);
   }, [isFavorite, favorites, currentMantra.id, updateFavorites]);
+  
   const changePlaybackRate = useCallback((rate) => {
     if (audioRef.current) audioRef.current.playbackRate = rate;
     setPlaybackRate(rate);
     setShowSpeedModal(false);
     setIsOptionsMenuOpen(false);
   }, []);
+
   const handleSetPracticeDuration = useCallback((seconds) => {
     if (seconds > 0) {
-      const endTime = Date.now() + seconds * 1000;
-      setPracticeTimer({ endTime, duration: seconds });
+      setPracticeTimer({ endTime: Date.now() + seconds * 1000, duration: seconds });
     } else {
       setPracticeTimer({ endTime: null, duration: null });
     }
@@ -4033,146 +4053,46 @@ const MantraPlayer = ({
     setIsOptionsMenuOpen(false);
   }, []);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    
-    // Limpa qualquer intervalo de fade anterior ao trocar de mantra
-    clearInterval(fadeIntervalRef.current);
-    isFadingRef.current = false;
-    audio.volume = 1; // Garante que o volume comece no máximo
-
-    setCurrentTime(0);
-    setDuration(0);
-    setIsPlaying(true);
-    setRepetitionCount(1);
-    repetitionCountRef.current = 1;
-
-    const setAudioData = () => setDuration(audio.duration);
-
-    const handleAudioEnd = () => {
-        // Esta função agora é o fallback para áudios não falados ou timers
-        const timer = practiceTimerRef.current;
-        if (timer && timer.endTime && Date.now() < timer.endTime) {
-            audio.load();
-            audio.play();
-        } else {
-            setIsPlaying(false);
-            if (timer && timer.endTime) {
-                setPracticeTimer({ endTime: null, duration: null });
-            }
-            clearTimeout(hideControlsTimeoutRef.current);
-            setAreControlsVisible(true);
-        }
-    };
-
-    const handleTimeUpdate = () => {
-        const timer = practiceTimerRef.current;
-        if (timer && timer.endTime && Date.now() >= timer.endTime) {
-            audio.pause();
-            setIsPlaying(false);
-            setPracticeTimer({ endTime: null, duration: null });
-            return;
-        }
-        
-        setCurrentTime(audio.currentTime);
-
-        // --- LÓGICA DE FADE-OUT PARA REPETIÇÃO ---
-        if (
-            isSpokenPractice &&
-            !isFadingRef.current &&
-            audio.duration > FADE_TRIGGER_SECONDS &&
-            audio.currentTime >= audio.duration - FADE_TRIGGER_SECONDS
-        ) {
-            isFadingRef.current = true;
-            
-            const steps = FADE_DURATION_MS / FADE_STEP_MS;
-            const volumeStep = 1 / steps;
-            
-            fadeIntervalRef.current = setInterval(() => {
-                if (audio.volume > volumeStep) {
-                    audio.volume -= volumeStep;
-                } else {
-                    clearInterval(fadeIntervalRef.current);
-                    audio.pause();
-                    audio.volume = 0;
-
-                    // Verifica se deve repetir
-                    if (repetitionCountRef.current < totalRepetitions) {
-                        repetitionCountRef.current += 1;
-                        setRepetitionCount(repetitionCountRef.current);
-                        audio.currentTime = 0;
-
-                        // Inicia o FADE-IN
-                        audio.play();
-                        fadeIntervalRef.current = setInterval(() => {
-                            if (audio.volume < 1 - volumeStep) {
-                                audio.volume += volumeStep;
-                            } else {
-                                clearInterval(fadeIntervalRef.current);
-                                audio.volume = 1;
-                                isFadingRef.current = false;
-                            }
-                        }, FADE_STEP_MS);
-                    } else {
-                        // Fim de todas as repetições
-                        setIsPlaying(false);
-                        isFadingRef.current = false;
-                    }
-                }
-            }, FADE_STEP_MS);
-        }
-    };
-
-    audio.addEventListener("loadedmetadata", setAudioData);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("ended", handleAudioEnd);
-    audio.play().catch((e) => {
-      console.error("Audio play failed:", e);
-      setIsPlaying(false);
-    });
-
-    return () => {
-      audio.removeEventListener("loadedmetadata", setAudioData);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("ended", handleAudioEnd);
-      clearInterval(fadeIntervalRef.current); // Limpeza do intervalo
-    };
-  }, [audioSrc, totalRepetitions, isSpokenPractice, onClose]);
-
-  const togglePlayPause = useCallback(() => {
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      if (audioRef.current.currentTime >= audioRef.current.duration) {
-        repetitionCountRef.current = 1;
-        setRepetitionCount(1);
-        audioRef.current.currentTime = 0;
-      }
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-    showControls();
-  }, [isPlaying, showControls]);
-
   const formatTime = (time) => {
     if (isNaN(time) || time === 0) return "00:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-      2,
-      "0"
-    )}`;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
+
   const closeOptionsMenu = useCallback(() => setIsOptionsMenuOpen(false), []);
-  const openOptionsMenu = useCallback(() => {
-    setIsOptionsMenuOpen(true);
-    showControls();
-  }, [showControls]);
+  const openOptionsMenu = useCallback(() => { setIsOptionsMenuOpen(true); showControls(); }, [showControls]);
   const closeSpeedModal = useCallback(() => setShowSpeedModal(false), []);
   const openSpeedModal = useCallback(() => setShowSpeedModal(true), []);
   const closeTimerModal = useCallback(() => setShowTimerModal(false), []);
   const openTimerModal = useCallback(() => setShowTimerModal(true), []);
+
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e) => {
+    if (!e.touches) return;
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchMove = (e) => {
+    if (!e.touches) return;
+    touchEndX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distanceX = touchStartX.current - touchEndX.current;
+    if (Math.abs(distanceX) < minSwipeDistance) return;
+    
+    const currentIndex = MANTRAS_DATA.findIndex((m) => m.id === currentMantra.id);
+    if (distanceX > 0) {
+      const nextIndex = (currentIndex + 1) % MANTRAS_DATA.length;
+      onMantraChange(MANTRAS_DATA[nextIndex]);
+    } else {
+      const prevIndex = (currentIndex - 1 + MANTRAS_DATA.length) % MANTRAS_DATA.length;
+      onMantraChange(MANTRAS_DATA[prevIndex]);
+    }
+  };
 
   if (!currentMantra) return null;
 
@@ -4194,109 +4114,43 @@ const MantraPlayer = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-full flex justify-between items-start">
-          <button
-            onClick={openOptionsMenu}
-            className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"
-          >
+          <button onClick={openOptionsMenu} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg">
             <MoreHorizontal size={22} />
           </button>
-          <button
-            onClick={onClose}
-            className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg"
-          >
+          <button onClick={onClose} className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all shadow-lg">
             <X size={22} />
           </button>
         </div>
-        <div
-          className={`flex-grow flex flex-col items-center justify-center ${
-            isSpokenPractice ? "space-y-4" : "space-y-8"
-          } -mb-10`}
-        >
+        <div className={`flex-grow flex flex-col items-center justify-center ${isSpokenPractice ? "space-y-4" : "space-y-8"} -mb-10`}>
           <div style={{ textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
-            <h2
-              className="text-xl font-normal"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              {currentMantra.nome}
-            </h2>
-            <p className="text-base font-light mt-2 text-white/80 max-w-md">
-              "{currentMantra.texto}"
-            </p>
+            <h2 className="text-xl font-normal" style={{ fontFamily: "var(--font-display)" }}>{currentMantra.nome}</h2>
+            <p className="text-base font-light mt-2 text-white/80 max-w-md">"{currentMantra.texto}"</p>
             {isSpokenPractice && (
               <div className="mt-4 px-3 py-1 bg-black/30 rounded-full text-sm font-light flex items-center justify-center gap-2 max-w-min mx-auto">
                 <Repeat size={14} />
-                <span className="whitespace-nowrap">
-                  {repetitionCount} / {totalRepetitions}
-                </span>
+                <span className="whitespace-nowrap">{repetitionCount} / {totalRepetitions}</span>
               </div>
             )}
           </div>
           <div className="w-full max-w-sm flex flex-col items-center gap-3">
             <div className="w-full">
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={(e) => {
-                  if (audioRef.current)
-                    audioRef.current.currentTime = e.target.value;
-                }}
-                className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-              />
+              <input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" />
               <div className="flex justify-between text-xs font-light text-white/70 mt-1">
                 <span>{formatTime(currentTime)}</span>
-                <span>
-                  {practiceTimer.endTime
-                    ? `-${formatTime(
-                        (practiceTimer.endTime - Date.now()) / 1000
-                      )}`
-                    : formatTime(duration)}
-                </span>
+                <span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now()) / 1000)}` : formatTime(duration)}</span>
               </div>
             </div>
-            <button
-              onClick={togglePlayPause}
-              className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all"
-            >
-              {isPlaying ? (
-                <Pause size={24} />
-              ) : (
-                <Play size={24} className="ml-1" />
-              )}
+            <button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">
+              {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
             </button>
           </div>
         </div>
         <div />
       </div>
-      <audio
-        ref={audioRef}
-        src={audioSrc}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
-      <OptionsMenu
-        isOpen={isOptionsMenuOpen}
-        onClose={closeOptionsMenu}
-        isFavorite={isFavorite}
-        onFavorite={toggleFavorite}
-        onSpeed={openSpeedModal}
-        onTimer={openTimerModal}
-      />
-      {showSpeedModal && (
-        <PlaybackSpeedModal
-          currentRate={playbackRate}
-          onSelectRate={changePlaybackRate}
-          onClose={closeSpeedModal}
-        />
-      )}
-      {showTimerModal && (
-        <PracticeTimerModal
-          activeTimer={practiceTimer}
-          onSetTimer={handleSetPracticeDuration}
-          onClose={closeTimerModal}
-        />
-      )}
+      <audio ref={audioRef} src={audioSrc} crossOrigin="anonymous" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} />
+      <OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />
+      {showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}
+      {showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}
     </div>
   );
 };
@@ -5416,12 +5270,13 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
 
     const handleAudioEnd = () => {
       if (repetitionCount < currentTrack.repeticoes) {
-        setRepetitionCount((prev) => prev + 1);
-        audio.load(); // <<< CORREÇÃO APLICADA AQUI
-        audio.play();
-      } else {
-        advanceTrack();
-      }
+    setRepetitionCount((prev) => prev + 1);
+    audio.currentTime = 0; // reinicia sem dar load
+    audio.play();
+    } else {
+    advanceTrack();
+    }
+
     };
 
     const updateTime = () => setCurrentTime(audio.currentTime);
