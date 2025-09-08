@@ -577,6 +577,64 @@ const MANTRAS_DATA = [
     imagePrompt:
       "An abstract representation of the violet flame of transmutation. Swirls of purple, magenta, and indigo light, cleansing energy, spiritual fire, high resolution, ethereal.",
   },
+   // --- NOVOS MANTRAS ADICIONADOS ABAIXO ---
+  {
+    id: 13,
+    nome: "Paz de Cristo",
+    texto: "A paz de Jesus, o Cristo, está em mim e nos outros",
+    finalidade: "Cultiva a paz interior e a harmonia com os outros.",
+    repeticoes: 12,
+    libraryAudioSrc: null, // Sem versão musical por enquanto
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/1.MP3",
+    imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
+    imagePrompt: "The calming and universal presence of peace.",
+  },
+  {
+    id: 14,
+    nome: "Ressurreição e Vida",
+    texto: "Eu sou, eu sou, a ressurreição e a vida",
+    finalidade: "Afirma a força vital e a capacidade de renovação.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/2.MP3",
+    imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
+    imagePrompt: "The eternal cycle of renewal and life force.",
+  },
+  {
+    id: 15,
+    nome: "A Porta Aberta",
+    texto: "Eu sou a porta aberta, que nenhum homem pode fechar",
+    finalidade: "Para abrir caminhos e remover bloqueios percebidos.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/3.MP3",
+    imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png",
+    imagePrompt: "An open door shimmering with golden light and opportunities.",
+  },
+  {
+    id: 16,
+    nome: "Expectativa Positiva",
+    texto: "Hoje, coisas maravilhosas me acontecerão",
+    finalidade: "Atrai acontecimentos positivos e abre a percepção para o bem.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/4.MP3",
+    imageSrc: "https://i.postimg.cc/vBLPZzr8/manifestation.png",
+    imagePrompt: "A beautiful sunrise with sparkles of magic in the air.",
+  },
+  {
+    id: 17,
+    nome: "Afirmação de Plenitude",
+    texto: "Eu estou vivendo a melhor fase da minha vida",
+    finalidade: "Reforça a gratidão e a percepção de um momento presente próspero.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/5.MP3",
+    imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png",
+    imagePrompt: "A person with arms outstretched, joyfully embracing the present moment.",
+  },
+   // --- FIM NOVOS MANTRAS ADICIONADOS ---
+
   {
     id: 3,
     nome: "Harmonia nos Relacionamentos",
@@ -718,62 +776,7 @@ const MANTRAS_DATA = [
     imagePrompt:
       "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful.",
   },
-  // --- NOVOS MANTRAS ADICIONADOS ABAIXO ---
-  {
-    id: 13,
-    nome: "Paz de Cristo",
-    texto: "A paz de Jesus, o Cristo, está em mim e nos outros",
-    finalidade: "Cultiva a paz interior e a harmonia com os outros.",
-    repeticoes: 12,
-    libraryAudioSrc: null, // Sem versão musical por enquanto
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/1.MP3",
-    imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
-    imagePrompt: "The calming and universal presence of peace.",
-  },
-  {
-    id: 14,
-    nome: "Ressurreição e Vida",
-    texto: "Eu sou, eu sou, a ressurreição e a vida",
-    finalidade: "Afirma a força vital e a capacidade de renovação.",
-    repeticoes: 12,
-    libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/2.MP3",
-    imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
-    imagePrompt: "The eternal cycle of renewal and life force.",
-  },
-  {
-    id: 15,
-    nome: "A Porta Aberta",
-    texto: "Eu sou a porta aberta, que nenhum homem pode fechar",
-    finalidade: "Para abrir caminhos e remover bloqueios percebidos.",
-    repeticoes: 12,
-    libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/3.MP3",
-    imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png",
-    imagePrompt: "An open door shimmering with golden light and opportunities.",
-  },
-  {
-    id: 16,
-    nome: "Expectativa Positiva",
-    texto: "Hoje, coisas maravilhosas me acontecerão",
-    finalidade: "Atrai acontecimentos positivos e abre a percepção para o bem.",
-    repeticoes: 12,
-    libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/4.MP3",
-    imageSrc: "https://i.postimg.cc/vBLPZzr8/manifestation.png",
-    imagePrompt: "A beautiful sunrise with sparkles of magic in the air.",
-  },
-  {
-    id: 17,
-    nome: "Afirmação de Plenitude",
-    texto: "Eu estou vivendo a melhor fase da minha vida",
-    finalidade: "Reforça a gratidão e a percepção de um momento presente próspero.",
-    repeticoes: 12,
-    libraryAudioSrc: null,
-    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/5.MP3",
-    imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png",
-    imagePrompt: "A person with arms outstretched, joyfully embracing the present moment.",
-  },
+ 
 ];
 
 // --- NOVOS DADOS: CHAKRAS (MOVIDO PARA DENTRO DO CÓDIGO PARA SIMPLIFICAR) ---
