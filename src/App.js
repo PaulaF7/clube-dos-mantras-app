@@ -5265,33 +5265,32 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
   }, [audioSrc]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  const audio = audioRef.current;
+  if (!audio) return;
 
-    const handleAudioEnd = () => {
-      if (repetitionCount < currentTrack.repeticoes) {
-    setRepetitionCount((prev) => prev + 1);
-    audio.currentTime = 0; // reinicia sem dar load
-    audio.play();
+  let playCount = 0;
+  const total = Number(currentTrack.repeticoes) || 1;
+
+  const handleAudioEnd = () => {
+    playCount += 1;
+    setRepetitionCount(playCount);
+
+    if (playCount >= total) {
+      audio.loop = false;      // desliga o loop
+      audio.pause();           // garante que pare
+      advanceTrack();          // passa para a próxima
     } else {
-    advanceTrack();
+      audio.currentTime = 0;   // reinicia imediatamente
+      audio.play();            // toca de novo
     }
+  };
 
-    };
+  audio.addEventListener("ended", handleAudioEnd);
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const setAudioDuration = () => setDuration(audio.duration);
-
-    audio.addEventListener("ended", handleAudioEnd);
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", setAudioDuration);
-
-    return () => {
-      audio.removeEventListener("ended", handleAudioEnd);
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", setAudioDuration);
-    };
-  }, [repetitionCount, currentTrack.repeticoes, advanceTrack]);
+  return () => {
+    audio.removeEventListener("ended", handleAudioEnd);
+  };
+}, [audioSrc, advanceTrack, currentTrack.repeticoes]);
 
   const togglePlayPause = () => {
     if (isPlaying) {
@@ -5371,12 +5370,13 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
         </button>
       </div>
       <audio
-        ref={audioRef}
-        src={audioSrc}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
-    </div>
+      ref={audioRef}
+      src={audioSrc}
+      preload="auto"
+      playsInline
+      loop
+    />
+  </div>
   );
 };
 
