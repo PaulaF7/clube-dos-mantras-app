@@ -547,6 +547,7 @@ const GlobalStyles = memo(() => (
 ));
 
 // --- DADOS DOS MANTRAS ---
+// SUBSTITUA TODA A SUA CONSTANTE 'MANTRAS_DATA' POR ESTA
 const MANTRAS_DATA = [
   {
     id: 1,
@@ -557,7 +558,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Afirmac%CC%A7a%CC%83o%20da%20paz.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20sou%20a%20luz%20que%20emana%20paz%20novo.MP3",
     imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png",
     imagePrompt:
       "A serene and ethereal visual representation of inner peace. Abstract art, soft glowing light, calming energy, spiritual, high resolution, beautiful.",
@@ -571,7 +572,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Chama%20Violeta.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Chama%20Violeta.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Chama%20Violeta%20novo.MP3",
     imageSrc: "https://i.postimg.cc/BvJ4vhDt/violet.png",
     imagePrompt:
       "An abstract representation of the violet flame of transmutation. Swirls of purple, magenta, and indigo light, cleansing energy, spiritual fire, high resolution, ethereal.",
@@ -716,6 +717,62 @@ const MANTRAS_DATA = [
     imageSrc: "https://i.postimg.cc/KzH1BXr0/calm.png",
     imagePrompt:
       "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful.",
+  },
+  // --- NOVOS MANTRAS ADICIONADOS ABAIXO ---
+  {
+    id: 13,
+    nome: "Paz de Cristo",
+    texto: "A paz de Jesus, o Cristo, está em mim e nos outros",
+    finalidade: "Cultiva a paz interior e a harmonia com os outros.",
+    repeticoes: 12,
+    libraryAudioSrc: null, // Sem versão musical por enquanto
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/1.MP3",
+    imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
+    imagePrompt: "The calming and universal presence of peace.",
+  },
+  {
+    id: 14,
+    nome: "Ressurreição e Vida",
+    texto: "Eu sou, eu sou, a ressurreição e a vida",
+    finalidade: "Afirma a força vital e a capacidade de renovação.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/2.MP3",
+    imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
+    imagePrompt: "The eternal cycle of renewal and life force.",
+  },
+  {
+    id: 15,
+    nome: "A Porta Aberta",
+    texto: "Eu sou a porta aberta, que nenhum homem pode fechar",
+    finalidade: "Para abrir caminhos e remover bloqueios percebidos.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/3.MP3",
+    imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png",
+    imagePrompt: "An open door shimmering with golden light and opportunities.",
+  },
+  {
+    id: 16,
+    nome: "Expectativa Positiva",
+    texto: "Hoje, coisas maravilhosas me acontecerão",
+    finalidade: "Atrai acontecimentos positivos e abre a percepção para o bem.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/4.MP3",
+    imageSrc: "https://i.postimg.cc/vBLPZzr8/manifestation.png",
+    imagePrompt: "A beautiful sunrise with sparkles of magic in the air.",
+  },
+  {
+    id: 17,
+    nome: "Afirmação de Plenitude",
+    texto: "Eu estou vivendo a melhor fase da minha vida",
+    finalidade: "Reforça a gratidão e a percepção de um momento presente próspero.",
+    repeticoes: 12,
+    libraryAudioSrc: null,
+    spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/5.MP3",
+    imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png",
+    imagePrompt: "A person with arms outstretched, joyfully embracing the present moment.",
   },
 ];
 
@@ -1031,7 +1088,7 @@ if (window.location.hostname === "localhost") {
 // --- CONTEXTO DA APLICAÇÃO ---
 const AppContext = createContext(null);
 
-// Substitua o seu AppProvider por esta versão completa e correta
+// INÍCIO DO COMPONENTE AppProvider
 const AppProvider = ({ children }) => {
     // Todos os seus estados originais
     const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -1058,7 +1115,7 @@ const AppProvider = ({ children }) => {
     const [activeTheme, setActiveThemeState] = useState('default');
     const [perguntasAvulsas, setPerguntasAvulsas] = useState(0);
 
-    // Todas as suas funções originais
+    // Todas as suas funções originais + a nova função de log
     const setActiveTheme = useCallback(async (themeId) => {
         if (!userId || !db) return;
         try {
@@ -1107,7 +1164,6 @@ const AppProvider = ({ children }) => {
         try {
             const q = query(collection(db, `users/${uid}/entries`), orderBy("practicedAt", "desc"));
             const snapshot = await getDocs(q);
-            // CORREÇÃO APLICADA AQUI
             const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllEntries(entries);
         } catch (error) {
@@ -1120,7 +1176,6 @@ const AppProvider = ({ children }) => {
         try {
             const q = query(collection(db, `users/${uid}/meusAudios`), orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
-            // CORREÇÃO APLICADA AQUI
             const audios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMeusAudios(audios);
         } catch (error) {
@@ -1133,13 +1188,37 @@ const AppProvider = ({ children }) => {
         try {
             const q = query(collection(db, `users/${uid}/playlists`), orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
-            // CORREÇÃO APLICADA AQUI
             const playlistsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setPlaylists(playlistsData);
         } catch (error) {
             console.error("Erro ao buscar Playlists:", error);
         }
     }, []);
+
+    const logPlaybackActivity = useCallback(async (data) => {
+        if (!userId || !db) return;
+
+        try {
+            const { mantraId, customAudioId, source } = data;
+            
+            const playbackData = {
+                type: 'playback',
+                practicedAt: Timestamp.now(),
+                source: source, // Ex: 'library', 'spoken', 'santuario_audio', 'santuario_playlist'
+            };
+
+            if (mantraId) {
+                playbackData.mantraId = mantraId;
+            } else if (customAudioId) {
+                playbackData.customAudioId = customAudioId;
+            }
+            
+            await addDoc(collection(db, `users/${userId}/entries`), playbackData);
+
+        } catch (error) {
+            console.error("Erro ao registrar atividade de playback:", error);
+        }
+    }, [userId]);
 
     // Listener de Autenticação (Login/Logout)
     useEffect(() => {
@@ -1200,7 +1279,6 @@ const AppProvider = ({ children }) => {
         const astroHistoryRef = collection(db, "users", userId, "astroHistory");
         const q = query(astroHistoryRef, orderBy('createdAt', 'desc'));
         const unsubscribeAstro = onSnapshot(q, (snap) => {
-            // CORREÇÃO APLICADA AQUI
             setAstroHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
@@ -1238,10 +1316,13 @@ const AppProvider = ({ children }) => {
         unlockedThemes, unlockTheme,
         activeTheme, setActiveTheme,
         perguntasAvulsas,
+        logPlaybackActivity, // <-- NOVA FUNÇÃO EXPOSTA
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
+// FIM DO COMPONENTE AppProvider
+
 
 // --- TELAS E COMPONENTES EXISTENTES ---
 
@@ -2906,9 +2987,10 @@ const MantraSelectionModal = ({
     </div>
   );
 };
+// SUBSTITUA TODO O SEU COMPONENTE 'MantrasScreen' POR ESTE
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
   const { isSubscribed } = useContext(AppContext);
-  const FREE_MANTRA_IDS = [1, 2];
+  const FREE_MANTRA_IDS = [1, 2, 13, 14, 15, 16, 17]; // <-- ALTERAÇÃO APLICADA AQUI
   return (
     <div className="page-container">
       <PageTitle subtitle="Explore melodias sagradas para relaxar e meditar.">
@@ -2916,6 +2998,9 @@ const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
       </PageTitle>
       <div className="grid grid-cols-2 gap-4 md:gap-6">
         {MANTRAS_DATA.map((mantra) => {
+          // Apenas mostra mantras que têm uma versão musical (libraryAudioSrc)
+          if (!mantra.libraryAudioSrc) return null;
+
           const isLocked =
             !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id);
           return (
@@ -2956,9 +3041,10 @@ const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
     </div>
   );
 };
+// SUBSTITUA TODO O SEU COMPONENTE 'SpokenMantrasScreen' POR ESTE
 const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => {
   const { isSubscribed } = useContext(AppContext);
-  const FREE_MANTRA_IDS = [1, 2];
+  const FREE_MANTRA_IDS = [1, 2, 13, 14, 15, 16, 17]; // <-- ALTERAÇÃO APLICADA AQUI
   return (
     <div className="page-container">
       <PageTitle subtitle="Escolha um mantra para focar e iniciar sua prática de repetição.">
@@ -2966,6 +3052,9 @@ const SpokenMantrasScreen = ({ onSelectMantra, openPremiumModal }) => {
       </PageTitle>
       <div className="space-y-4">
         {MANTRAS_DATA.map((mantra) => {
+          // Apenas mostra mantras que têm uma versão falada (spokenAudioSrc)
+          if (!mantra.spokenAudioSrc) return null;
+
           const isLocked =
             !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id);
           return (
@@ -3814,6 +3903,7 @@ const FavoritesScreen = ({ onPlayMantra }) => {
     </div>
   );
 };
+// SUBSTITUA TODO O SEU COMPONENTE 'MantraPlayer' POR ESTE
 const MantraPlayer = ({
   currentMantra,
   onClose,
@@ -3839,6 +3929,13 @@ const MantraPlayer = ({
   const hideControlsTimeoutRef = useRef(null);
   const repetitionCountRef = useRef(1);
   const practiceTimerRef = useRef(practiceTimer);
+  
+  // --- NOVAS REFS E CONSTANTES PARA O FADE ---
+  const fadeIntervalRef = useRef(null);
+  const isFadingRef = useRef(false);
+  const FADE_DURATION_MS = 1000; // 1 segundo para o fade
+  const FADE_STEP_MS = 50; // Intervalo de atualização do volume
+  const FADE_TRIGGER_SECONDS = 1.2; // Começa o fade 1.2s antes do fim
 
   useEffect(() => {
     practiceTimerRef.current = practiceTimer;
@@ -3858,14 +3955,14 @@ const MantraPlayer = ({
 
   const handleTouchStart = (e) => {
     if (e.target.type === "range") return;
-    touchStartX.current = e.targetTouches[0].clientX;
-    touchStartY.current = e.targetTouches[0].clientY;
+    touchStartX.current = e.target.touches[0].clientX;
+    touchStartY.current = e.target.touches[0].clientY;
     touchEndX.current = null;
     touchEndY.current = null;
   };
   const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-    touchEndY.current = e.targetTouches[0].clientY;
+    touchEndX.current = e.target.touches[0].clientX;
+    touchEndY.current = e.target.touches[0].clientY;
   };
   const handleTouchEnd = () => {
     if (!touchStartX.current || !touchEndX.current) return;
@@ -3936,6 +4033,12 @@ const MantraPlayer = ({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    
+    // Limpa qualquer intervalo de fade anterior ao trocar de mantra
+    clearInterval(fadeIntervalRef.current);
+    isFadingRef.current = false;
+    audio.volume = 1; // Garante que o volume comece no máximo
+
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(true);
@@ -3943,36 +4046,79 @@ const MantraPlayer = ({
     repetitionCountRef.current = 1;
 
     const setAudioData = () => setDuration(audio.duration);
-    const handleTimeUpdate = () => {
-      const timer = practiceTimerRef.current;
-      if (timer && timer.endTime && Date.now() >= timer.endTime) {
-        audio.pause();
-        setIsPlaying(false);
-        setPracticeTimer({ endTime: null, duration: null });
-      } else {
-        setCurrentTime(audio.currentTime);
-      }
-    };
 
     const handleAudioEnd = () => {
-      const timer = practiceTimerRef.current;
-      if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) {
-        repetitionCountRef.current += 1;
-        setRepetitionCount(repetitionCountRef.current);
-        audio.load(); // <<< CORREÇÃO APLICADA AQUI
-        audio.play();
-      } else if (timer && timer.endTime && Date.now() < timer.endTime) {
-        audio.load(); // <<< CORREÇÃO APLICADA AQUI (para robustez)
-        audio.play();
-      } else {
-        setIsPlaying(false);
-        if (timer && timer.endTime) {
-          setPracticeTimer({ endTime: null, duration: null });
+        // Esta função agora é o fallback para áudios não falados ou timers
+        const timer = practiceTimerRef.current;
+        if (timer && timer.endTime && Date.now() < timer.endTime) {
+            audio.load();
+            audio.play();
+        } else {
+            setIsPlaying(false);
+            if (timer && timer.endTime) {
+                setPracticeTimer({ endTime: null, duration: null });
+            }
+            clearTimeout(hideControlsTimeoutRef.current);
+            setAreControlsVisible(true);
         }
-        // ADICIONE ESTAS 2 LINHAS:
-        clearTimeout(hideControlsTimeoutRef.current);
-        setAreControlsVisible(true);
-      }
+    };
+
+    const handleTimeUpdate = () => {
+        const timer = practiceTimerRef.current;
+        if (timer && timer.endTime && Date.now() >= timer.endTime) {
+            audio.pause();
+            setIsPlaying(false);
+            setPracticeTimer({ endTime: null, duration: null });
+            return;
+        }
+        
+        setCurrentTime(audio.currentTime);
+
+        // --- LÓGICA DE FADE-OUT PARA REPETIÇÃO ---
+        if (
+            isSpokenPractice &&
+            !isFadingRef.current &&
+            audio.duration > FADE_TRIGGER_SECONDS &&
+            audio.currentTime >= audio.duration - FADE_TRIGGER_SECONDS
+        ) {
+            isFadingRef.current = true;
+            
+            const steps = FADE_DURATION_MS / FADE_STEP_MS;
+            const volumeStep = 1 / steps;
+            
+            fadeIntervalRef.current = setInterval(() => {
+                if (audio.volume > volumeStep) {
+                    audio.volume -= volumeStep;
+                } else {
+                    clearInterval(fadeIntervalRef.current);
+                    audio.pause();
+                    audio.volume = 0;
+
+                    // Verifica se deve repetir
+                    if (repetitionCountRef.current < totalRepetitions) {
+                        repetitionCountRef.current += 1;
+                        setRepetitionCount(repetitionCountRef.current);
+                        audio.currentTime = 0;
+
+                        // Inicia o FADE-IN
+                        audio.play();
+                        fadeIntervalRef.current = setInterval(() => {
+                            if (audio.volume < 1 - volumeStep) {
+                                audio.volume += volumeStep;
+                            } else {
+                                clearInterval(fadeIntervalRef.current);
+                                audio.volume = 1;
+                                isFadingRef.current = false;
+                            }
+                        }, FADE_STEP_MS);
+                    } else {
+                        // Fim de todas as repetições
+                        setIsPlaying(false);
+                        isFadingRef.current = false;
+                    }
+                }
+            }, FADE_STEP_MS);
+        }
     };
 
     audio.addEventListener("loadedmetadata", setAudioData);
@@ -3987,6 +4133,7 @@ const MantraPlayer = ({
       audio.removeEventListener("loadedmetadata", setAudioData);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleAudioEnd);
+      clearInterval(fadeIntervalRef.current); // Limpeza do intervalo
     };
   }, [audioSrc, totalRepetitions, isSpokenPractice, onClose]);
 
@@ -4004,6 +4151,7 @@ const MantraPlayer = ({
     setIsPlaying(!isPlaying);
     showControls();
   }, [isPlaying, showControls]);
+
   const formatTime = (time) => {
     if (isNaN(time) || time === 0) return "00:00";
     const minutes = Math.floor(time / 60);
@@ -5211,7 +5359,9 @@ const CustomRepetitionModal = ({ isOpen, onClose, onStart, audio }) => {
     </div>
   );
 };
+// INÍCIO DO COMPONENTE 'CustomAudioPlayer'
 const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
+  const { logPlaybackActivity } = useContext(AppContext); // <-- FUNÇÃO OBTIDA DO CONTEXTO
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [repetitionCount, setRepetitionCount] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -5236,6 +5386,18 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioSrc) return;
+
+    // Loga a reprodução da faixa se for uma playlist
+    if (isPlaylist && logPlaybackActivity) {
+      const currentTrackForLog = playlist.sequencia[currentTrackIndex];
+      if (currentTrackForLog) {
+        logPlaybackActivity({
+          customAudioId: currentTrackForLog.audio.id,
+          source: 'santuario_playlist'
+        });
+      }
+    }
+    
     setRepetitionCount(1);
     setCurrentTime(0);
     setDuration(0);
@@ -5359,6 +5521,9 @@ const CustomAudioPlayer = ({ playlist, singleAudio, repetitions, onClose }) => {
     </div>
   );
 };
+
+// FIM DO COMPONENTE 'CustomAudioPlayer'
+
 const ChakraScreen = ({ preselectChakraId, onComplete }) => {
   const [selectedChakra, setSelectedChakra] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -6262,6 +6427,7 @@ const usePushNotifications = () => {
 };
 
 // --- COMPONENTE PRINCIPAL (ATUALIZADO com lógica de Jornadas) ---
+// INÍCIO DO COMPONENTE 'AppContent'
 const AppContent = () => {
   // ESTADO DE NAVEGAÇÃO ATUALIZADO para lidar com parâmetros
   const [activeScreen, setActiveScreenInternal] = useState({
@@ -6294,6 +6460,7 @@ const AppContent = () => {
     updateJourneyProgress,
     unlockTheme,
     activeTheme,
+    logPlaybackActivity, // <-- FUNÇÃO OBTIDA DO CONTEXTO
   } = useContext(AppContext);
   const [repetitionModalData, setRepetitionModalData] = useState({
     isOpen: false,
@@ -6443,6 +6610,12 @@ const AppContent = () => {
   // --- FIM DA LÓGICA DE NOTIFICAÇÃO PUSH ---
 
   const handlePlayMantra = (mantra, repetitions, audioType) => {
+    if (logPlaybackActivity) {
+      logPlaybackActivity({
+        mantraId: mantra.id,
+        source: audioType === 'library' ? 'library' : 'spoken',
+      });
+    }
     setPlayerData({ mantra, repetitions, audioType });
     setRepetitionModalData({ isOpen: false, mantra: null });
   };
@@ -6560,6 +6733,12 @@ const AppContent = () => {
     setActiveScreen("noteEditor");
   };
   const handleStartCustomAudio = (audio) => {
+    if (logPlaybackActivity) {
+      logPlaybackActivity({
+        customAudioId: audio.id,
+        source: 'santuario_audio',
+      });
+    }
     setCustomAudioToPlay({ audio });
     setIsCustomRepModalOpen(true);
   };
@@ -6881,6 +7060,9 @@ const AppContent = () => {
     </div>
   );
 };
+
+// FIM DO COMPONENTE 'AppContent'
+
 
 const PermissionErrorScreen = ({ type }) => (
   <div className="min-h-screen flex items-center justify-center p-4 modern-body">
