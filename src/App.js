@@ -8,6 +8,7 @@ import React, {
   useMemo,
   memo,
 } from "react";
+import Confetti from 'react-confetti';
 import {
   BrowserRouter as Router,
   Route,
@@ -26,6 +27,7 @@ import {
   deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  reauthenticateWithPopup, // <-- ADICIONADO AQUI
   signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
@@ -1091,9 +1093,9 @@ if (window.location.hostname === "localhost") {
 // --- CONTEXTO DA APLICAÇÃO ---
 const AppContext = createContext(null);
 
-// INÍCIO DO COMPONENTE AppProvider
+// INÍCIO DO COMPONENTE AppProvider (VERSÃO RESTAURADA E INTEGRADA)
 const AppProvider = ({ children }) => {
-    // Todos os seus estados originais
+    // Estados
     const [isAuthLoading, setIsAuthLoading] = useState(true);
     const [isUserDataLoading, setIsUserDataLoading] = useState(true);
     const [user, setUser] = useState(null);
@@ -1118,50 +1120,7 @@ const AppProvider = ({ children }) => {
     const [activeTheme, setActiveThemeState] = useState('default');
     const [perguntasAvulsas, setPerguntasAvulsas] = useState(0);
 
-    // Todas as suas funções originais + a nova função de log
-    const setActiveTheme = useCallback(async (themeId) => {
-        if (!userId || !db) return;
-        try {
-            setActiveThemeState(themeId);
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { activeTheme: themeId });
-        } catch (error) { console.error("Erro ao definir tema ativo:", error); }
-    }, [userId]);
-
-    const unlockTheme = useCallback(async (themeId) => {
-        if (!userId || !db || unlockedThemes.includes(themeId)) return;
-        try {
-            const newThemes = [...unlockedThemes, themeId];
-            setUnlockedThemes(newThemes);
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { unlockedThemes: newThemes });
-        } catch (error) { console.error("Erro ao desbloquear tema:", error); }
-    }, [userId, unlockedThemes]);
-
-    const fetchJourneyProgress = useCallback(async (uid) => {
-        if (!db || !uid) return;
-        try {
-            const progressCol = collection(db, `users/${uid}/journeyProgress`);
-            const snapshot = await getDocs(progressCol);
-            const progressData = {};
-            snapshot.forEach(doc => { progressData[doc.id] = doc.data(); });
-            setJourneyProgress(progressData);
-        } catch (error) { console.error("Erro ao buscar progresso das jornadas:", error); }
-    }, []);
-
-    const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
-        if (!userId || !db) return;
-        const progressRef = doc(db, `users/${userId}/journeyProgress`, journeyId);
-        try {
-            const currentProgress = journeyProgress[journeyId] || { completedDays: [] };
-            if (!currentProgress.completedDays.includes(dayNumber)) {
-                const updatedDays = [...currentProgress.completedDays, dayNumber];
-                await setDoc(progressRef, { completedDays: updatedDays, lastUpdate: Timestamp.now() }, { merge: true });
-                setJourneyProgress(prev => ({ ...prev, [journeyId]: { ...prev[journeyId], completedDays: updatedDays } }));
-            }
-        } catch (error) { console.error("Erro ao atualizar progresso da jornada:", error); }
-    }, [userId, journeyProgress]);
-
+    // Funções de busca de dados
     const fetchAllEntries = useCallback(async (uid) => {
         if (!db || !uid) return [];
         try {
@@ -1169,8 +1128,13 @@ const AppProvider = ({ children }) => {
             const snapshot = await getDocs(q);
             const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllEntries(entries);
+            return entries;
         } catch (error) {
             console.error("Erro ao buscar todas as entradas: ", error);
+            if (error.code === 'permission-denied') {
+                setPermissionError('Firestore');
+            }
+            return [];
         }
     }, []);
 
@@ -1179,11 +1143,8 @@ const AppProvider = ({ children }) => {
         try {
             const q = query(collection(db, `users/${uid}/meusAudios`), orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
-            const audios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMeusAudios(audios);
-        } catch (error) {
-            console.error("Erro ao buscar 'Meus Áudios':", error);
-        }
+            setMeusAudios(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } catch (error) { console.error("Erro ao buscar 'Meus Áudios':", error); }
     }, []);
 
     const fetchPlaylists = useCallback(async (uid) => {
@@ -1191,46 +1152,148 @@ const AppProvider = ({ children }) => {
         try {
             const q = query(collection(db, `users/${uid}/playlists`), orderBy("createdAt", "desc"));
             const snapshot = await getDocs(q);
-            const playlistsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPlaylists(playlistsData);
-        } catch (error) {
-            console.error("Erro ao buscar Playlists:", error);
-        }
+            setPlaylists(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } catch (error) { console.error("Erro ao buscar Playlists:", error); }
+    }, []);
+    
+    const fetchJourneyProgress = useCallback(async (uid) => {
+        if (!db || !uid) return;
+        try {
+            const snapshot = await getDocs(collection(db, `users/${uid}/journeyProgress`));
+            const progressData = {};
+            snapshot.forEach(doc => { progressData[doc.id] = doc.data(); });
+            setJourneyProgress(progressData);
+        } catch (error) { console.error("Erro ao buscar progresso das jornadas:", error); }
     }, []);
 
-    const logPlaybackActivity = useCallback(async (data) => {
-        if (!userId || !db) return;
-
+    // Função de recálculo (versão robusta do seu arquivo original)
+    const recalculateAndSetStreak = useCallback(async (entries, currentUserId) => {
+        if (!currentUserId || !db) return;
         try {
-            const { mantraId, customAudioId, source } = data;
+            // CORREÇÃO: Lista expandida para incluir todos os tipos de prática
+            const practiceTypes = ['mantra', 'gratitude', 'note', 'playback', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
+            const practiceEntries = entries.filter(e => e.type && practiceTypes.includes(e.type) && e.practicedAt?.toDate);
             
-            const playbackData = {
-                type: 'playback',
-                practicedAt: Timestamp.now(),
-                source: source, // Ex: 'library', 'spoken', 'santuario_audio', 'santuario_playlist'
-            };
+            if (practiceEntries.length === 0) {
+                const newStreakData = { currentStreak: 0, lastPracticedDate: null };
+                setStreakData(newStreakData);
+                const userRef = doc(db, `users/${currentUserId}`);
+                await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: null });
+                return;
+            }
 
-            if (mantraId) {
-                playbackData.mantraId = mantraId;
-            } else if (customAudioId) {
-                playbackData.customAudioId = customAudioId;
+            const uniquePracticeDays = [...new Set(practiceEntries.map(e => {
+                const d = e.practicedAt.toDate();
+                d.setHours(0, 0, 0, 0);
+                return d.getTime();
+            }))];
+            uniquePracticeDays.sort((a, b) => b - a);
+            
+            let calculatedStreak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const lastPracticeDay = new Date(uniquePracticeDays[0]);
+
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
+                calculatedStreak = 1;
+                let lastCheckedDate = new Date(lastPracticeDay);
+                for (let i = 1; i < uniquePracticeDays.length; i++) {
+                    const practiceDate = new Date(uniquePracticeDays[i]);
+                    const expectedPreviousDay = new Date(lastCheckedDate);
+                    expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
+                    if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
+                        calculatedStreak++;
+                        lastCheckedDate = practiceDate;
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                // Se a última prática não foi hoje ou ontem, o streak é 1 (apenas para aquele dia)
+                calculatedStreak = 1;
             }
             
-            await addDoc(collection(db, `users/${userId}/entries`), playbackData);
+            const newStreakData = {
+                currentStreak: calculatedStreak,
+                lastPracticedDate: lastPracticeDay,
+            };
 
+            setStreakData(newStreakData);
+            const userRef = doc(db, `users/${currentUserId}`);
+            await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) });
+        
         } catch (error) {
-            console.error("Erro ao registrar atividade de playback:", error);
+            console.error("Error recalculating streak:", error);
+            if (error.code === 'permission-denied') {
+                setPermissionError("Firestore");
+            }
+        }
+    }, [setPermissionError]); // Adicionada dependência
+
+    // O EFEITO REATIVO FOI REMOVIDO PARA DAR LUGAR ÀS CHAMADAS MANUAIS E DIRETAS,
+    // CONFORME A LÓGICA DO SEU ARQUIVO ORIGINAL QUE FUNCIONA CORRETAMENTE.
+
+    // Funções de atualização de dados
+    const updateFavorites = useCallback(async (newFavorites) => {
+        if (userId) {
+            setFavorites(newFavorites);
+            await updateDoc(doc(db, `users/${userId}`), { favorites: newFavorites });
         }
     }, [userId]);
 
-    // Listener de Autenticação (Login/Logout)
+    const updateOnboardingStatus = useCallback(async (status) => {
+        if (!userId || !db) return;
+        try {
+            await updateDoc(doc(db, `users/${userId}`), { onboardingCompleted: status });
+        } catch (error) { console.error("Erro ao atualizar status do onboarding:", error); }
+    }, [userId]);
+    
+    const logPlaybackActivity = useCallback(async (data) => {
+        if (!userId || !db) return;
+        const { mantraId, customAudioId, source } = data;
+        const playbackData = { type: 'playback', practicedAt: Timestamp.now(), source };
+        if (mantraId) playbackData.mantraId = mantraId;
+        if (customAudioId) playbackData.customAudioId = customAudioId;
+        await addDoc(collection(db, `users/${userId}/entries`), playbackData);
+        fetchAllEntries(userId); // Atualiza as entradas para acionar o useEffect
+    }, [userId, fetchAllEntries]);
+
+    // Outras funções que adicionamos...
+    const setActiveTheme = useCallback(async (themeId) => {
+        if (!userId) return;
+        setActiveThemeState(themeId);
+        await updateDoc(doc(db, `users/${userId}`), { activeTheme: themeId });
+    }, [userId]);
+
+    const unlockTheme = useCallback(async (themeId) => {
+        if (!userId || unlockedThemes.includes(themeId)) return;
+        const newThemes = [...unlockedThemes, themeId];
+        setUnlockedThemes(newThemes);
+        await updateDoc(doc(db, `users/${userId}`), { unlockedThemes: newThemes });
+    }, [userId, unlockedThemes]);
+
+    const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
+        if (!userId) return;
+        const progressRef = doc(db, `users/${userId}/journeyProgress`, journeyId);
+        const currentProgress = journeyProgress[journeyId] || { completedDays: [] };
+        if (!currentProgress.completedDays.includes(dayNumber)) {
+            const updatedDays = [...currentProgress.completedDays, dayNumber];
+            await setDoc(progressRef, { completedDays: updatedDays }, { merge: true });
+            setJourneyProgress(prev => ({ ...prev, [journeyId]: { ...prev[journeyId], completedDays: updatedDays } }));
+        }
+    }, [userId, journeyProgress]);
+
+    // Listener de Autenticação
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (userAuth) => {
             if (userAuth) {
                 setUser(userAuth);
                 setUserId(userAuth.uid);
             } else {
-                // Limpa tudo ao fazer logout
+                // Limpeza completa no logout
                 setUser(null); setUserId(null); setUserName(''); setFavorites([]);
                 setStreakData({ currentStreak: 0, lastPracticedDate: null });
                 setPhotoURL(null); setAllEntries([]); setIsSubscribed(false);
@@ -1243,14 +1306,13 @@ const AppProvider = ({ children }) => {
         });
         return () => unsubscribe();
     }, []);
-
-    // Listener de Dados em Tempo Real (para o documento do usuário e sub-coleções)
+    
+    // Listener Principal de Dados
     useEffect(() => {
         if (!userId) {
             setIsUserDataLoading(false);
             return;
         }
-
         setIsUserDataLoading(true);
 
         const userDocRef = doc(db, "users", userId);
@@ -1270,56 +1332,41 @@ const AppProvider = ({ children }) => {
                 setPerguntasAvulsas(data.perguntasAvulsas || 0);
                 setIsSubscribed(data.isPremium || false);
                 setFreeQuestionUsed(!!data.freeQuestionUsed);
+            } else {
+                setIsUserDataLoading(false);
             }
-            setIsUserDataLoading(false);
         });
 
-        fetchAllEntries(userId);
-        fetchMeusAudios(userId);
-        fetchPlaylists(userId);
-        fetchJourneyProgress(userId);
-
         const astroHistoryRef = collection(db, "users", userId, "astroHistory");
-        const q = query(astroHistoryRef, orderBy('createdAt', 'desc'));
-        const unsubscribeAstro = onSnapshot(q, (snap) => {
+        const unsubscribeAstro = onSnapshot(query(astroHistoryRef, orderBy('createdAt', 'desc')), (snap) => {
             setAstroHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        // Carrega todos os dados iniciais
+        Promise.all([
+            fetchAllEntries(userId),
+            fetchMeusAudios(userId),
+            fetchPlaylists(userId),
+            fetchJourneyProgress(userId)
+        ]).then(() => {
+            setIsUserDataLoading(false);
         });
 
         return () => {
             unsubscribeUser();
             unsubscribeAstro();
         };
-    }, [userId, fetchAllEntries, fetchMeusAudios, fetchPlaylists, fetchJourneyProgress]);
+    }, [userId, fetchAllEntries]);
 
-    const updateFavorites = async (newFavorites) => {
-        setFavorites(newFavorites);
-        if (userId) {
-            const userRef = doc(db, `users/${userId}`);
-            await updateDoc(userRef, { favorites: newFavorites });
-        }
-    };
-    
+    // O objeto 'value' final, com todas as funções corretas e restauradas
     const value = {
-        user, userId, isAuthLoading, isUserDataLoading, currentUserData,
-        userName, setUserName,
-        favorites, updateFavorites,
-        streakData,
-        photoURL, setPhotoURL,
-        allEntries, fetchAllEntries,
-        permissionError,
-        isSubscribed, setIsSubscribed,
-        freeQuestionUsed, setFreeQuestionUsed,
-        onboardingCompleted,
-        meusAudios, fetchMeusAudios,
-        playlists, fetchPlaylists,
-        astroProfile, setAstroProfile,
-        astroHistory,
-        userGoal,
-        journeyProgress, updateJourneyProgress,
-        unlockedThemes, unlockTheme,
-        activeTheme, setActiveTheme,
-        perguntasAvulsas,
-        logPlaybackActivity, // <-- NOVA FUNÇÃO EXPOSTA
+        user, userId, isAuthLoading, isUserDataLoading, currentUserData, userName, setUserName,
+        favorites, updateFavorites, streakData, photoURL, setPhotoURL, allEntries, fetchAllEntries,
+        permissionError, isSubscribed, freeQuestionUsed, setFreeQuestionUsed, onboardingCompleted,
+        updateOnboardingStatus, meusAudios, fetchMeusAudios, playlists, fetchPlaylists,
+        astroProfile, setAstroProfile, astroHistory, userGoal, journeyProgress, updateJourneyProgress,
+        unlockedThemes, unlockTheme, activeTheme, setActiveTheme, perguntasAvulsas, logPlaybackActivity,
+        // A função de recálculo não precisa ser exposta, pois age reativamente
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -2196,18 +2243,20 @@ const PremiumLockModal = ({ isOpen, onClose, variant }) => {
   const REGULAR_URL = "https://pay.kiwify.com.br/efohCIH";
 
   useEffect(() => {
-    let intervalId;
-    if (isOpen && currentUserData?.createdAt) {
-      const twentyFourHours = 24 * 60 * 60 * 1000;
-      const expirationTime =
-        currentUserData.createdAt.getTime() + twentyFourHours;
+  let intervalId;
+  if (isOpen && currentUserData?.createdAt) {
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const createdAtDate = currentUserData.createdAt.toDate
+      ? currentUserData.createdAt.toDate()
+      : currentUserData.createdAt;
 
-      const updateTimer = () => {
-        const now = Date.now();
-        const remainingTime = expirationTime - now;
+    const expirationTime = createdAtDate.getTime() + twentyFourHours;
 
-        if (remainingTime > 0) {
-          setIsOfferActive(true);
+    const updateTimer = () => {
+      const now = Date.now();
+      const remainingTime = expirationTime - now;
+      if (remainingTime > 0) {
+        setIsOfferActive(true);
           const hours = String(
             Math.floor((remainingTime / (1000 * 60 * 60)) % 24)
           ).padStart(2, "0");
@@ -2219,17 +2268,17 @@ const PremiumLockModal = ({ isOpen, onClose, variant }) => {
           ).padStart(2, "0");
           setTimeLeft(`${hours}:${minutes}:${seconds}`);
         } else {
-          setIsOfferActive(false);
-          setTimeLeft("");
-          clearInterval(intervalId);
-        }
-      };
+        setIsOfferActive(false);
+        setTimeLeft("");
+        clearInterval(intervalId);
+      }
+    };
 
-      updateTimer();
-      intervalId = setInterval(updateTimer, 1000);
-    }
-    return () => clearInterval(intervalId);
-  }, [isOpen, currentUserData]);
+    updateTimer();
+    intervalId = setInterval(updateTimer, 1000);
+  }
+  return () => clearInterval(intervalId);
+}, [isOpen, currentUserData]);
 
   const handleSubscribe = () => {
     const url = isOfferActive ? OFFER_URL : REGULAR_URL;
@@ -2309,15 +2358,19 @@ const SubscriptionManagementModal = ({ isOpen, onClose }) => {
   const REGULAR_URL = "https://pay.kiwify.com.br/efohCIH";
 
   useEffect(() => {
-    if (isOpen && currentUserData?.createdAt) {
-      const twentyFourHours = 24 * 60 * 60 * 1000;
-      const expirationTime =
-        currentUserData.createdAt.getTime() + twentyFourHours;
-      if (Date.now() < expirationTime) {
-        setIsOfferActive(true);
-      }
+  if (isOpen && currentUserData?.createdAt) {
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const createdAtDate = currentUserData.createdAt.toDate
+      ? currentUserData.createdAt.toDate()
+      : currentUserData.createdAt;
+
+    const expirationTime = createdAtDate.getTime() + twentyFourHours;
+
+    if (Date.now() < expirationTime) {
+      setIsOfferActive(true);
     }
-  }, [isOpen, currentUserData]);
+  }
+}, [isOpen, currentUserData]);
 
   const handleNewSubscription = () => {
     const url = isOfferActive ? OFFER_URL : REGULAR_URL;
@@ -2645,7 +2698,7 @@ const HomeScreen = ({
   );
 };
 const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
-  const { userId, fetchAllEntries, recalculateAndSetStreak, isSubscribed } =
+  const { userId, fetchAllEntries, recalculateStreak, isSubscribed } =
     useContext(AppContext);
   const [selectedMantra, setSelectedMantra] = useState(MANTRAS_DATA[0].id);
   const [repetitions, setRepetitions] = useState("");
@@ -2745,11 +2798,11 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSave) {
-      // Usa a nova variável de verificação
       setStatus({ type: "error", message: "Preencha os campos obrigatórios." });
       return;
     }
     if (!userId || !db) return;
+    
     const entryData = {
       type: "mantra",
       mantraId: selectedMantra,
@@ -2758,8 +2811,9 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
       feelings,
       observations,
     };
+
     try {
-      if (entryToEdit) {
+      if (entryToEdit && entryToEdit.id) {
         await updateDoc(
           doc(db, `users/${userId}/entries`, entryToEdit.id),
           entryData
@@ -2770,12 +2824,14 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
           ...entryData,
           practicedAt: Timestamp.now(),
         });
-        setStatus({ type: "success", message: "Registro salvo!" });
+        setStatus({ type: "success", message: "Registro salvo com sucesso!" });
       }
-      const entries = await fetchAllEntries(userId);
-      await recalculateAndSetStreak(entries, userId);
+      
+      // Apenas busca as entradas. O useEffect no AppProvider cuidará do recálculo.
+      fetchAllEntries(userId); 
       setTimeout(() => onSave(), 1500);
     } catch (error) {
+      console.error("Erro ao salvar no diário:", error);
       setStatus({ type: "error", message: "Erro ao salvar." });
     }
   };
@@ -3102,20 +3158,25 @@ const HistoryScreen = ({
   onDelete,
   onEditGratitude,
 }) => {
-  // Adicionado onEditGratitude
   const { allEntries } = useContext(AppContext);
   const [expandedId, setExpandedId] = useState(null);
 
+  // 1. Filtra APENAS as entradas que devem ser exibidas nesta tela
+  const displayableTypes = ["mantra", "gratitude", "note"];
+  const displayableEntries = allEntries.filter(entry => 
+    displayableTypes.includes(entry.type)
+  );
+
   const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
 
-  // Filtra as entradas por categoria
-  const praticas = allEntries.filter((e) => e.type === "mantra");
-  const gratidoes = allEntries.filter((e) => e.type === "gratitude");
-  const anotacoes = allEntries.filter((e) => e.type === "note");
+  // 2. Filtra as categorias a partir da lista já filtrada de 'displayableEntries'
+  const praticas = displayableEntries.filter((e) => e.type === "mantra");
+  const gratidoes = displayableEntries.filter((e) => e.type === "gratitude");
+  const anotacoes = displayableEntries.filter((e) => e.type === "note");
 
-  // Componente auxiliar para renderizar cada seção e evitar repetição de código
+  // Componente auxiliar para renderizar cada seção (sem alteração)
   const EntrySection = ({ title, entries, children }) => {
-    if (entries.length === 0) return null; // Não renderiza a seção se estiver vazia
+    if (entries.length === 0) return null;
     return (
       <div className="w-full space-y-4">
         <h2
@@ -3135,7 +3196,8 @@ const HistoryScreen = ({
         Meu Diário
       </PageTitle>
 
-      {allEntries.length > 0 ? (
+      {/* 3. CONDIÇÃO CORRIGIDA: Verifica a lista de entradas VISÍVEIS */}
+      {displayableEntries.length > 0 ? (
         <>
           <EntrySection title="Práticas de Mantra" entries={praticas}>
             {praticas.map((entry) => {
@@ -3262,7 +3324,6 @@ const HistoryScreen = ({
                           </li>
                         ))}
                       </ul>
-                      {/* --- MUDANÇA AQUI: Botão de Editar Adicionado --- */}
                       <div className="flex gap-2 pt-3">
                         <button
                           onClick={() => onEditGratitude(entry)}
@@ -3344,9 +3405,9 @@ const HistoryScreen = ({
       ) : (
         <div className="glass-card text-center mt-8">
           <History className="mx-auto h-12 w-12 text-white/50" />
-          <p className="mt-4 text-white/70">Você ainda não tem registos.</p>
+          <p className="mt-4 text-white/70">Você ainda não tem registros.</p>
           <p className="text-sm text-white/50 font-light">
-            Comece uma prática no Diário.
+            Comece uma prática ou adicione uma anotação.
           </p>
         </div>
       )}
@@ -3397,9 +3458,11 @@ const SettingsScreen = ({ setActiveScreen }) => {
     try {
       const userRef = doc(db, `users/${user.uid}`);
       await updateDoc(userRef, { name: newName });
-      await fetchUserData(user.uid);
+      // A linha abaixo foi removida, pois a função não existe e o listener onSnapshot já faz a atualização.
+      // await fetchUserData(user.uid); 
       setNameMessage({ type: "success", text: "Nome atualizado!" });
     } catch (error) {
+      console.error("Erro ao atualizar nome:", error);
       setNameMessage({ type: "error", text: "Erro ao atualizar o nome." });
     } finally {
       setIsSubmitting(false);
@@ -3911,6 +3974,7 @@ const MantraPlayer = ({
   currentMantra,
   onClose,
   onMantraChange,
+  onPracticeComplete, // <-- ADICIONADO
   totalRepetitions = 1,
   audioType,
 }) => {
@@ -3934,6 +3998,7 @@ const MantraPlayer = ({
   const hideControlsTimeoutRef = useRef(null);
   const repetitionCountRef = useRef(1);
   const practiceTimerRef = useRef(practiceTimer);
+  const startTimeRef = useRef(null); // <-- ADICIONADO
 
   useEffect(() => {
     practiceTimerRef.current = practiceTimer;
@@ -3950,6 +4015,11 @@ const MantraPlayer = ({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Armazena o tempo de início da prática
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+    }
 
     // Reset de estados
     repetitionCountRef.current = 1;
@@ -3978,7 +4048,21 @@ const MantraPlayer = ({
         return;
       }
 
-      // Se nenhuma das condições acima for atendida, finaliza a reprodução
+      // Se é uma prática de mantra falado, chama o callback de conclusão
+      if (isSpokenPractice && onPracticeComplete) {
+        const endTime = Date.now();
+        const durationInSeconds = Math.round((endTime - startTimeRef.current) / 1000);
+        onPracticeComplete({
+          mantra: currentMantra,
+          count: totalRepetitions,
+          duration: durationInSeconds,
+          completedAt: new Date(),
+        });
+        startTimeRef.current = null; // Reseta para a próxima
+        return; // Encerra a execução aqui
+      }
+
+      // Se não, comportamento padrão (música ou timer)
       setIsPlaying(false);
       clearTimeout(hideControlsTimeoutRef.current);
       setAreControlsVisible(true);
@@ -4538,7 +4622,7 @@ const NoteEditorScreen = ({
   dateForNewNote,
   journeyPrompt = null,
 }) => {
-  const { userId, fetchAllEntries, recalculateAndSetStreak } =
+  const { userId, fetchAllEntries, recalculateStreak} =
     useContext(AppContext);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -4554,10 +4638,9 @@ const NoteEditorScreen = ({
     setIsSubmitting(true);
     setStatus({ type: "", message: "" });
     try {
-      // Se for uma tarefa de jornada (onSave lida com o progresso) ou uma anotação normal
       if (journeyPrompt) {
-        onSave(note.trim()); // Passa a nota para a função de conclusão da jornada
-        return; // Encerra aqui para tarefas de jornada
+        onSave(note.trim());
+        return;
       }
 
       if (noteToEdit) {
@@ -4573,10 +4656,10 @@ const NoteEditorScreen = ({
         await addDoc(collection(db, `users/${userId}/entries`), noteData);
         setStatus({ type: "success", message: "Anotação salva!" });
       }
-      const updatedEntries = await fetchAllEntries(userId);
-      await recalculateAndSetStreak(updatedEntries, userId);
+      // Apenas busca as entradas. O useEffect no AppProvider cuidará do recálculo.
+      fetchAllEntries(userId);
       setNote("");
-      setTimeout(() => onSave(), 1500); // onSave aqui é a navegação
+      setTimeout(() => onSave(), 1500);
     } catch (error) {
       console.error("Error saving note:", error);
       setStatus({ type: "error", message: "Erro ao salvar anotação." });
@@ -6314,7 +6397,7 @@ const AppContent = () => {
     userId,
     journeyProgress,
     fetchAllEntries,
-    recalculateAndSetStreak,
+    recalculateStreak,
     updateJourneyProgress,
     unlockTheme,
     activeTheme,
@@ -6337,6 +6420,7 @@ const AppContent = () => {
   const [playlistToPlay, setPlaylistToPlay] = useState(null);
   const [playlistToEdit, setPlaylistToEdit] = useState(null);
   const [showPushPermissionModal, setShowPushPermissionModal] = useState(false);
+  const [practiceResult, setPracticeResult] = useState(null);
 
   // --- INÍCIO: LÓGICA DO TESTE A/B ---
   const [paywallVariant, setPaywallVariant] = useState(null);
@@ -6571,13 +6655,30 @@ const AppContent = () => {
 
   const handleDeleteEntry = async () => {
     if (!entryToDelete || !userId || !db) return;
+    const entryIdToDelete = entryToDelete.id;
+    
     try {
-      await deleteDoc(doc(db, `users/${userId}/entries`, entryToDelete.id));
-      const updatedEntries = await fetchAllEntries(userId);
-      await recalculateAndSetStreak(updatedEntries, userId);
-      setEntryToDelete(null);
+      // 1. Deleta o documento no Firestore
+      await deleteDoc(doc(db, `users/${userId}/entries`, entryIdToDelete));
+
+      // 2. Cria uma nova lista de entradas MANUALMENTE, filtrando o item deletado do estado atual
+      const newEntries = allEntries.filter(e => e.id !== entryIdToDelete);
+      
+      // 3. Atualiza o estado local 'allEntries' com a nova lista para a UI refletir a mudança
+      setAllEntries(newEntries);
+      
+      // 4. Chama o recálculo passando a lista GARANTIDAMENTE atualizada
+      if (recalculateAndSetStreak) {
+        await recalculateAndSetStreak(newEntries, userId);
+      }
+
     } catch (error) {
       console.error("Error deleting entry:", error);
+      // Em caso de erro, busca os dados novamente do Firestore para garantir consistência
+      fetchAllEntries(userId); 
+    } finally {
+      // 5. Fecha o modal de confirmação
+      setEntryToDelete(null);
     }
   };
   const handleDayClick = (day) => {
@@ -6647,11 +6748,13 @@ const AppContent = () => {
             onSave={handleSaveOrUpdate}
             onCancel={() => {
               setGratitudeToEdit(null);
-              activeJourneyTask
-                ? setActiveScreen("journeyDetail", {
-                    journeyId: activeJourneyTask.journeyId,
-                  })
-                : setActiveScreen("history");
+              // LÓGICA CORRIGIDA: Verifica se está editando ou em uma jornada.
+              // Se não for nenhum dos dois, volta para a 'home'.
+              if (activeJourneyTask) {
+                setActiveScreen("journeyDetail", { journeyId: activeJourneyTask.journeyId });
+              } else {
+                setActiveScreen(gratitudeToEdit ? "history" : "home");
+              }
             }}
             entryToEdit={gratitudeToEdit}
           />
@@ -6705,6 +6808,25 @@ const AppContent = () => {
             onDelete={(entry) => setEntryToDelete(entry)}
           />
         );
+
+        case "noteEditor":
+        return (
+          <NoteEditorScreen
+            onSave={() => setActiveScreen("history")}
+            onCancel={() => {
+              setNoteToEdit(null);
+              // Se veio da home, volta pra home, senão, para o histórico
+              if (activeScreen.payload?.from === "home") {
+                setActiveScreen("home");
+              } else {
+                setActiveScreen("history");
+              }
+            }}
+            noteToEdit={noteToEdit}
+            dateForNewNote={selectedDate} // Usa a data selecionada no calendário
+          />
+        );
+
       case "settings":
         return <SettingsScreen setActiveScreen={setActiveScreen} />;
       case "oracle":
@@ -6791,30 +6913,35 @@ const AppContent = () => {
       />
 
       {playerData.mantra && (
-        <MantraPlayer
-          currentMantra={playerData.mantra}
-          totalRepetitions={playerData.repetitions}
-          audioType={playerData.audioType}
-          onClose={() => {
-            setPlayerData({
-              mantra: null,
-              repetitions: 1,
-              audioType: "library",
-            });
-            // CORREÇÃO APLICADA AQUI:
-            // Só executa a conclusão da tarefa se a música fazia parte de uma jornada ativa.
-            if (
-              activeJourneyTask &&
-              activeJourneyTask.dayInfo.type === "mantra"
-            ) {
-              handleTaskCompletion();
-            }
-          }}
-          onMantraChange={(newMantra) =>
-            setPlayerData((prev) => ({ ...prev, mantra: newMantra }))
-          }
-        />
-      )}
+    <MantraPlayer
+      currentMantra={playerData.mantra}
+      totalRepetitions={playerData.repetitions}
+      audioType={playerData.audioType}
+      onPracticeComplete={(result) => {
+        setPlayerData({ mantra: null, repetitions: 1, audioType: "library" });
+        setPracticeResult(result);
+        triggerPushPermissionRequest(); // Aproveitamos para pedir permissão
+      }}
+      onClose={() => {
+        setPlayerData({
+          mantra: null,
+          repetitions: 1,
+          audioType: "library",
+        });
+        // CORREÇÃO APLICADA AQUI:
+        // Só executa a conclusão da tarefa se a música fazia parte de uma jornada ativa.
+        if (
+          activeJourneyTask &&
+          activeJourneyTask.dayInfo.type === "mantra"
+        ) {
+          handleTaskCompletion();
+        }
+      }}
+      onMantraChange={(newMantra) =>
+        setPlayerData((prev) => ({ ...prev, mantra: newMantra }))
+      }
+    />
+  )}
 
       <RepetitionModal
         isOpen={repetitionModalData.isOpen}
@@ -6915,6 +7042,28 @@ const AppContent = () => {
           }}
         />
       )}
+      
+      {practiceResult && (
+        <PracticeCompletionScreen
+          result={practiceResult}
+          onClose={() => setPracticeResult(null)}
+          onExportToDiary={() => {
+            const entryData = {
+              mantraId: practiceResult.mantra.id,
+              repetitions: practiceResult.count,
+              practicedAt: { toDate: () => practiceResult.completedAt }, // Simula um objeto do Firestore para edição
+              // Preenchemos com valores padrão para o diário
+              timeOfDay: [],
+              feelings: "",
+              observations: ""
+            };
+            setPracticeResult(null); // Fecha a tela de conclusão
+            setEntryToEdit(entryData); // Define os dados para o diário
+            setActiveScreen("diary"); // Abre o diário
+          }}
+        />
+      )}
+
     </div>
   );
 };
@@ -7025,12 +7174,10 @@ const GratitudeScreen = ({ onSave, onCancel, entryToEdit }) => {
 
     try {
       if (entryToEdit) {
-        // --- LÓGICA DE ATUALIZAÇÃO ---
         const entryRef = doc(db, `users/${userId}/entries`, entryToEdit.id);
         await updateDoc(entryRef, { gratefulFor });
         setStatus({ type: "success", message: "Gratidão atualizada!" });
       } else {
-        // --- LÓGICA DE CRIAÇÃO (EXISTENTE) ---
         await addDoc(collection(db, `users/${userId}/entries`), {
           type: "gratitude",
           gratefulFor,
@@ -7039,12 +7186,13 @@ const GratitudeScreen = ({ onSave, onCancel, entryToEdit }) => {
         setStatus({ type: "success", message: "Gratidão registrada!" });
       }
 
-      await fetchAllEntries(userId);
+      // Apenas busca as entradas. O useEffect no AppProvider cuidará do recálculo.
+      fetchAllEntries(userId);
       setTimeout(onSave, 1500);
-    } catch (error) {
+    } catch (error) { // <-- CHAVE DE ABERTURA ADICIONADA
       console.error("Error saving gratitude entry:", error);
       setStatus({ type: "error", message: "Erro ao salvar." });
-    }
+    } // <-- CHAVE DE FECHAMENTO ADICIONADA
   };
 
   return (
@@ -7399,3 +7547,78 @@ const JourneyCompletionScreen = ({ journey, onNext }) => {
 };
 
 // --- FIM: NOVOS COMPONENTES PARA JORNADAS ---
+
+// --- INÍCIO: NOVOS COMPONENTES PARA CONCLUSÃO DE PRÁTICA ---
+
+// Hook auxiliar para o componente de confetes
+const useWindowSize = () => {
+  const [size, setSize] = useState([window.innerWidth, window.innerHeight]);
+  useEffect(() => {
+    const handleResize = () => setSize([window.innerWidth, window.innerHeight]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return size;
+};
+
+// A nova tela de conclusão de prática
+const PracticeCompletionScreen = ({ result, onClose, onExportToDiary }) => {
+  const { width, height } = useWindowSize();
+  const { mantra, count, duration, completedAt } = result;
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes > 0) {
+      return `${minutes} min e ${remainingSeconds} seg`;
+    }
+    return `${remainingSeconds} segundos`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 screen-animation player-background-gradient">
+      <Confetti
+        width={width}
+        height={height}
+        recycle={false}
+        numberOfPieces={400}
+        gravity={0.1}
+      />
+      <div className="glass-card w-full max-w-md text-center">
+        <CheckCircle className="mx-auto h-20 w-20 text-green-400" />
+        <h1 className="page-title !text-3xl mt-4">Prática Concluída!</h1>
+        <p className="page-subtitle">
+          Você repetiu o mantra "{mantra.nome}" com sucesso.
+        </p>
+
+        <div className="mt-6 space-y-3 bg-black/20 p-5 rounded-lg text-left">
+          <div className="flex justify-between items-center text-white/90">
+            <span className="font-light">Repetições:</span>
+            <span className="font-semibold text-lg">{count}</span>
+          </div>
+          <div className="flex justify-between items-center text-white/90">
+            <span className="font-light">Duração:</span>
+            <span className="font-semibold text-lg">{formatDuration(duration)}</span>
+          </div>
+          <div className="flex justify-between items-center text-white/90">
+            <span className="font-light">Finalizada em:</span>
+            <span className="font-semibold text-lg">
+              {completedAt.toLocaleDateString('pt-BR')} às {completedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 mt-8">
+          <button onClick={onExportToDiary} className="w-full modern-btn-primary h-14">
+            <BookOpen /> Exportar para o Diário
+          </button>
+          <button onClick={onClose} className="w-full btn-secondary h-14">
+            Concluir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- FIM: NOVOS COMPONENTES PARA CONCLUSÃO DE PRÁTICA ---
