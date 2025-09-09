@@ -32,23 +32,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  setDoc,
-  getDoc,
-  getDocFromServer, // <--- ADICIONE ESTA
-  Timestamp,
-  where,
-  orderBy,
-  onSnapshot,
-} from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, doc, updateDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
 import {
   getStorage,
   ref,
@@ -1168,70 +1152,100 @@ const AppProvider = ({ children }) => {
 
     // Função de recálculo (versão robusta do seu arquivo original)
     const recalculateAndSetStreak = useCallback(async (entries, currentUserId) => {
-        if (!currentUserId || !db) return;
-        try {
-            // CORREÇÃO: Lista expandida para incluir todos os tipos de prática
-            const practiceTypes = ['mantra', 'gratitude', 'note', 'playback', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
-            const practiceEntries = entries.filter(e => e.type && practiceTypes.includes(e.type) && e.practicedAt?.toDate);
-            
-            if (practiceEntries.length === 0) {
-                const newStreakData = { currentStreak: 0, lastPracticedDate: null };
-                setStreakData(newStreakData);
-                const userRef = doc(db, `users/${currentUserId}`);
-                await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: null });
-                return;
-            }
+  if (!currentUserId || !db) return;
+  try {
+    const practiceTypes = ['mantra', 'gratitude', 'note', 'playback', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
+    // Filtra apenas entradas relevantes (com campo practicedAt)
+    const practiceEntries = (entries || []).filter(e => e && e.type && practiceTypes.includes(e.type) && e.practicedAt);
 
-            const uniquePracticeDays = [...new Set(practiceEntries.map(e => {
-                const d = e.practicedAt.toDate();
-                d.setHours(0, 0, 0, 0);
-                return d.getTime();
-            }))];
-            uniquePracticeDays.sort((a, b) => b - a);
-            
-            let calculatedStreak = 0;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const lastPracticeDay = new Date(uniquePracticeDays[0]);
+    // Helper: normaliza diferentes formatos de timestamp para Date
+    const toDate = (val) => {
+      if (!val) return null;
+      if (typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp ou objeto com toDate()
+      if (val instanceof Date) return val;
+      if (val?.seconds && typeof val.seconds === 'number') return new Date(val.seconds * 1000);
+      if (typeof val === 'number') return new Date(val); // epoch ms
+      if (typeof val === 'string') {
+        const parsed = new Date(val);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      }
+      return null;
+    };
 
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
+    if (practiceEntries.length === 0) {
+      const newStreakData = { currentStreak: 0, lastPracticedDate: null };
+      setStreakData(newStreakData);
+      const userRef = doc(db, `users/${currentUserId}`);
+      await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: null });
+      return;
+    }
 
-            if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
-                calculatedStreak = 1;
-                let lastCheckedDate = new Date(lastPracticeDay);
-                for (let i = 1; i < uniquePracticeDays.length; i++) {
-                    const practiceDate = new Date(uniquePracticeDays[i]);
-                    const expectedPreviousDay = new Date(lastCheckedDate);
-                    expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
-                    if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
-                        calculatedStreak++;
-                        lastCheckedDate = practiceDate;
-                    } else {
-                        break;
-                    }
-                }
-            } else {
-                // Se a última prática não foi hoje ou ontem, o streak é 1 (apenas para aquele dia)
-                calculatedStreak = 1;
-            }
-            
-            const newStreakData = {
-                currentStreak: calculatedStreak,
-                lastPracticedDate: lastPracticeDay,
-            };
+    // Cria conjunto de dias únicos (midnight)
+    const uniqueDaysSet = new Set();
+    for (const e of practiceEntries) {
+      const dt = toDate(e.practicedAt);
+      if (!dt) continue;
+      dt.setHours(0,0,0,0);
+      uniqueDaysSet.add(dt.getTime());
+    }
+    const uniquePracticeDays = Array.from(uniqueDaysSet).sort((a,b) => b - a); // do mais recente ao mais antigo
 
-            setStreakData(newStreakData);
-            const userRef = doc(db, `users/${currentUserId}`);
-            await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) });
-        
-        } catch (error) {
-            console.error("Error recalculating streak:", error);
-            if (error.code === 'permission-denied') {
-                setPermissionError("Firestore");
-            }
+    if (uniquePracticeDays.length === 0) {
+      const newStreakData = { currentStreak: 0, lastPracticedDate: null };
+      setStreakData(newStreakData);
+      const userRef = doc(db, `users/${currentUserId}`);
+      await updateDoc(userRef, { currentStreak: 0, lastPracticedDate: null });
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    const lastPracticeDay = new Date(uniquePracticeDays[0]);
+    lastPracticeDay.setHours(0,0,0,0);
+
+    let calculatedStreak = 0;
+
+    // Só consideramos streak ativo se a última prática foi hoje ou ontem
+    if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
+      calculatedStreak = 1;
+      let lastCheckedDate = new Date(lastPracticeDay);
+      for (let i = 1; i < uniquePracticeDays.length; i++) {
+        const practiceDate = new Date(uniquePracticeDays[i]);
+        practiceDate.setHours(0,0,0,0);
+        const expectedPreviousDay = new Date(lastCheckedDate);
+        expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
+        if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
+          calculatedStreak++;
+          lastCheckedDate = practiceDate;
+        } else {
+          break;
         }
-    }, [setPermissionError]); // Adicionada dependência
+      }
+    } else {
+      // Se a última prática não foi hoje nem ontem, não existe streak ativo
+      calculatedStreak = 0;
+    }
+
+    const newStreakData = {
+      currentStreak: calculatedStreak,
+      lastPracticedDate: lastPracticeDay,
+    };
+
+    setStreakData(newStreakData);
+    const userRef = doc(db, `users/${currentUserId}`);
+    await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: newStreakData.lastPracticedDate ? Timestamp.fromDate(newStreakData.lastPracticedDate) : null });
+
+  } catch (error) {
+    console.error("Error recalculating streak:", error);
+    if (error?.code === 'permission-denied') {
+      setPermissionError("Firestore");
+    }
+  }
+}, [setPermissionError]);
+
 
     // O EFEITO REATIVO FOI REMOVIDO PARA DAR LUGAR ÀS CHAMADAS MANUAIS E DIRETAS,
     // CONFORME A LÓGICA DO SEU ARQUIVO ORIGINAL QUE FUNCIONA CORRETAMENTE.
@@ -1349,20 +1363,42 @@ const AppProvider = ({ children }) => {
         });
 
         // Carrega todos os dados iniciais
+        // Listener reativo para entradas de prática
+const entriesRef = collection(db, "users", userId, "entries");
+const entriesQuery = query(entriesRef, orderBy("practicedAt", "desc"));
+const unsubscribeEntries = onSnapshot(
+  entriesQuery,
+  (snapshot) => {
+    const entries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    setAllEntries(entries);
+  },
+  (error) => {
+    console.error("Erro no listener de entries:", error);
+    if (error.code === "permission-denied") {
+      setPermissionError("Firestore");
+    }
+  }
+);
+
+        // Carrega os demais dados iniciais
         Promise.all([
-            fetchAllEntries(userId),
-            fetchMeusAudios(userId),
-            fetchPlaylists(userId),
-            fetchJourneyProgress(userId)
+          fetchMeusAudios(userId),
+          fetchPlaylists(userId),
+          fetchJourneyProgress(userId),
         ]).then(() => {
-            setIsUserDataLoading(false);
+          setIsUserDataLoading(false);
         });
+
 
         return () => {
             unsubscribeUser();
             unsubscribeAstro();
+            if (typeof unsubscribeEntries === "function") unsubscribeEntries();
         };
-    }, [userId, fetchAllEntries]);
+
+
+    }, [userId, fetchMeusAudios, fetchPlaylists, fetchJourneyProgress]);
+
 
     // O objeto 'value' final, com todas as funções corretas e restauradas
     const value = {
@@ -6564,10 +6600,12 @@ const AppContent = () => {
   // --- FIM DA LÓGICA DE NOTIFICAÇÃO PUSH ---
 
   const handlePlayMantra = (mantra, repetitions, audioType) => {
-    if (logPlaybackActivity) {
+    // CORREÇÃO: Apenas registra o 'playback' se NÃO for um mantra falado ('spoken'),
+    // para evitar a criação de registros "fantasmas" antes da conclusão da prática.
+    if (audioType !== 'spoken' && logPlaybackActivity) {
       logPlaybackActivity({
         mantraId: mantra.id,
-        source: audioType === 'library' ? 'library' : 'spoken',
+        source: 'library', // Neste fluxo, se não é 'spoken', só pode ser 'library'.
       });
     }
     setPlayerData({ mantra, repetitions, audioType });
@@ -6666,33 +6704,50 @@ const AppContent = () => {
   };
 
   const handleDeleteEntry = async () => {
-    if (!entryToDelete || !userId || !db) return;
-    const entryIdToDelete = entryToDelete.id;
-    
-    try {
-      // 1. Deleta o documento no Firestore
-      await deleteDoc(doc(db, `users/${userId}/entries`, entryIdToDelete));
+  if (!entryToDelete || !userId || !db) return;
 
-      // 2. Cria uma nova lista de entradas MANUALMENTE, filtrando o item deletado do estado atual
-      const newEntries = allEntries.filter(e => e.id !== entryIdToDelete);
-      
-      // 3. Atualiza o estado local 'allEntries' com a nova lista para a UI refletir a mudança
-      setAllEntries(newEntries);
-      
-      // 4. Chama o recálculo passando a lista GARANTIDAMENTE atualizada
-      if (recalculateAndSetStreak) {
-        await recalculateAndSetStreak(newEntries, userId);
+  try {
+    if (entryToDelete.id) {
+      // Caso padrão: documento tem ID
+      await deleteDoc(doc(db, `users/${userId}/entries`, entryToDelete.id));
+    } else {
+      // Caso especial: entrada sem id (ex.: vinda da tela de conclusão)
+      const entriesRef = collection(db, "users", userId, "entries");
+      const entriesQuery = query(entriesRef, orderBy("practicedAt", "desc"), limit(10));
+      const snapshot = await getDocs(entriesQuery);
+
+      let candidate = null;
+      let minDiff = Infinity;
+      const targetDate = entryToDelete.practicedAt?.toDate ? entryToDelete.practicedAt.toDate() : null;
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data?.practicedAt) return;
+        const docDate = data.practicedAt.toDate ? data.practicedAt.toDate() : null;
+        if (!docDate || !targetDate) return;
+        const diff = Math.abs(docDate.getTime() - targetDate.getTime());
+        if (diff < minDiff) {
+          minDiff = diff;
+          candidate = { id: docSnap.id, ...data };
+        }
+      });
+
+      if (candidate) {
+        await deleteDoc(doc(db, `users/${userId}/entries`, candidate.id));
+      } else {
+        console.warn("Nenhum documento correspondente encontrado para exclusão.");
       }
-
-    } catch (error) {
-      console.error("Error deleting entry:", error);
-      // Em caso de erro, busca os dados novamente do Firestore para garantir consistência
-      fetchAllEntries(userId); 
-    } finally {
-      // 5. Fecha o modal de confirmação
-      setEntryToDelete(null);
     }
-  };
+
+  } catch (error) {
+    console.error("Error deleting entry:", error);
+    fetchAllEntries(userId); // fallback em caso de erro
+  } finally {
+    setEntryToDelete(null);
+  }
+};
+
+
   const handleDayClick = (day) => {
     setSelectedDate(day);
     setIsCalendarOpen(false);
