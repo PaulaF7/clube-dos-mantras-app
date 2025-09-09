@@ -1260,6 +1260,12 @@ const AppProvider = ({ children }) => {
         await addDoc(collection(db, `users/${userId}/entries`), playbackData);
         fetchAllEntries(userId); // Atualiza as entradas para acionar o useEffect
     }, [userId, fetchAllEntries]);
+    useEffect(() => {
+  if (userId && allEntries) {
+    recalculateAndSetStreak(allEntries, userId);
+  }
+}, [allEntries, userId]);
+
 
     // Outras funções que adicionamos...
     const setActiveTheme = useCallback(async (themeId) => {
@@ -2657,21 +2663,27 @@ const HomeScreen = ({
           "{message}"
         </p>
       </div>
-      {streakData && streakData.currentStreak > 0 && (
-        <div className="glass-card p-6 flex items-center justify-center gap-5 text-center premium-card-glow">
-          <Flame
-            className="h-10 w-10 text-[#FFD54F]"
-            style={{ filter: "drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))" }}
-          />
-          <div>
-            <p className="text-xl text-white">
-              {streakData.currentStreak}{" "}
-              {streakData.currentStreak > 1 ? "dias" : "dia"} de prática
-            </p>
-            <p className="text-sm text-white/60 font-light">Continue assim!</p>
-          </div>
-        </div>
-      )}
+      {(
+  (allEntries && allEntries.some(entry =>
+    ["mantra", "gratitude", "note"].includes(entry.type)
+  )) ||
+  (streakData && streakData.currentStreak > 0)
+) && (
+  <div className="glass-card p-6 flex items-center justify-center gap-5 text-center premium-card-glow">
+    <Flame
+      className="h-10 w-10 text-[#FFD54F]"
+      style={{ filter: "drop-shadow(0 0 10px rgba(255, 213, 79, 0.5))" }}
+    />
+    <div>
+      <p className="text-xl text-white">
+        {streakData?.currentStreak || 0}{" "}
+        {(streakData?.currentStreak || 0) > 1 ? "dias" : "dia"} de prática
+      </p>
+      <p className="text-sm text-white/60 font-light">Continue assim!</p>
+    </div>
+  </div>
+)}
+
       <WeekView />
       <div className="w-full max-w-md mx-auto space-y-3">
         <button
