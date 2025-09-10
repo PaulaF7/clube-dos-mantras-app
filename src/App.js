@@ -3985,12 +3985,14 @@ const FavoritesScreen = ({ onPlayMantra }) => {
     </div>
   );
 };
-// SUBSTITUA TODO O SEU COMPONENTE 'MantraPlayer' POR ESTE
+
+// INÍCIO DO COMPONENTE 'MantraPlayer' //
+
 const MantraPlayer = ({
   currentMantra,
   onClose,
   onMantraChange,
-  onPracticeComplete, // <-- ADICIONADO
+  onPracticeComplete,
   totalRepetitions = 1,
   audioType,
 }) => {
@@ -3998,23 +4000,20 @@ const MantraPlayer = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [repetitionCount, setRepetitionCount] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [areControlsVisible, setAreControlsVisible] = useState(true);
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [showSpeedModal, setShowSpeedModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
-  const [practiceTimer, setPracticeTimer] = useState({
-    endTime: null,
-    duration: null,
-  });
-  const [repetitionCount, setRepetitionCount] = useState(1);
+  const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null });
 
-  // --- Refs ---
   const audioRef = useRef(null);
-  const hideControlsTimeoutRef = useRef(null);
   const repetitionCountRef = useRef(1);
+  const startTimeRef = useRef(null);
+  const lastTimeRef = useRef(0);
+  const hideControlsTimeoutRef = useRef(null);
   const practiceTimerRef = useRef(practiceTimer);
-  const startTimeRef = useRef(null); // <-- ADICIONADO
 
   useEffect(() => {
     practiceTimerRef.current = practiceTimer;
@@ -4022,49 +4021,43 @@ const MantraPlayer = ({
 
   const isSpokenPractice = audioType === "spoken";
   const isFavorite = favorites.includes(currentMantra.id);
-  const audioSrc =
-    audioType === "spoken"
-      ? currentMantra.spokenAudioSrc
-      : currentMantra.libraryAudioSrc;
+  const audioSrc = audioType === "spoken" ? currentMantra.spokenAudioSrc : currentMantra.libraryAudioSrc;
 
-  // --- LÓGICA DE REPRODUÇÃO E EVENTOS (SIMPLIFICADA) ---
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioSrc) return;
 
-    // Armazena o tempo de início da prática
-    if (startTimeRef.current === null) {
+    repetitionCountRef.current = 1;
+    setRepetitionCount(1);
+    lastTimeRef.current = 0;
+    if (startTimeRef.current === null && isSpokenPractice) {
       startTimeRef.current = Date.now();
     }
 
-    // Reset de estados
-    repetitionCountRef.current = 1;
-    setRepetitionCount(1);
-    setCurrentTime(0);
-    setDuration(0);
-
-    const setAudioData = () => setDuration(audio.duration);
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-
-    const handleAudioEnd = () => {
-      // Lógica de repetição para mantras falados
-      if (isSpokenPractice && repetitionCountRef.current < totalRepetitions) {
+    audio.loop = isSpokenPractice && totalRepetitions > 1;
+    
+    const handleTimeUpdate = () => {
+      const currentAudioTime = audio.currentTime;
+      if (isSpokenPractice && currentAudioTime < lastTimeRef.current && repetitionCountRef.current < totalRepetitions) {
         repetitionCountRef.current += 1;
         setRepetitionCount(repetitionCountRef.current);
-        audio.currentTime = 0;
-        audio.play();
-        return;
+        if (repetitionCountRef.current === totalRepetitions) {
+          audio.loop = false;
+        }
       }
+      lastTimeRef.current = currentAudioTime;
+      setCurrentTime(currentAudioTime);
+    };
 
-      // Lógica para timer de prática
+    const handleAudioEnd = () => {
+      // Lógica para timer de prática (Músicas Mântricas) - FUNCIONALIDADE RESTAURADA
       const timer = practiceTimerRef.current;
-      if (timer && timer.endTime && Date.now() < timer.endTime) {
+      if (!isSpokenPractice && timer && timer.endTime && Date.now() < timer.endTime) {
         audio.currentTime = 0;
         audio.play();
         return;
       }
 
-      // Se é uma prática de mantra falado, chama o callback de conclusão
       if (isSpokenPractice && onPracticeComplete) {
         const endTime = Date.now();
         const durationInSeconds = Math.round((endTime - startTimeRef.current) / 1000);
@@ -4074,39 +4067,37 @@ const MantraPlayer = ({
           duration: durationInSeconds,
           completedAt: new Date(),
         });
-        startTimeRef.current = null; // Reseta para a próxima
-        return; // Encerra a execução aqui
+        startTimeRef.current = null;
+      } else {
+        setIsPlaying(false);
+        clearTimeout(hideControlsTimeoutRef.current);
+        setAreControlsVisible(true);
       }
-
-      // Se não, comportamento padrão (música ou timer)
-      setIsPlaying(false);
-      clearTimeout(hideControlsTimeoutRef.current);
-      setAreControlsVisible(true);
     };
 
-    // Inicialização
-    audio.play().catch(e => console.error("Audio play failed:", e));
-    setIsPlaying(true);
+    const setAudioData = () => setDuration(audio.duration);
 
-    audio.addEventListener("loadedmetadata", setAudioData);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', setAudioData);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleAudioEnd);
 
+    audio.play().catch(e => console.error("Falha ao iniciar áudio:", e));
+    setIsPlaying(true);
+
     return () => {
-      audio.removeEventListener("loadedmetadata", setAudioData);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', setAudioData);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleAudioEnd);
+      audio.loop = false;
     };
-  }, [audioSrc, totalRepetitions, isSpokenPractice]);
+  }, [audioSrc, totalRepetitions, isSpokenPractice, onPracticeComplete, currentMantra]);
 
   const togglePlayPause = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    
     if (isPlaying) {
       audio.pause();
     } else {
-      // Se o áudio terminou, reinicia do começo
       if (audio.currentTime >= audio.duration) {
         repetitionCountRef.current = 1;
         setRepetitionCount(1);
@@ -4117,7 +4108,6 @@ const MantraPlayer = ({
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
 
-  // --- Funções de UI e Gestos ---
   const showControls = useCallback(() => {
     clearTimeout(hideControlsTimeoutRef.current);
     setAreControlsVisible(true);
@@ -4237,7 +4227,7 @@ const MantraPlayer = ({
               <input type="range" min="0" max={duration || 0} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = e.target.value; }} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" />
               <div className="flex justify-between text-xs font-light text-white/70 mt-1">
                 <span>{formatTime(currentTime)}</span>
-                <span>{practiceTimer.endTime ? `-${formatTime((practiceTimer.endTime - Date.now()) / 1000)}` : formatTime(duration)}</span>
+                <span>{practiceTimerRef.current.endTime ? `-${formatTime((practiceTimerRef.current.endTime - Date.now()) / 1000)}` : formatTime(duration)}</span>
               </div>
             </div>
             <button onClick={togglePlayPause} className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 backdrop-blur-lg text-white flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all">
@@ -4247,13 +4237,16 @@ const MantraPlayer = ({
         </div>
         <div />
       </div>
-      <audio ref={audioRef} src={audioSrc} crossOrigin="anonymous" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} />
+      <audio ref={audioRef} src={audioSrc} crossOrigin="anonymous" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} playsInline />
       <OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />
       {showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}
       {showTimerModal && <PracticeTimerModal activeTimer={practiceTimer} onSetTimer={handleSetPracticeDuration} onClose={closeTimerModal} />}
     </div>
   );
 };
+
+// FIM DO COMPONENTE 'MantraPlayer' //
+
 const OptionsMenu = memo(
   ({ isOpen, onClose, isFavorite, onFavorite, onSpeed, onTimer }) => {
     if (!isOpen) return null;
@@ -7598,6 +7591,7 @@ const useWindowSize = () => {
 };
 
 // A nova tela de conclusão de prática
+
 const PracticeCompletionScreen = ({ result, onClose, onExportToDiary }) => {
   const { width, height } = useWindowSize();
   const { mantra, count, duration, completedAt } = result;
@@ -7627,18 +7621,21 @@ const PracticeCompletionScreen = ({ result, onClose, onExportToDiary }) => {
           Você repetiu o mantra "{mantra.nome}" com sucesso.
         </p>
 
-        <div className="mt-6 space-y-3 bg-black/20 p-5 rounded-lg text-left">
+        <div className="mt-6 space-y-3 bg-black/20 p-5 rounded-lg text-left text-base"> {/* Garante um tamanho base */}
           <div className="flex justify-between items-center text-white/90">
-            <span className="font-light">Repetições:</span>
-            <span className="font-semibold text-lg">{count}</span>
+            <span className="font-light text-white/70">Repetições:</span>
+            {/* CORREÇÃO: Removido 'text-lg' */}
+            <span className="text-white">{count}</span>
           </div>
           <div className="flex justify-between items-center text-white/90">
-            <span className="font-light">Duração:</span>
-            <span className="font-semibold text-lg">{formatDuration(duration)}</span>
+            <span className="font-light text-white/70">Duração:</span>
+            {/* CORREÇÃO: Removido 'text-lg' */}
+            <span className="text-white">{formatDuration(duration)}</span>
           </div>
           <div className="flex justify-between items-center text-white/90">
-            <span className="font-light">Finalizada em:</span>
-            <span className="font-semibold text-lg">
+            <span className="font-light text-white/70">Finalizada em:</span>
+            {/* CORREÇÃO: Removido 'text-lg' */}
+            <span className="text-[#FFD54F]">
               {completedAt.toLocaleDateString('pt-BR')} às {completedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
