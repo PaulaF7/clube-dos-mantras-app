@@ -32,7 +32,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, doc, updateDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
 import {
   getStorage,
   ref,
@@ -1057,19 +1057,8 @@ try {
 // =================================================================
 //  INÍCIO DO CÓDIGO DE CONEXÃO COM EMULADORES (COLE ISTO)
 // =================================================================
-if (window.location.hostname === "localhost") {
-  console.log(
-    "MODO DE DESENVOLVIMENTO: Conectando aos emuladores locais do Firebase..."
-  );
-  try {
-    connectAuthEmulator(auth, "http://localhost:9099");
-    connectFirestoreEmulator(db, "localhost", 8080);
-    connectFunctionsEmulator(functions, "localhost", 5001);
-    console.log("Conectado aos emuladores com sucesso!");
-  } catch (error) {
-    console.error("Erro ao conectar aos emuladores:", error);
-  }
-}
+// 🔗 Conectado diretamente ao Firebase real (sem emuladores)
+
 // =================================================================
 //  FIM DO CÓDIGO DE CONEXÃO
 // =================================================================
@@ -1155,68 +1144,44 @@ const AppProvider = ({ children }) => {
   if (!currentUserId || !db) return;
   try {
     const practiceTypes = ['mantra', 'gratitude', 'note', 'playback', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
-    // Filtra apenas entradas relevantes (com campo practicedAt)
-    const practiceEntries = (entries || []).filter(e => e && e.type && practiceTypes.includes(e.type) && e.practicedAt);
-
-    // Helper: normaliza diferentes formatos de timestamp para Date
-    const toDate = (val) => {
-      if (!val) return null;
-      if (typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp ou objeto com toDate()
-      if (val instanceof Date) return val;
-      if (val?.seconds && typeof val.seconds === 'number') return new Date(val.seconds * 1000);
-      if (typeof val === 'number') return new Date(val); // epoch ms
-      if (typeof val === 'string') {
-        const parsed = new Date(val);
-        return isNaN(parsed.getTime()) ? null : parsed;
-      }
-      return null;
-    };
+    const practiceEntries = entries.filter(e => e.type && practiceTypes.includes(e.type) && e.practicedAt?.toDate);
 
     if (practiceEntries.length === 0) {
       const newStreakData = { currentStreak: 0, lastPracticedDate: null };
       setStreakData(newStreakData);
       const userRef = doc(db, `users/${currentUserId}`);
-      await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: null });
+      await setDoc(userRef, { 
+        currentStreak: newStreakData.currentStreak, 
+        lastPracticedDate: null 
+      }, { merge: true });
       return;
     }
 
-    // Cria conjunto de dias únicos (midnight)
-    const uniqueDaysSet = new Set();
-    for (const e of practiceEntries) {
-      const dt = toDate(e.practicedAt);
-      if (!dt) continue;
-      dt.setHours(0,0,0,0);
-      uniqueDaysSet.add(dt.getTime());
-    }
-    const uniquePracticeDays = Array.from(uniqueDaysSet).sort((a,b) => b - a); // do mais recente ao mais antigo
-
-    if (uniquePracticeDays.length === 0) {
-      const newStreakData = { currentStreak: 0, lastPracticedDate: null };
-      setStreakData(newStreakData);
-      const userRef = doc(db, `users/${currentUserId}`);
-      await updateDoc(userRef, { currentStreak: 0, lastPracticedDate: null });
-      return;
-    }
+    const uniquePracticeDays = [...new Set(practiceEntries.map(e => {
+      const d = e.practicedAt.toDate();
+      d.setHours(0,0,0,0);
+      return d.getTime();
+    }))].sort((a, b) => b - a);
 
     const today = new Date();
     today.setHours(0,0,0,0);
+
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
 
     const lastPracticeDay = new Date(uniquePracticeDays[0]);
-    lastPracticeDay.setHours(0,0,0,0);
 
     let calculatedStreak = 0;
 
-    // Só consideramos streak ativo se a última prática foi hoje ou ontem
     if (lastPracticeDay.getTime() === today.getTime() || lastPracticeDay.getTime() === yesterday.getTime()) {
       calculatedStreak = 1;
       let lastCheckedDate = new Date(lastPracticeDay);
+
       for (let i = 1; i < uniquePracticeDays.length; i++) {
         const practiceDate = new Date(uniquePracticeDays[i]);
-        practiceDate.setHours(0,0,0,0);
         const expectedPreviousDay = new Date(lastCheckedDate);
         expectedPreviousDay.setDate(lastCheckedDate.getDate() - 1);
+
         if (practiceDate.getTime() === expectedPreviousDay.getTime()) {
           calculatedStreak++;
           lastCheckedDate = practiceDate;
@@ -1225,8 +1190,7 @@ const AppProvider = ({ children }) => {
         }
       }
     } else {
-      // Se a última prática não foi hoje nem ontem, não existe streak ativo
-      calculatedStreak = 0;
+      calculatedStreak = 0; // se não praticou ontem ou hoje, streak zera
     }
 
     const newStreakData = {
@@ -1236,16 +1200,18 @@ const AppProvider = ({ children }) => {
 
     setStreakData(newStreakData);
     const userRef = doc(db, `users/${currentUserId}`);
-    await updateDoc(userRef, { currentStreak: newStreakData.currentStreak, lastPracticedDate: newStreakData.lastPracticedDate ? Timestamp.fromDate(newStreakData.lastPracticedDate) : null });
+    await setDoc(userRef, { 
+      currentStreak: newStreakData.currentStreak, 
+      lastPracticedDate: Timestamp.fromDate(newStreakData.lastPracticedDate) 
+    }, { merge: true });
 
   } catch (error) {
     console.error("Error recalculating streak:", error);
-    if (error?.code === 'permission-denied') {
+    if (error.code === 'permission-denied') {
       setPermissionError("Firestore");
     }
   }
 }, [setPermissionError]);
-
 
     // O EFEITO REATIVO FOI REMOVIDO PARA DAR LUGAR ÀS CHAMADAS MANUAIS E DIRETAS,
     // CONFORME A LÓGICA DO SEU ARQUIVO ORIGINAL QUE FUNCIONA CORRETAMENTE.
@@ -1254,14 +1220,14 @@ const AppProvider = ({ children }) => {
     const updateFavorites = useCallback(async (newFavorites) => {
         if (userId) {
             setFavorites(newFavorites);
-            await updateDoc(doc(db, `users/${userId}`), { favorites: newFavorites });
+            await setDoc(doc(db, `users/${userId}`), { favorites: newFavorites }, { merge: true });
         }
     }, [userId]);
 
     const updateOnboardingStatus = useCallback(async (status) => {
         if (!userId || !db) return;
         try {
-            await updateDoc(doc(db, `users/${userId}`), { onboardingCompleted: status });
+            await setDoc(doc(db, `users/${userId}`), { onboardingCompleted: status }, { merge: true });
         } catch (error) { console.error("Erro ao atualizar status do onboarding:", error); }
     }, [userId]);
     
@@ -1285,14 +1251,14 @@ const AppProvider = ({ children }) => {
     const setActiveTheme = useCallback(async (themeId) => {
         if (!userId) return;
         setActiveThemeState(themeId);
-        await updateDoc(doc(db, `users/${userId}`), { activeTheme: themeId });
+        await setDoc(doc(db, `users/${userId}`), { activeTheme: themeId }, { merge: true });
     }, [userId]);
 
     const unlockTheme = useCallback(async (themeId) => {
         if (!userId || unlockedThemes.includes(themeId)) return;
         const newThemes = [...unlockedThemes, themeId];
         setUnlockedThemes(newThemes);
-        await updateDoc(doc(db, `users/${userId}`), { unlockedThemes: newThemes });
+        await setDoc(doc(db, `users/${userId}`), { unlockedThemes: newThemes }, { merge: true });
     }, [userId, unlockedThemes]);
 
     const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
@@ -2862,10 +2828,12 @@ const DiaryScreen = ({ entryToEdit, onSave, onCancel, openPremiumModal }) => {
 
     try {
       if (entryToEdit && entryToEdit.id) {
-        await updateDoc(
-          doc(db, `users/${userId}/entries`, entryToEdit.id),
-          entryData
+        await setDoc(
+        doc(db, `users/${userId}/entries`, entryToEdit.id),
+        entryData,
+        { merge: true }
         );
+
         setStatus({ type: "success", message: "Registro atualizado!" });
       } else {
         await addDoc(collection(db, `users/${userId}/entries`), {
@@ -3505,7 +3473,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
     setNameMessage({ type: "", text: "" });
     try {
       const userRef = doc(db, `users/${user.uid}`);
-      await updateDoc(userRef, { name: newName });
+      await setDoc(userRef, { name: newName }, { merge: true });
       // A linha abaixo foi removida, pois a função não existe e o listener onSnapshot já faz a atualização.
       // await fetchUserData(user.uid); 
       setNameMessage({ type: "success", text: "Nome atualizado!" });
@@ -3528,7 +3496,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
       const url = await getDownloadURL(storageRef);
       await updateProfile(user, { photoURL: url });
       const userDocRef = doc(db, `users/${user.uid}`);
-      await updateDoc(userDocRef, { photoURL: url });
+      await setDoc(userDocRef, { photoURL: url }, { merge: true });
       setPhotoURL(url);
     } catch (error) {
       console.error("Photo Upload Error:", error);
@@ -4693,7 +4661,7 @@ const NoteEditorScreen = ({
 
       if (noteToEdit) {
         const noteRef = doc(db, `users/${userId}/entries`, noteToEdit.id);
-        await updateDoc(noteRef, { note: note.trim() });
+        await setDoc(noteRef, { note: note.trim() }, { merge: true });
         setStatus({ type: "success", message: "Anotação atualizada!" });
       } else {
         const noteData = {
@@ -4872,8 +4840,9 @@ const MeuSantuarioScreen = ({
               playlistDoc.id
             );
             updatePromises.push(
-              updateDoc(playlistDocRef, { sequencia: newSequencia })
+            setDoc(playlistDocRef, { sequencia: newSequencia }, { merge: true })
             );
+
           }
         });
         await Promise.all(updatePromises);
@@ -5961,7 +5930,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
         setStatusMessage('Salvando perfil e enviando pergunta...');
         try {
             const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, { astroProfile });
+            await setDoc(userRef, { astroProfile }, { merge: true });
             const askAstrologerCallable = httpsCallable(functions, 'askAstrologer');
             const result = await askAstrologerCallable({
                 userId,
@@ -5986,7 +5955,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     
     const handleSave = async (id) => {
         try {
-            await updateDoc(doc(db, `users/${userId}/astroHistory/${id}`), { saved: true });
+        await setDoc(doc(db, `users/${userId}/astroHistory/${id}`), { saved: true }, { merge: true });
         } catch (e) {
             console.error('save error', e);
         }
@@ -6004,7 +5973,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
         if (!userId) return;
         try {
             const historyRef = doc(db, `users/${userId}/astroHistory`, historyId);
-            await updateDoc(historyRef, { isRead: true });
+            await setDoc(historyRef, { isRead: true }, { merge: true });
         } catch (error) {
             console.error("Erro ao marcar como lido:", error);
         }
@@ -7242,7 +7211,7 @@ const GratitudeScreen = ({ onSave, onCancel, entryToEdit }) => {
     try {
       if (entryToEdit) {
         const entryRef = doc(db, `users/${userId}/entries`, entryToEdit.id);
-        await updateDoc(entryRef, { gratefulFor });
+        await setDoc(entryRef, { gratefulFor }, { merge: true });
         setStatus({ type: "success", message: "Gratidão atualizada!" });
       } else {
         await addDoc(collection(db, `users/${userId}/entries`), {
@@ -7372,7 +7341,7 @@ const PlaylistEditorScreen = ({ playlistToEdit, onSave, onCancel }) => {
           `users/${userId}/playlists`,
           playlistToEdit.id
         );
-        await updateDoc(playlistRef, playlistData);
+        await setDoc(playlistRef, playlistData, { merge: true });
       } else {
         playlistData.createdAt = Timestamp.now();
         await addDoc(collection(db, `users/${userId}/playlists`), playlistData);
