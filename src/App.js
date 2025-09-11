@@ -381,6 +381,36 @@ const GlobalStyles = memo(() => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
     :root { --font-body: 'Poppins', sans-serif; --font-display: 'Playfair Display', serif; }
+
+    /* --- INÍCIO: MELHORIAS DE LAYOUT PARA MOBILE (iOS/Android) --- */
+    /* Garante que o container principal ocupe a tela corretamente em todos os celulares */
+    .modern-body { 
+      height: 100vh; /* Fallback para navegadores mais antigos */
+      height: 100dvh; /* Altura dinâmica da viewport, ideal para mobile */
+    }
+    /* Adapta o padding do container de página para respeitar as áreas seguras (notch, etc) */
+    .page-container { 
+      padding: 1.5rem; 
+      padding-top: calc(8rem + env(safe-area-inset-top)); 
+      padding-bottom: calc(8rem + env(safe-area-inset-bottom)); 
+      max-width: 700px; 
+      margin: 0 auto; 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 1.5rem; 
+      position: relative; 
+      z-index: 2; 
+    }
+    /* Estiliza as barras fixas (classes a serem aplicadas nos componentes Header e BottomNav) */
+    .glass-nav { 
+      padding-top: env(safe-area-inset-top);
+    }
+    .glass-bottom-nav { 
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    /* --- FIM: MELHORIAS DE LAYOUT --- */
+
     body { font-family: var(--font-body); transition: background-color 0.5s ease, color 0.5s ease; background-color: #1a0933; }
     .modern-body { background: linear-gradient(220deg, #1a0933, #2c0b4d, #3a1b57); background-size: 200% 200%; animation: gradient-animation 25s ease-in-out infinite; color: #F3E5F5; overflow-x: hidden; }
     .premium-body { background: linear-gradient(220deg, #2c0b4d, #4a148c, #3a1b57); background-size: 200% 200%; animation: gradient-animation 20s ease-in-out infinite; }
@@ -391,18 +421,23 @@ const GlobalStyles = memo(() => (
     /* Otimização: Adicionado 'will-change' para promover os cards a sua própria camada de composição durante animações,
        reduzindo o custo de repintura e a interferência com a camada do background. */
     .glass-card, .glass-modal { 
-      background: rgba(255, 255, 255, 0.04); 
-      backdrop-filter: blur(20px); /* Leve redução no blur para aliviar a GPU */
-      -webkit-backdrop-filter: blur(20px); 
-      border-radius: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); padding: 2rem; transition: border-color 0.5s ease, box-shadow 0.5s ease;
-      will-change: transform, opacity;
-    }
+  background: rgba(255, 255, 255, 0.08); /* igual ao btn-secondary */
+  backdrop-filter: blur(12px); /* menos blur para não “foscar” tanto */
+  -webkit-backdrop-filter: blur(12px); 
+  border-radius: 1.5rem; 
+  border: 1px solid rgba(255, 255, 255, 0.08); 
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); 
+  padding: 2rem; 
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+  will-change: transform, opacity;
+}
+
     .premium-card-glow { border-color: rgba(255, 213, 79, 0.3); animation: premium-glow 3s ease-in-out infinite; }
     @keyframes premium-glow { 0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } }
     .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
     .glass-nav, .glass-bottom-nav { background: rgba(26, 9, 51, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-color: rgba(255, 255, 255, 0.08); }
     .glass-nav { border-bottom-width: 1px; } .glass-bottom-nav { border-top-width: 1px; }
-    .page-container { padding: 1.5rem; padding-top: 8rem; padding-bottom: 8rem; max-width: 700px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 2; }
+    /* .page-container foi movido para o início para incorporar as melhorias */
     .page-title { font-family: var(--font-display); font-size: 1.8rem; color: #FFFFFF; margin-bottom: 0.25rem; line-height: 1.2; font-weight: 400; text-align: center; }
     .page-subtitle { text-align: center; color: #D1C4E9; opacity: 0.8; margin-top: 0.25rem; margin-bottom: 1rem; font-weight: 300; max-width: 90%; margin-left: auto; margin-right: auto; }
     .modern-btn-primary { background: #FFD54F; color: #2c0b4d; padding: 1rem 2rem; border-radius: 9999px; font-weight: 600; font-size: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease; box-shadow: 0 4px 15px -5px rgba(255, 213, 79, 0.5); border: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; }
@@ -419,7 +454,8 @@ const GlobalStyles = memo(() => (
     .input-field:focus, .textarea-field:focus, .select-field:focus { outline: none; border-color: #FFD54F; box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.15); }
     .select-field option { background-color: #3A1B57; }
     @keyframes screen-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .screen-animation { animation: screen-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.screen-animation { animation: screen-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
     @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
     .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
     .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
@@ -1273,25 +1309,71 @@ const AppProvider = ({ children }) => {
     }, [userId, journeyProgress]);
 
     // Listener de Autenticação
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (userAuth) => {
-            if (userAuth) {
-                setUser(userAuth);
-                setUserId(userAuth.uid);
-            } else {
-                // Limpeza completa no logout
-                setUser(null); setUserId(null); setUserName(''); setFavorites([]);
-                setStreakData({ currentStreak: 0, lastPracticedDate: null });
-                setPhotoURL(null); setAllEntries([]); setIsSubscribed(false);
-                setOnboardingCompleted(false); setUserGoal(null); setMeusAudios([]);
-                setPlaylists([]); setAstroProfile(null); setAstroHistory([]);
-                setJourneyProgress({}); setUnlockedThemes(['default']);
-                setActiveThemeState('default'); setPerguntasAvulsas(0);
-            }
-            setIsAuthLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
+useEffect(() => {
+    const createUserIfNotExists = async (userAuth) => {
+    if (!userAuth || !db) return;
+    try {
+        const userRef = doc(db, "users", userAuth.uid);
+        const snap = await getDoc(userRef);
+
+        const safeEmail = userAuth.email || "";
+        const safeName = userAuth.displayName || "";
+        const safePhoto = userAuth.photoURL || null;
+        const safeCreatedAt = userAuth.metadata?.creationTime || new Date().toISOString();
+
+        const defaultFields = {
+            uid: userAuth.uid,
+            email: safeEmail,
+            name: safeName,
+            photoURL: safePhoto,
+            isPremium: false,
+            createdAt: safeCreatedAt,
+            favorites: [],
+            activeTheme: "default",
+            unlockedThemes: ["default"],
+            freeQuestionUsed: false,
+            perguntasAvulsas: 0,
+            currentStreak: 0,
+            lastPracticedDate: null,
+            astroProfile: null,
+            astroHistory: [],
+            journeyProgress: {},
+            userGoal: null,
+        };
+
+        if (!snap.exists()) {
+            // Só cria o documento se não existir ainda
+            await setDoc(userRef, { ...defaultFields, onboardingCompleted: false });
+        }
+    } catch (err) {
+        console.error("Erro ao criar documento inicial do usuário:", err);
+    }
+};
+
+    const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {
+        if (userAuth) {
+            setUser(userAuth);
+            setUserId(userAuth.uid);
+
+            // 🔑 Garante inicialização completa do documento
+            await createUserIfNotExists(userAuth);
+
+        } else {
+            // Limpeza completa no logout
+            setUser(null); setUserId(null); setUserName(''); setFavorites([]);
+            setStreakData({ currentStreak: 0, lastPracticedDate: null });
+            setPhotoURL(null); setAllEntries([]); setIsSubscribed(false);
+            setOnboardingCompleted(false); setUserGoal(null); setMeusAudios([]);
+            setPlaylists([]); setAstroProfile(null); setAstroHistory([]);
+            setJourneyProgress({}); setUnlockedThemes(['default']);
+            setActiveThemeState('default'); setPerguntasAvulsas(0);
+        }
+        setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+}, []);
+
     
     // Listener Principal de Dados
     useEffect(() => {
@@ -1304,23 +1386,34 @@ const AppProvider = ({ children }) => {
         const userDocRef = doc(db, "users", userId);
         const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
             if (doc.exists()) {
-                const data = doc.data();
-                setCurrentUserData(data);
-                setUserName(data.name || '');
-                setFavorites(data.favorites || []);
-                setStreakData({ currentStreak: data.currentStreak || 0, lastPracticedDate: data.lastPracticedDate?.toDate() || null });
-                setPhotoURL(data.photoURL || null);
-                setOnboardingCompleted(!!data.onboardingCompleted);
-                setUserGoal(data.userGoal || null);
-                setAstroProfile(data.astroProfile || null);
-                setUnlockedThemes(data.unlockedThemes || ['default']);
-                setActiveThemeState(data.activeTheme || 'default');
-                setPerguntasAvulsas(data.perguntasAvulsas || 0);
-                setIsSubscribed(data.isPremium || false);
-                setFreeQuestionUsed(!!data.freeQuestionUsed);
-            } else {
-                setIsUserDataLoading(false);
-            }
+    const data = doc.data();
+    console.log("🔥 Snapshot usuário:", data); // debug completo
+
+    setCurrentUserData(data);
+    setUserName(data.name || '');
+    setFavorites(data.favorites || []);
+    setStreakData({ 
+        currentStreak: data.currentStreak || 0, 
+        lastPracticedDate: data.lastPracticedDate?.toDate() || null 
+    });
+    setPhotoURL(data.photoURL || null);
+    setOnboardingCompleted(!!data.onboardingCompleted);
+    setUserGoal(data.userGoal || null);
+    setAstroProfile(data.astroProfile || null);
+    setUnlockedThemes(data.unlockedThemes || ['default']);
+    setActiveThemeState(data.activeTheme || 'default');
+
+    // 🔑 garante leitura do campo perguntasAvulsas corretamente
+    setPerguntasAvulsas(
+        typeof data.perguntasAvulsas === "number" ? data.perguntasAvulsas : 0
+    );
+
+    setIsSubscribed(data.isPremium || false);
+    setFreeQuestionUsed(!!data.freeQuestionUsed);
+} else {
+    setIsUserDataLoading(false);
+}
+
         });
 
         const astroHistoryRef = collection(db, "users", userId, "astroHistory");
@@ -1367,7 +1460,7 @@ const unsubscribeEntries = onSnapshot(
 
 
     // O objeto 'value' final, com todas as funções corretas e restauradas
-    const value = {
+        const value = {
         user, userId, isAuthLoading, isUserDataLoading, currentUserData, userName, setUserName,
         favorites, updateFavorites, streakData, photoURL, setPhotoURL, allEntries, fetchAllEntries,
         permissionError, isSubscribed, freeQuestionUsed, setFreeQuestionUsed, onboardingCompleted,
@@ -1377,10 +1470,15 @@ const unsubscribeEntries = onSnapshot(
         // A função de recálculo não precisa ser exposta, pois age reativamente
     };
 
-    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+    return (
+      <AppContext.Provider value={value}>
+        <div className="app-container">
+          {children}
+        </div>
+      </AppContext.Provider>
+    );
 };
 // FIM DO COMPONENTE AppProvider
-
 
 // --- TELAS E COMPONENTES EXISTENTES ---
 
@@ -1575,6 +1673,7 @@ const AuthScreen = () => {
           onboardingCompleted: false,
           activeTheme: "default",
           unlockedThemes: ["default"],
+          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
         });
 
         if (isPremium) {
@@ -1641,6 +1740,7 @@ const AuthScreen = () => {
           onboardingCompleted: false,
           activeTheme: "default",
           unlockedThemes: ["default"],
+          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
         });
 
         if (isPremium) setIsSubscribed(true);
@@ -6007,11 +6107,12 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                     </div>
 
                     <div className="space-y-4 pt-4 border-t border-white/10">
-                        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..." disabled={!isFormComplete || !canAsk} />
+                        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..." disabled={!canAsk} />
                         
-                        <button onClick={handlePrimaryAction} className="w-full modern-btn-primary h-14" disabled={!isFormComplete || status === 'submitting'}>
-                            {status === 'submitting' ? 'Enviando...' : (needsToPayOrSubscribe ? 'Faça uma nova pergunta' : 'Enviar Pergunta')}
+                        <button onClick={handlePrimaryAction} className="w-full modern-btn-primary h-14" disabled={status === 'submitting'}>
+                        {status === 'submitting' ? 'Enviando...' : (needsToPayOrSubscribe ? 'Faça uma nova pergunta' : 'Enviar Pergunta')}
                         </button>
+
 
                         {!isSubscribed && !freeQuestionUsed && (
                             <p className="text-center text-sm text-green-400 font-light">🎁 Você tem direito a 1 pergunta grátis!</p>
