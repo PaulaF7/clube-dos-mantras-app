@@ -31,7 +31,10 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
+
 import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
 import {
   getStorage,
@@ -1711,65 +1714,50 @@ const AuthScreen = () => {
   };
 
   const handleSocialLogin = async (providerName) => {
-    if (!auth || !db) {
-      setError("O Firebase não foi inicializado corretamente.");
+  if (!auth || !db) {
+    setError("O Firebase não foi inicializado corretamente.");
+    return;
+  }
+  setError("");
+  setMessage("");
+  setIsSubmitting(true);
+
+  const provider = new GoogleAuthProvider(); // continua sendo Google
+
+  // Detecta iOS / Mobile (iPhone/iPad) — usar redirect nesses casos
+  const isIOS =
+    /iP(ad|hone|od)/i.test(navigator.userAgent) ||
+    navigator.platform && /iP/.test(navigator.platform);
+
+  try {
+    if (isIOS) {
+      // Em iOS Safari preferimos redirect (mais confiável)
+      await signInWithRedirect(auth, provider);
+      // a navegação de volta e a criação do usuário será tratada pelo listener onAuthStateChanged
       return;
     }
-    setError("");
-    setMessage("");
-    setIsSubmitting(true);
 
-    const provider = new GoogleAuthProvider(); // Corrigido para usar sempre Google
-
+    // Tenta popup primeiro (desktop e navegadores que permitem)
     try {
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      const userRef = doc(db, `users/${user.uid}`);
-      const docSnap = await getDoc(userRef);
-
-      if (!docSnap.exists()) {
-        // Se o usuário não existe no Firestore, cria o documento dele
-        let isPremium = false;
-        try {
-          const pendingRef = collection(db, "pendingPremium");
-          const q = query(pendingRef, where("email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            isPremium = true;
-            const pendingDoc = querySnapshot.docs[0];
-            await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
-          }
-        } catch (checkError) {
-          console.error("Erro ao verificar assinatura pendente:", checkError);
-        }
-
-        await setDoc(userRef, {
-          name: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          isPremium: isPremium,
-          favorites: [],
-          currentStreak: 0,
-          lastPracticedDate: null,
-          createdAt: Timestamp.now(),
-          onboardingCompleted: false,
-          activeTheme: "default",
-          unlockedThemes: ["default"],
-          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
-        });
-
-        if (isPremium) setIsSubscribed(true);
-      }
-      // A transição de tela será gerenciada pelo listener onAuthStateChanged principal.
-    } catch (err) {
-      console.error("Firebase Social Auth Error:", err);
-      setError(mapAuthCodeToMessage(err.code));
-    } finally {
-      setIsSubmitting(false);
+      // result.user será manipulado pelo listener onAuthStateChanged / createUserIfNotExists
+      // mas podemos manter este comportamento local caso queira criar o doc aqui também.
+      // Não precisamos duplicar a criação porque onAuthStateChanged já faz merge seguro.
+      return;
+    } catch (popupErr) {
+      // Se popup falhar (bloqueado, operação não suportada, etc.), faz fallback para redirect
+      console.warn("signInWithPopup falhou, fazendo fallback para signInWithRedirect:", popupErr);
+      await signInWithRedirect(auth, provider);
+      return;
     }
-  };
+  } catch (err) {
+    console.error("Firebase Social Auth Error (popup/redirect):", err);
+    setError(mapAuthCodeToMessage(err.code));
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handlePasswordReset = async () => {
     if (!email) {
