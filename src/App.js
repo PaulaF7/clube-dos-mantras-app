@@ -31,8 +31,6 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
 } from "firebase/auth";
 
 import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
@@ -1314,61 +1312,45 @@ const AppProvider = ({ children }) => {
     // Listener de Autenticação
 useEffect(() => {
     const createUserIfNotExists = async (userAuth) => {
-  if (!userAuth || !db) return;
-  try {
-    const userRef = doc(db, "users", userAuth.uid);
-    const snap = await getDoc(userRef);
-    const existing = snap.exists() ? snap.data() : null;
+        if (!userAuth || !db) return;
+        try {
+            const userRef = doc(db, "users", userAuth.uid);
+            const safeName = userAuth.displayName || (userAuth.providerData?.[0]?.displayName) || "";
+const safePhoto = userAuth.photoURL || (userAuth.providerData?.[0]?.photoURL) || null;
+const safeEmail = userAuth.email || (userAuth.providerData?.[0]?.email) || "";
+const safeCreatedAt = userAuth.metadata?.creationTime
+    ? new Date(userAuth.metadata.creationTime)
+    : new Date();
 
-    // fallback para providerData (útil para logins via Google)
-    const provider = (userAuth.providerData && userAuth.providerData[0]) || {};
-
-    const safeEmail = userAuth.email || provider.email || "";
-    const safeName = userAuth.displayName || provider.displayName || "";
-    const safePhoto = userAuth.photoURL || provider.photoURL || null;
-    const safeCreatedAt = userAuth.metadata?.creationTime || (existing && existing.createdAt) || new Date().toISOString();
-
-    const defaultFields = {
-      uid: userAuth.uid,
-      email: safeEmail,
-      name: safeName,
-      photoURL: safePhoto,
-      isPremium: false,
-      createdAt: safeCreatedAt,
-      favorites: [],
-      activeTheme: "default",
-      unlockedThemes: ["default"],
-      freeQuestionUsed: false,
-      perguntasAvulsas: 0,
-      currentStreak: 0,
-      lastPracticedDate: null,
-      astroProfile: null,
-      astroHistory: [],
-      journeyProgress: {},
-      userGoal: null,
-    };
-
-    if (!snap.exists()) {
-      // Documento não existe → criar com todos os campos e onboardingCompleted = false
-      await setDoc(userRef, { ...defaultFields, onboardingCompleted: false });
-    } else {
-      // Documento já existe → **somente preencher** campos faltantes (não sobrescrever onboardingCompleted nem outros dados do usuário)
-      const updates = {};
-      for (const [key, value] of Object.entries(defaultFields)) {
-        // Se a chave estiver indefinida ou null no documento atual → preencher
-        if (existing[key] === undefined || existing[key] === null) {
-          updates[key] = value;
-        }
-      }
-      // Se houver algo para atualizar, faz merge (não toca onboardingCompleted)
-      if (Object.keys(updates).length > 0) {
-        await setDoc(userRef, updates, { merge: true });
-      }
-    }
-  } catch (err) {
-    console.error("Erro ao criar/atualizar documento inicial do usuário:", err);
-  }
+const defaultFields = {
+    uid: userAuth.uid,
+    email: safeEmail,
+    name: safeName,
+    photoURL: safePhoto,
+    isPremium: false,
+    createdAt: safeCreatedAt,
+    favorites: [],
+    activeTheme: "default",
+    unlockedThemes: ["default"],
+    onboardingCompleted: false,
+    freeQuestionUsed: false,
+    perguntasAvulsas: 0,
+    currentStreak: 0,
+    lastPracticedDate: null,
+    astroProfile: null,
+    astroHistory: [],
+    journeyProgress: {},
+    userGoal: null,
 };
+
+// 🔑 Sempre faz merge: garante campos completos mesmo se doc já existir
+await setDoc(userRef, defaultFields, { merge: true });
+
+
+        } catch (err) {
+            console.error("Erro ao criar documento inicial do usuário:", err);
+        }
+    };
 
     const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {
         if (userAuth) {
@@ -1393,7 +1375,6 @@ useEffect(() => {
 
     return () => unsubscribe();
 }, []);
-
     
     // Listener Principal de Dados
     useEffect(() => {
@@ -1713,51 +1694,70 @@ const AuthScreen = () => {
     }
   };
 
-  const handleSocialLogin = async (providerName) => {
-  if (!auth || !db) {
-    setError("O Firebase não foi inicializado corretamente.");
-    return;
-  }
-  setError("");
-  setMessage("");
-  setIsSubmitting(true);
+  // Esta função foi removida.
 
-  const provider = new GoogleAuthProvider(); // continua sendo Google
-
-  // Detecta iOS / Mobile (iPhone/iPad) — usar redirect nesses casos
-  const isIOS =
-    /iP(ad|hone|od)/i.test(navigator.userAgent) ||
-    navigator.platform && /iP/.test(navigator.platform);
-
-  try {
-    if (isIOS) {
-      // Em iOS Safari preferimos redirect (mais confiável)
-      await signInWithRedirect(auth, provider);
-      // a navegação de volta e a criação do usuário será tratada pelo listener onAuthStateChanged
+const handleSocialLogin = async (providerName) => {
+    if (!auth || !db) {
+      setError("O Firebase não foi inicializado corretamente.");
       return;
     }
+    setError("");
+    setMessage("");
+    setIsSubmitting(true);
 
-    // Tenta popup primeiro (desktop e navegadores que permitem)
+    const provider = new GoogleAuthProvider(); // Corrigido para usar sempre Google
+
     try {
       const result = await signInWithPopup(auth, provider);
-      // result.user será manipulado pelo listener onAuthStateChanged / createUserIfNotExists
-      // mas podemos manter este comportamento local caso queira criar o doc aqui também.
-      // Não precisamos duplicar a criação porque onAuthStateChanged já faz merge seguro.
-      return;
-    } catch (popupErr) {
-      // Se popup falhar (bloqueado, operação não suportada, etc.), faz fallback para redirect
-      console.warn("signInWithPopup falhou, fazendo fallback para signInWithRedirect:", popupErr);
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-  } catch (err) {
-    console.error("Firebase Social Auth Error (popup/redirect):", err);
-    setError(mapAuthCodeToMessage(err.code));
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const user = result.user;
 
+      const userRef = doc(db, `users/${user.uid}`);
+      const docSnap = await getDoc(userRef);
+
+      if (!docSnap.exists()) {
+        // Se o usuário não existe no Firestore, cria o documento dele
+        let isPremium = false;
+        try {
+          const pendingRef = collection(db, "pendingPremium");
+          const q = query(pendingRef, where("email", "==", user.email));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            isPremium = true;
+            const pendingDoc = querySnapshot.docs[0];
+            await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
+          }
+        } catch (checkError) {
+          console.error("Erro ao verificar assinatura pendente:", checkError);
+        }
+
+        await setDoc(userRef, {
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          isPremium: isPremium,
+          favorites: [],
+          currentStreak: 0,
+          lastPracticedDate: null,
+          createdAt: Timestamp.now(),
+          onboardingCompleted: false,
+          activeTheme: "default",
+          unlockedThemes: ["default"],
+          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
+        });
+
+        if (isPremium) setIsSubscribed(true);
+      }
+      // A transição de tela será gerenciada pelo listener onAuthStateChanged principal.
+    } catch (err) {
+      console.error("Firebase Social Auth Error:", err);
+      setError(mapAuthCodeToMessage(err.code));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+// Este useEffect foi removido.
 
   const handlePasswordReset = async () => {
     if (!email) {
@@ -1874,7 +1874,7 @@ const AuthScreen = () => {
         </div>
 
         <div className="space-y-3">
-          <button
+ <button
             type="button"
             onClick={() => handleSocialLogin("google")}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
