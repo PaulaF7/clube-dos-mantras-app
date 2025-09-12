@@ -1311,43 +1311,60 @@ const AppProvider = ({ children }) => {
     // Listener de Autenticação
 useEffect(() => {
     const createUserIfNotExists = async (userAuth) => {
-    if (!userAuth || !db) return;
-    try {
-        const userRef = doc(db, "users", userAuth.uid);
-        const snap = await getDoc(userRef);
+  if (!userAuth || !db) return;
+  try {
+    const userRef = doc(db, "users", userAuth.uid);
+    const snap = await getDoc(userRef);
+    const existing = snap.exists() ? snap.data() : null;
 
-        const safeEmail = userAuth.email || "";
-        const safeName = userAuth.displayName || "";
-        const safePhoto = userAuth.photoURL || null;
-        const safeCreatedAt = userAuth.metadata?.creationTime || new Date().toISOString();
+    // fallback para providerData (útil para logins via Google)
+    const provider = (userAuth.providerData && userAuth.providerData[0]) || {};
 
-        const defaultFields = {
-            uid: userAuth.uid,
-            email: safeEmail,
-            name: safeName,
-            photoURL: safePhoto,
-            isPremium: false,
-            createdAt: safeCreatedAt,
-            favorites: [],
-            activeTheme: "default",
-            unlockedThemes: ["default"],
-            freeQuestionUsed: false,
-            perguntasAvulsas: 0,
-            currentStreak: 0,
-            lastPracticedDate: null,
-            astroProfile: null,
-            astroHistory: [],
-            journeyProgress: {},
-            userGoal: null,
-        };
+    const safeEmail = userAuth.email || provider.email || "";
+    const safeName = userAuth.displayName || provider.displayName || "";
+    const safePhoto = userAuth.photoURL || provider.photoURL || null;
+    const safeCreatedAt = userAuth.metadata?.creationTime || (existing && existing.createdAt) || new Date().toISOString();
 
-        if (!snap.exists()) {
-            // Só cria o documento se não existir ainda
-            await setDoc(userRef, { ...defaultFields, onboardingCompleted: false });
+    const defaultFields = {
+      uid: userAuth.uid,
+      email: safeEmail,
+      name: safeName,
+      photoURL: safePhoto,
+      isPremium: false,
+      createdAt: safeCreatedAt,
+      favorites: [],
+      activeTheme: "default",
+      unlockedThemes: ["default"],
+      freeQuestionUsed: false,
+      perguntasAvulsas: 0,
+      currentStreak: 0,
+      lastPracticedDate: null,
+      astroProfile: null,
+      astroHistory: [],
+      journeyProgress: {},
+      userGoal: null,
+    };
+
+    if (!snap.exists()) {
+      // Documento não existe → criar com todos os campos e onboardingCompleted = false
+      await setDoc(userRef, { ...defaultFields, onboardingCompleted: false });
+    } else {
+      // Documento já existe → **somente preencher** campos faltantes (não sobrescrever onboardingCompleted nem outros dados do usuário)
+      const updates = {};
+      for (const [key, value] of Object.entries(defaultFields)) {
+        // Se a chave estiver indefinida ou null no documento atual → preencher
+        if (existing[key] === undefined || existing[key] === null) {
+          updates[key] = value;
         }
-    } catch (err) {
-        console.error("Erro ao criar documento inicial do usuário:", err);
+      }
+      // Se houver algo para atualizar, faz merge (não toca onboardingCompleted)
+      if (Object.keys(updates).length > 0) {
+        await setDoc(userRef, updates, { merge: true });
+      }
     }
+  } catch (err) {
+    console.error("Erro ao criar/atualizar documento inicial do usuário:", err);
+  }
 };
 
     const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {

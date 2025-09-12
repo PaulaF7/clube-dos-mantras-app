@@ -1,5 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const sgMail = require("@sendgrid/mail");
 
 admin.initializeApp();
 
@@ -10,6 +11,145 @@ const { getStorage } = require("firebase-admin/storage");
 const db = getFirestore();
 const bucket = getStorage().bucket();
 // A variável 'FieldValue' agora vem diretamente da importação acima.
+
+// Configure sua chave de API do SendGrid (definida via Firebase CLI)
+sgMail.setApiKey(functions.config().sendgrid.key);
+
+/**
+ * Função que envia e-mail quando uma nova resposta de astrólogo é criada.
+ */
+exports.sendAstroAnswerEmail = functions.firestore
+  .document("users/{userId}/astroHistory/{answerId}")
+  .onCreate(async (snap, context) => {
+    const answerData = snap.data();
+    const userId = answerData.userId;
+
+    if (!userId) {
+      console.error("Resposta sem userId");
+      return null;
+    }
+
+    try {
+      // Buscar e-mail do usuário no Firestore
+      const userDoc = await admin.firestore().collection("users").doc(userId).get();
+      const userEmail = userDoc.data()?.email;
+
+      if (!userEmail) {
+        console.error("Usuário sem e-mail:", userId);
+        return null;
+      }
+
+      // Monta mensagem de e-mail inicial
+      const msg = {
+        to: userEmail,
+        from: "contato.evoluo.ir@gmail.com", // configure seu remetente verificado
+        subject: "✨ Sua resposta do Clube dos Mantras já está disponível",
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333; background: #faf7fd; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto;">
+            <h2 style="color: #4a148c; text-align: center;">🌙 Olá, sua resposta já chegou!</h2>
+            <p style="font-size: 16px; line-height: 1.5;">
+              Você fez uma pergunta ao nosso astrólogo no <strong>Clube dos Mantras+</strong>, e temos uma boa notícia:  
+              <br>✨ A resposta já está disponível para você dentro do aplicativo.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://clube-dos-mantras.netlify.app" style="background: #FFD54F; color: #2c0b4d; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                 Acessar minha resposta
+              </a>
+            </div>
+            <p style="font-size: 14px; color: #555;">
+              Não esqueça de confirmar no app quando já tiver lido 🌟  
+              Assim conseguimos acompanhar seu progresso e manter tudo organizado.
+            </p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0d7f7;">
+            <p style="font-size: 12px; color: #888; text-align: center;">
+              Clube dos Mantras+ <br>
+              <em>Conectando você com autoconhecimento e harmonia.</em>
+            </p>
+          </div>
+        `,
+      };
+
+      await sgMail.send(msg);
+
+      // 🔹 Garante que a resposta começa com isRead = false
+      await snap.ref.update({ isRead: false });
+
+      console.log("E-mail enviado para:", userEmail);
+      return true;
+    } catch (error) {
+      console.error("Erro ao enviar e-mail:", error);
+      return null;
+    }
+  });
+
+/**
+ * Função que envia e-mail quando o usuário confirma leitura de uma resposta.
+ */
+exports.sendAstroReadConfirmationEmail = functions.firestore
+  .document("users/{userId}/astroHistory/{answerId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+
+    // Só dispara se o campo isRead mudou de false -> true
+    if (!before.isRead && after.isRead) {
+      const userId = after.userId;
+
+      if (!userId) {
+        console.error("Resposta sem userId");
+        return null;
+      }
+
+      try {
+        // Buscar e-mail do usuário no Firestore
+        const userDoc = await admin.firestore().collection("users").doc(userId).get();
+        const userEmail = userDoc.data()?.email;
+
+        if (!userEmail) {
+          console.error("Usuário sem e-mail:", userId);
+          return null;
+        }
+
+        // Monta mensagem de agradecimento
+        const msg = {
+          to: userEmail,
+          from: "contato.evoluo.ir@gmail.com", // configure seu remetente verificado
+          subject: "🙏 Obrigado por acompanhar sua resposta no Clube dos Mantras",
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333; background: #faf7fd; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto;">
+              <h2 style="color: #4a148c; text-align: center;">✨ Que bom que você conferiu sua resposta!</h2>
+              <p style="font-size: 16px; line-height: 1.5;">
+                Ficamos felizes em saber que você já leu a resposta do nosso astrólogo.  
+                Continue aproveitando as ferramentas do <strong>Clube dos Mantras+</strong> para fortalecer sua jornada de autoconhecimento 🌟.
+              </p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://clube-dos-mantras.netlify.app" style="background: #FFD54F; color: #2c0b4d; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                  Acessar o app novamente
+                </a>
+              </div>
+              <p style="font-size: 14px; color: #555; text-align: center;">
+                Estamos sempre aqui para você 💜  
+              </p>
+              <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0d7f7;">
+              <p style="font-size: 12px; color: #888; text-align: center;">
+                Clube dos Mantras+ <br>
+                <em>Conectando você com autoconhecimento e harmonia.</em>
+              </p>
+            </div>
+          `,
+        };
+
+        await sgMail.send(msg);
+        console.log("E-mail de confirmação de leitura enviado para:", userEmail);
+        return true;
+      } catch (error) {
+        console.error("Erro ao enviar e-mail de confirmação de leitura:", error);
+        return null;
+      }
+    }
+
+    return null;
+  });
 
 //---------------------------------------------------------------------
 // Função 1: Webhook da Kiwify (Sintaxe v1)
