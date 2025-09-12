@@ -6004,11 +6004,18 @@ const AstrologerScreen = ({ openPremiumModal }) => {
     const canAsk = isSubscribed || !freeQuestionUsed || perguntasAvulsas > 0;
     const needsToPayOrSubscribe = !isSubscribed && freeQuestionUsed && perguntasAvulsas === 0;
 
-    useEffect(() => {
-        if (astroProfile) {
-            setIsEditingProfile(false);
-        }
-    }, [astroProfile]);
+    // Garante que apenas no carregamento inicial, quando já existe um perfil,
+// o modo de edição seja fechado. NÃO desliga o modo de edição a cada
+// alteração do astroProfile (isso era o que travava a edição ao digitar).
+const initialProfileLoadedRef = useRef(false);
+
+useEffect(() => {
+    if (astroProfile && !initialProfileLoadedRef.current) {
+        setIsEditingProfile(false);
+        initialProfileLoadedRef.current = true;
+    }
+}, [astroProfile]);
+
     
     const handleAskQuestion = async () => {
         if (!question.trim()) {
