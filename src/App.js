@@ -915,7 +915,7 @@ const JOURNEYS_DATA = [
         introText:
           "A leveza emocional é um superpoder. Use este mantra para se conectar com a alegria e a tranquilidade.",
         type: "mantra",
-        details: { mantraId: 12, repetitions: 24 },
+        details: { mantraId: 13, repetitions: 24 },
       },
       {
         day: 4,
@@ -950,7 +950,7 @@ const JOURNEYS_DATA = [
         introText:
           "Para finalizar nossa jornada, usaremos um mantra poderoso que ativa a cura e a paz interior profunda.",
         type: "mantra",
-        details: { mantraId: 9, repetitions: 108 },
+        details: { mantraId: 17, repetitions: 12 },
       },
     ],
   },
@@ -6106,6 +6106,7 @@ const AstrologerScreen = ({ openPremiumModal }) => {
                         <input type="time" value={astroProfile?.horaNascimento || ''} onChange={(e) => setAstroProfile(prev => ({ ...(prev || {}), horaNascimento: e.target.value }))} className="input-field" readOnly={!isEditingProfile && isFormComplete} />
                     </div>
 
+
                     <div className="space-y-4 pt-4 border-t border-white/10">
                         <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..." disabled={!canAsk} />
                         
@@ -6873,22 +6874,22 @@ const AppContent = () => {
         );
       // --- MUDANÇA AQUI: Passando dados de edição para a GratitudeScreen ---
       case "gratitude":
-        return (
-          <GratitudeScreen
-            onSave={handleSaveOrUpdate}
-            onCancel={() => {
-              setGratitudeToEdit(null);
-              // LÓGICA CORRIGIDA: Verifica se está editando ou em uma jornada.
-              // Se não for nenhum dos dois, volta para a 'home'.
-              if (activeJourneyTask) {
-                setActiveScreen("journeyDetail", { journeyId: activeJourneyTask.journeyId });
-              } else {
-                setActiveScreen(gratitudeToEdit ? "history" : "home");
-              }
-            }}
-            entryToEdit={gratitudeToEdit}
-          />
-        );
+  return (
+    <GratitudeScreen
+      onSave={activeJourneyTask ? handleTaskCompletion : handleSaveOrUpdate}
+      onCancel={() => {
+        setGratitudeToEdit(null);
+        // LÓGICA CORRIGIDA: Verifica se está editando ou em uma jornada.
+        // Se não for nenhum dos dois, volta para a 'home'.
+        if (activeJourneyTask) {
+          setActiveScreen("journeyDetail", { journeyId: activeJourneyTask.journeyId });
+        } else {
+          setActiveScreen(gratitudeToEdit ? "history" : "home");
+        }
+      }}
+      entryToEdit={gratitudeToEdit}
+    />
+  );
       case "mantras":
         return (
           <MantrasScreen
