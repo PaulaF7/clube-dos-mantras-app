@@ -122,7 +122,7 @@ const CoffeeAndMuffinIcon = ({ className }) => {
 const paywallVariantA = {
   title: "Acesso Premium",
   subtitle:
-    "Libere todo o potencial da sua jornada espiritual com a assinatura Mantras+.",
+    "Libere todo o potencial da sua jornada espiritual com a assinatura Mantras Mais.",
   features: [
     { icon: Music, text: "Acesso ilimitado a todas as Músicas Mântricas." },
     { icon: Mic2, text: "Prática com todos os Mantras Falados." },
@@ -146,7 +146,7 @@ const paywallVariantA = {
 const paywallVariantB = {
   title: "Sua Transformação Começa Agora",
   subtitle:
-    "Menos ansiedade, mais clareza e paz interior. A assinatura Mantras+ é o seu guia diário para uma vida com mais propósito.",
+    "Menos ansiedade, mais clareza e paz interior. A assinatura Mantras Mais é o seu guia diário para uma vida com mais propósito.",
   features: [
     {
       icon: Map,
@@ -1571,7 +1571,7 @@ const SplashScreen = () => (
         className="splash-title text-4xl mt-4 text-white tracking-wider"
         style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
       >
-        Mantras+
+        Mantras Mais
       </h1>
       <p className="splash-subtitle text-lg mt-2 text-purple-200 tracking-wide">
         A sua jornada começa agora.
@@ -2190,7 +2190,7 @@ const Header = ({ setActiveScreen }) => {
             className="text-lg text-white/90"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Mantras+
+            Mantras Mais
           </span>
         </div>
         <button
