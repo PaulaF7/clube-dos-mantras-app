@@ -1332,7 +1332,6 @@ const defaultFields = {
     favorites: [],
     activeTheme: "default",
     unlockedThemes: ["default"],
-    onboardingCompleted: false,
     freeQuestionUsed: false,
     perguntasAvulsas: 0,
     currentStreak: 0,
@@ -1343,9 +1342,34 @@ const defaultFields = {
     userGoal: null,
 };
 
-// 🔑 Sempre faz merge: garante campos completos mesmo se doc já existir
-await setDoc(userRef, defaultFields, { merge: true });
+// 🔑 Cria ou complementa o documento sem sobrescrever campos já definidos
+const snap = await getDoc(userRef);
+if (!snap.exists()) {
+  // documento não existe -> cria com todos os campos
+  await setDoc(userRef, defaultFields);
+} else {
+  // documento existe -> adiciona apenas campos ausentes
+  const existingData = snap.data() || {};
+  const fieldsToAdd = {};
 
+  for (const [key, value] of Object.entries(defaultFields)) {
+    // adiciona apenas se a chave não existir ou for undefined
+    if (!(key in existingData) || typeof existingData[key] === "undefined") {
+      fieldsToAdd[key] = value;
+    }
+  }
+
+  if (Object.keys(fieldsToAdd).length > 0) {
+    try {
+      await setDoc(userRef, fieldsToAdd, { merge: true });
+      console.log("Campos adicionados ao usuário:", userRef.id, Object.keys(fieldsToAdd));
+    } catch (e) {
+      console.error("Erro ao adicionar campos faltantes ao usuário:", userRef.id, e, fieldsToAdd);
+    }
+  } else {
+    console.log("Nenhum campo faltante para adicionar ao usuário:", userRef.id);
+  }
+}
 
         } catch (err) {
             console.error("Erro ao criar documento inicial do usuário:", err);
