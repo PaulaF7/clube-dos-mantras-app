@@ -1332,7 +1332,8 @@ const defaultFields = {
     favorites: [],
     activeTheme: "default",
     unlockedThemes: ["default"],
-    freeQuestionUsed: false,
+    // ⚠️ Não sobrescreve a flag da pergunta grátis
+    // Ela só será criada como "false" se não existir ainda no Firestore
     perguntasAvulsas: 0,
     currentStreak: 0,
     lastPracticedDate: null,
@@ -1341,6 +1342,7 @@ const defaultFields = {
     journeyProgress: {},
     userGoal: null,
 };
+
 
 // 🔑 Cria ou complementa o documento sem sobrescrever campos já definidos
 const snap = await getDoc(userRef);
