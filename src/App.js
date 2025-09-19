@@ -1054,11 +1054,11 @@ const JOURNEYS_DATA = [
         day: 3,
         title: "Prática de Atenção Plena",
         introText:
-          "O foco é um músculo. Vamos treiná-lo com um exercício simples de atenção plena no aqui e agora.",
+        "Para fortalecer sua concentração, vamos transformar uma atividade simples do dia a dia em um exercício de atenção plena. Apenas esteja presente na tarefa sugerida.",
         type: "acao_consciente",
         details: {
           taskDescription:
-            "Escolha uma tarefa rotineira de 5 minutos (como escovar os dentes ou lavar a louça) e execute-a com atenção total, focando em cada sensação, sem se distrair.",
+        "Pegue um papel e escreva lentamente a frase 'Estou presente no agora' três vezes, sentindo cada palavra enquanto escreve.",
         },
       },
     ],
@@ -1299,14 +1299,20 @@ const AppProvider = ({ children }) => {
     }, [userId, unlockedThemes]);
 
     const updateJourneyProgress = useCallback(async (journeyId, dayNumber) => {
-        if (!userId) return;
-        const progressRef = doc(db, `users/${userId}/journeyProgress`, journeyId);
+        if (!userId) return journeyProgress[journeyId]?.completedDays || [];
+        
         const currentProgress = journeyProgress[journeyId] || { completedDays: [] };
-        if (!currentProgress.completedDays.includes(dayNumber)) {
-            const updatedDays = [...currentProgress.completedDays, dayNumber];
-            await setDoc(progressRef, { completedDays: updatedDays }, { merge: true });
-            setJourneyProgress(prev => ({ ...prev, [journeyId]: { ...prev[journeyId], completedDays: updatedDays } }));
+        if (currentProgress.completedDays.includes(dayNumber)) {
+            return currentProgress.completedDays;
         }
+        
+        const updatedDays = [...currentProgress.completedDays, dayNumber];
+        const progressRef = doc(db, `users/${userId}/journeyProgress`, journeyId);
+        
+        await setDoc(progressRef, { completedDays: updatedDays }, { merge: true });
+        setJourneyProgress(prev => ({ ...prev, [journeyId]: { completedDays: updatedDays } }));
+        
+        return updatedDays; // Retorna os dias atualizados para uso imediato
     }, [userId, journeyProgress]);
 
     // Listener de Autenticação
@@ -3908,7 +3914,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
 };
 
 // --- TELA DO ORÁCULO ---
-const OracleScreen = ({ onPlayMantra, openPremiumModal }) => {
+const OracleScreen = ({ onPlayMantra, openPremiumModal, onComplete, suggestedQuestion }) => {  
   const { isSubscribed } = useContext(AppContext);
   const [userInput, setUserInput] = useState("");
   const [suggestedMantra, setSuggestedMantra] = useState(null);
@@ -3959,6 +3965,7 @@ const OracleScreen = ({ onPlayMantra, openPremiumModal }) => {
           const foundMantra = MANTRAS_DATA.find((m) => m.id === mantraId);
           if (foundMantra) {
             setSuggestedMantra(foundMantra);
+            // A chamada onComplete() foi REMOVIDA daqui.
           } else {
             setError(
               "O oráculo não encontrou uma sugestão. Tente descrever seu sentimento de outra forma."
@@ -4030,8 +4037,8 @@ const OracleScreen = ({ onPlayMantra, openPremiumModal }) => {
           </p>
         )}
         {suggestedMantra && (
-          <div className="pt-4 border-t border-white/10">
-            <p className="text-center text-white/70 mb-2 font-light">
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <p className="text-center text-white/70 mb-0 font-light">
               O oráculo sugere:
             </p>
             <div
@@ -4048,6 +4055,17 @@ const OracleScreen = ({ onPlayMantra, openPremiumModal }) => {
                 "{suggestedMantra.texto}"
               </p>
             </div>
+            
+            {/* BOTÃO DE CONCLUSÃO ADICIONADO AQUI */}
+            {onComplete && (
+              <button
+                onClick={onComplete}
+                className="w-full modern-btn-primary !py-3 !text-sm flex items-center justify-center gap-2 !bg-green-500/80 hover:!filter-none"
+              >
+                <CheckCircle size={18} />
+                Concluir e voltar para a Jornada
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -6703,18 +6721,19 @@ const AppContent = () => {
   };
 
   // FUNÇÃO ATUALIZADA para lidar com a conclusão da tarefa
-  const handleTaskCompletion = () => {
+  const handleTaskCompletion = async () => { // Função agora é async
     if (activeJourneyTask) {
       const { journeyId, dayInfo } = activeJourneyTask;
-      updateJourneyProgress(journeyId, dayInfo.day);
+      
+      // Aguarda a atualização e usa os dados frescos retornados
+      const newProgress = await updateJourneyProgress(journeyId, dayInfo.day);
       setActiveJourneyTask(null);
 
       const journey = JOURNEYS_DATA.find((j) => j.id === journeyId);
-      const progress = journeyProgress[journeyId]?.completedDays || [];
-      const isNowComplete = progress.length + 1 === journey.days.length;
+      // Usa o comprimento do progresso fresco para a verificação
+      const isNowComplete = newProgress.length === journey.days.length;
 
       if (isNowComplete) {
-        // --- LÓGICA DE DESBLOQUEIO ADICIONADA AQUI ---
         if (journey.completionReward?.type === "theme") {
           unlockTheme(journey.completionReward.value);
         }
@@ -6982,6 +7001,8 @@ const AppContent = () => {
           <OracleScreen
             onPlayMantra={handlePlayMantra}
             openPremiumModal={openPremiumModal}
+            onComplete={activeJourneyTask ? handleTaskCompletion : null}
+            suggestedQuestion={activeScreen.payload?.suggestedQuestion}
           />
         );
       case "favorites":
