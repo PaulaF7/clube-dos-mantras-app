@@ -667,7 +667,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Harmonia%20nos%20relacionamentos1.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Satya%20Naraya%20Ni.%20Namostute%CC%82.%20Sa%CC%81rva%20Mangala%CC%81.%20Mangaye%CC%82.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Satya%20Naraya%20Ni.%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/bwhsQ9kf/harmony.png",
     imagePrompt:
       "A visual representation of harmonious connection between souls. Intertwined golden threads of light, soft pink and green auras, loving energy, beautiful, high resolution.",
@@ -681,7 +681,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Purificac%CC%A7a%CC%83o%20energe%CC%81tica1.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om.%20Va%CC%81rjira.%20Sa%CC%81ttva.%20Rum.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om.%20Va%CC%81rjira.%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/vmxkbf2D/purification.png",
     imagePrompt:
       "A brilliant, diamond-like white light dissolving dark clouds. Abstract art of energetic purification, cleansing waterfall of light, spiritual, high resolution.",
@@ -695,7 +695,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Realizac%CC%A7a%CC%83o%20dos%20desejos.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Hansa%20Soham%20Ekam.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Hansa%20Sohan%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/vBLPZzr8/manifestation.png",
     imagePrompt:
       "A seed of light blooming into a beautiful, intricate mandala. Abstract art of manifestation, creative energy, golden sparks, high resolution, magical.",
@@ -709,7 +709,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Protec%CC%A7a%CC%83o%20divina.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Jey%20Sita%20Ram.%20jey%20jey%20hanuman.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Jey%20Sita%20Ram%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/ZR2rZvgY/protection.png",
     imagePrompt:
       "A sphere of brilliant blue and golden light forming a protective shield. Abstract art of divine protection, safe, serene, powerful energy, high resolution.",
@@ -723,7 +723,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Remoc%CC%A7a%CC%83o%20de%20obsta%CC%81culos.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Shiri%20Ganeschai%20Namara%CC%81.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Shiri%20Ganeschai%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/285HCnVm/obstacles.png",
     imagePrompt:
       "A powerful stream of light breaking through a dark, geometric barrier. Abstract art of overcoming obstacles, new pathways opening, success, high resolution.",
@@ -737,7 +737,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Tornar%20tudo%20possi%CC%81vel.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Gane%CC%82cha%20charana%CC%83%2C%20charana%CC%83%20Gane%CC%82cha%20.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Gane%CC%82cha%20charana%CC%83%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/xTF68qzm/possibility.png",
     imagePrompt:
       "A swirling galaxy of possibilities and starlight, with new worlds forming. Abstract art of infinite potential, miracles, creative power, high resolution, cosmic.",
@@ -751,7 +751,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Cura%20e%20prosperidade.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/om%20kala%20vide%CC%82%20namara%CC%81.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20kala%20vide%CC%82%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
     imagePrompt:
       "A gentle, flowing river of emerald green and golden light. Abstract art representing healing energy and abundance, peaceful, prosperous, high resolution.",
@@ -765,7 +765,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Foco%20e%20memo%CC%81ria.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Mara%CC%81%20Patcha%CC%81%20Nadi%CC%81.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20mara%CC%81%20patcha%CC%81%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/3NfFkbdh/focus.png",
     imagePrompt:
       "A clear, focused beam of light illuminating intricate geometric patterns. Abstract art representing mental clarity, focus, and knowledge, intelligent design, high resolution.",
@@ -779,7 +779,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Atrair%20riquezas.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Zambala%CC%81.%20Za%20Len.%20Draie%CC%82.%20Soha%CC%81.mp3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Om%20Zambala%CC%81%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/mgfFmsxq/wealth.png",
     imagePrompt:
       "A shower of golden coins and jewels falling like rain into a beautiful landscape. Abstract art representing abundance, wealth, and prosperity, high resolution.",
@@ -794,7 +794,7 @@ const MANTRAS_DATA = [
     libraryAudioSrc:
       "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/Calma%20e%20leveza.mp3",
     spokenAudioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/rare%CC%82%20Kri%CC%81shina.%20rare%CC%82%20Kri%CC%81shina.%20Kri%CC%81shina%20K.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/rare%CC%82%20Kri%CC%81shina.%20FADE.MP3",
     imageSrc: "https://i.postimg.cc/KzH1BXr0/calm.png",
     imagePrompt:
       "Soft, pastel-colored clouds gently floating in a serene sky. Abstract art representing emotional calm, lightness, and peace, high resolution, beautiful.",
