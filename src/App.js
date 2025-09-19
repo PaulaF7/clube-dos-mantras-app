@@ -802,6 +802,22 @@ const MANTRAS_DATA = [
  
 ];
 
+// --- DADOS DAS MEDALHAS ---
+const BADGES_DATA = {
+  magneto_da_abundancia: {
+    id: "magneto_da_abundancia",
+    name: "Magneto da Prosperidade",
+    description: "Concluiu a Jornada da Abundância.",
+    icon: Star,
+  },
+  mente_clara: {
+    id: "mente_clara",
+    name: "Mente Clara",
+    description: "Concluiu a Jornada do Foco e Clareza.",
+    icon: BrainCircuit,
+  },
+};
+
 // --- NOVOS DADOS: CHAKRAS (MOVIDO PARA DENTRO DO CÓDIGO PARA SIMPLIFICAR) ---
 const CHAKRAS_DATA = [
   {
@@ -1129,6 +1145,15 @@ const AppProvider = ({ children }) => {
     const [unlockedThemes, setUnlockedThemes] = useState(['default']);
     const [activeTheme, setActiveThemeState] = useState('default');
     const [perguntasAvulsas, setPerguntasAvulsas] = useState(0);
+    const [unlockedBadges, setUnlockedBadges] = useState([]);
+
+    const unlockBadge = useCallback(async (badgeId) => {
+        if (!userId || (currentUserData?.unlockedBadges || []).includes(badgeId)) return;
+
+        const newBadges = [...(currentUserData?.unlockedBadges || []), badgeId];
+        setUnlockedBadges(newBadges); // Atualiza o estado local imediatamente
+        await setDoc(doc(db, `users/${userId}`), { unlockedBadges: newBadges }, { merge: true });
+    }, [userId, currentUserData]);
 
     // Funções de busca de dados
     const fetchAllEntries = useCallback(async (uid) => {
@@ -1398,34 +1423,31 @@ useEffect(() => {
         const userDocRef = doc(db, "users", userId);
         const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
             if (doc.exists()) {
-    const data = doc.data();
-    console.log("🔥 Snapshot usuário:", data); // debug completo
+                const data = doc.data();
+                console.log("🔥 Snapshot usuário:", data); // debug completo
 
-    setCurrentUserData(data);
-    setUserName(data.name || '');
-    setFavorites(data.favorites || []);
-    setStreakData({ 
-        currentStreak: data.currentStreak || 0, 
-        lastPracticedDate: data.lastPracticedDate?.toDate() || null 
-    });
-    setPhotoURL(data.photoURL || null);
-    setOnboardingCompleted(!!data.onboardingCompleted);
-    setUserGoal(data.userGoal || null);
-    setAstroProfile(data.astroProfile || null);
-    setUnlockedThemes(data.unlockedThemes || ['default']);
-    setActiveThemeState(data.activeTheme || 'default');
-
-    // 🔑 garante leitura do campo perguntasAvulsas corretamente
-    setPerguntasAvulsas(
-        typeof data.perguntasAvulsas === "number" ? data.perguntasAvulsas : 0
-    );
-
-    setIsSubscribed(data.isPremium || false);
-    setFreeQuestionUsed(!!data.freeQuestionUsed);
-} else {
-    setIsUserDataLoading(false);
-}
-
+                setCurrentUserData(data);
+                setUserName(data.name || '');
+                setFavorites(data.favorites || []);
+                setStreakData({
+                    currentStreak: data.currentStreak || 0,
+                    lastPracticedDate: data.lastPracticedDate?.toDate() || null
+                });
+                setPhotoURL(data.photoURL || null);
+                setOnboardingCompleted(!!data.onboardingCompleted);
+                setUserGoal(data.userGoal || null);
+                setAstroProfile(data.astroProfile || null);
+                setUnlockedThemes(data.unlockedThemes || ['default']);
+                setActiveThemeState(data.activeTheme || 'default');
+                setUnlockedBadges(data.unlockedBadges || []); // Carrega as medalhas
+                setPerguntasAvulsas(
+                    typeof data.perguntasAvulsas === "number" ? data.perguntasAvulsas : 0
+                );
+                setIsSubscribed(data.isPremium || false);
+                setFreeQuestionUsed(!!data.freeQuestionUsed);
+            } else {
+                setIsUserDataLoading(false);
+            }
         });
 
         const astroHistoryRef = collection(db, "users", userId, "astroHistory");
@@ -1433,53 +1455,46 @@ useEffect(() => {
             setAstroHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
-        // Carrega todos os dados iniciais
-        // Listener reativo para entradas de prática
-const entriesRef = collection(db, "users", userId, "entries");
-const entriesQuery = query(entriesRef, orderBy("practicedAt", "desc"));
-const unsubscribeEntries = onSnapshot(
-  entriesQuery,
-  (snapshot) => {
-    const entries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    setAllEntries(entries);
-  },
-  (error) => {
-    console.error("Erro no listener de entries:", error);
-    if (error.code === "permission-denied") {
-      setPermissionError("Firestore");
-    }
-  }
-);
+        const entriesRef = collection(db, "users", userId, "entries");
+        const entriesQuery = query(entriesRef, orderBy("practicedAt", "desc"));
+        const unsubscribeEntries = onSnapshot(
+            entriesQuery,
+            (snapshot) => {
+                const entries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setAllEntries(entries);
+            },
+            (error) => {
+                console.error("Erro no listener de entries:", error);
+                if (error.code === "permission-denied") {
+                    setPermissionError("Firestore");
+                }
+            }
+        );
 
-        // Carrega os demais dados iniciais
         Promise.all([
-          fetchMeusAudios(userId),
-          fetchPlaylists(userId),
-          fetchJourneyProgress(userId),
+            fetchMeusAudios(userId),
+            fetchPlaylists(userId),
+            fetchJourneyProgress(userId),
         ]).then(() => {
-          setIsUserDataLoading(false);
+            setIsUserDataLoading(false);
         });
-
 
         return () => {
             unsubscribeUser();
             unsubscribeAstro();
             if (typeof unsubscribeEntries === "function") unsubscribeEntries();
         };
-
-
     }, [userId, fetchMeusAudios, fetchPlaylists, fetchJourneyProgress]);
 
 
-    // O objeto 'value' final, com todas as funções corretas e restauradas
-        const value = {
+    const value = {
         user, userId, isAuthLoading, isUserDataLoading, currentUserData, userName, setUserName,
         favorites, updateFavorites, streakData, photoURL, setPhotoURL, allEntries, fetchAllEntries,
         permissionError, isSubscribed, freeQuestionUsed, setFreeQuestionUsed, onboardingCompleted,
         updateOnboardingStatus, meusAudios, fetchMeusAudios, playlists, fetchPlaylists,
         astroProfile, setAstroProfile, astroHistory, userGoal, journeyProgress, updateJourneyProgress,
         unlockedThemes, unlockTheme, activeTheme, setActiveTheme, perguntasAvulsas, logPlaybackActivity,
-        // A função de recálculo não precisa ser exposta, pois age reativamente
+        unlockedBadges, unlockBadge, // Adiciona medalhas ao contexto
     };
 
     return (
@@ -3558,6 +3573,7 @@ const SettingsScreen = ({ setActiveScreen }) => {
     unlockedThemes,
     activeTheme,
     setActiveTheme,
+    unlockedBadges, // <-- Adicionado aqui
   } = useContext(AppContext);
 
   const [newName, setNewName] = useState(userName);
@@ -3731,6 +3747,30 @@ const SettingsScreen = ({ setActiveScreen }) => {
               <p className="text-sm text-white/60 font-light">{user.email}</p>
             </div>
           </div>
+
+          {/* --- INÍCIO: NOVA SEÇÃO DE MEDALHAS --- */}
+          {unlockedBadges && unlockedBadges.length > 0 && (
+            <div className="space-y-3 pt-6 border-t border-white/10">
+              <label className="text-sm text-white/80 font-light">
+                Minhas Conquistas
+              </label>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 text-center">
+                {unlockedBadges.map(badgeId => {
+                  const badge = BADGES_DATA[badgeId];
+                  if (!badge) return null;
+                  return (
+                    <div key={badge.id} className="flex flex-col items-center gap-2" title={badge.description}>
+                      <div className="w-16 h-16 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center">
+                        <badge.icon size={32} className="text-yellow-300" />
+                      </div>
+                      <p className="text-xs text-white/80 font-light">{badge.name}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* --- FIM: NOVA SEÇÃO DE MEDALHAS --- */}
 
           {/* Formulário de Nome */}
           <form onSubmit={handleNameUpdate} className="space-y-3">
@@ -6547,6 +6587,7 @@ const AppContent = () => {
     recalculateStreak,
     updateJourneyProgress,
     unlockTheme,
+    unlockBadge, // <-- Importa a nova função do contexto
     activeTheme,
     logPlaybackActivity, // <-- FUNÇÃO OBTIDA DO CONTEXTO
   } = useContext(AppContext);
@@ -6725,17 +6766,21 @@ const AppContent = () => {
     if (activeJourneyTask) {
       const { journeyId, dayInfo } = activeJourneyTask;
       
-      // Aguarda a atualização e usa os dados frescos retornados
       const newProgress = await updateJourneyProgress(journeyId, dayInfo.day);
       setActiveJourneyTask(null);
 
       const journey = JOURNEYS_DATA.find((j) => j.id === journeyId);
-      // Usa o comprimento do progresso fresco para a verificação
       const isNowComplete = newProgress.length === journey.days.length;
 
       if (isNowComplete) {
-        if (journey.completionReward?.type === "theme") {
-          unlockTheme(journey.completionReward.value);
+        // LÓGICA DE RECOMPENSA ATUALIZADA
+        const reward = journey.completionReward;
+        if (reward) {
+          if (reward.type === "theme") {
+            unlockTheme(reward.value);
+          } else if (reward.type === "badge") {
+            unlockBadge(reward.value); // <-- CHAMA A FUNÇÃO PARA DESBLOQUEAR A MEDALHA
+          }
         }
         setActiveScreen("journeyCompletion", { journey });
       } else {
