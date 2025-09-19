@@ -1313,68 +1313,47 @@ const AppProvider = ({ children }) => {
 useEffect(() => {
     const createUserIfNotExists = async (userAuth) => {
         if (!userAuth || !db) return;
+        const userRef = doc(db, "users", userAuth.uid);
+        
         try {
-            const userRef = doc(db, "users", userAuth.uid);
-            const safeName = userAuth.displayName || (userAuth.providerData?.[0]?.displayName) || "";
-const safePhoto = userAuth.photoURL || (userAuth.providerData?.[0]?.photoURL) || null;
-const safeEmail = userAuth.email || (userAuth.providerData?.[0]?.email) || "";
-const safeCreatedAt = userAuth.metadata?.creationTime
-    ? new Date(userAuth.metadata.creationTime)
-    : new Date();
+            const userSnap = await getDoc(userRef);
 
-const defaultFields = {
-    uid: userAuth.uid,
-    email: safeEmail,
-    name: safeName,
-    photoURL: safePhoto,
-    isPremium: false,
-    createdAt: safeCreatedAt,
-    favorites: [],
-    activeTheme: "default",
-    unlockedThemes: ["default"],
-    // ⚠️ Não sobrescreve a flag da pergunta grátis
-    // Ela só será criada como "false" se não existir ainda no Firestore
-    perguntasAvulsas: 0,
-    currentStreak: 0,
-    lastPracticedDate: null,
-    astroProfile: null,
-    astroHistory: [],
-    journeyProgress: {},
-    userGoal: null,
-};
+            // SÓ EXECUTA A CRIAÇÃO SE O DOCUMENTO REALMENTE NÃO EXISTIR
+            if (!userSnap.exists()) {
+                console.log(`Documento para o usuário ${userAuth.uid} não encontrado. Criando...`);
+                const safeName = userAuth.displayName || (userAuth.providerData?.[0]?.displayName) || "";
+                const safePhoto = userAuth.photoURL || (userAuth.providerData?.[0]?.photoURL) || null;
+                const safeEmail = userAuth.email || (userAuth.providerData?.[0]?.email) || "";
+                const safeCreatedAt = userAuth.metadata?.creationTime ? new Date(userAuth.metadata.creationTime) : new Date();
 
-
-// 🔑 Cria ou complementa o documento sem sobrescrever campos já definidos
-const snap = await getDoc(userRef);
-if (!snap.exists()) {
-  // documento não existe -> cria com todos os campos
-  await setDoc(userRef, defaultFields);
-} else {
-  // documento existe -> adiciona apenas campos ausentes
-  const existingData = snap.data() || {};
-  const fieldsToAdd = {};
-
-  for (const [key, value] of Object.entries(defaultFields)) {
-    // adiciona apenas se a chave não existir ou for undefined
-    if (!(key in existingData) || typeof existingData[key] === "undefined") {
-      fieldsToAdd[key] = value;
-    }
-  }
-
-  if (Object.keys(fieldsToAdd).length > 0) {
-    try {
-      await setDoc(userRef, fieldsToAdd, { merge: true });
-      console.log("Campos adicionados ao usuário:", userRef.id, Object.keys(fieldsToAdd));
-    } catch (e) {
-      console.error("Erro ao adicionar campos faltantes ao usuário:", userRef.id, e, fieldsToAdd);
-    }
-  } else {
-    console.log("Nenhum campo faltante para adicionar ao usuário:", userRef.id);
-  }
-}
+                const defaultFields = {
+                    uid: userAuth.uid,
+                    email: safeEmail,
+                    name: safeName,
+                    photoURL: safePhoto,
+                    isPremium: false, // Começa como não-premium
+                    createdAt: safeCreatedAt,
+                    favorites: [],
+                    activeTheme: "default",
+                    unlockedThemes: ["default"],
+                    onboardingCompleted: false, // Começa o onboarding
+                    freeQuestionUsed: false,
+                    perguntasAvulsas: 0,
+                    currentStreak: 0,
+                    lastPracticedDate: null,
+                    astroProfile: null,
+                    astroHistory: [],
+                    journeyProgress: {},
+                    userGoal: null,
+                };
+                
+                await setDoc(userRef, defaultFields);
+            }
+            // Se o documento já existe, não fazemos NADA aqui. 
+            // O listener onSnapshot será o único responsável por ler os dados.
 
         } catch (err) {
-            console.error("Erro ao criar documento inicial do usuário:", err);
+            console.error("Erro ao verificar/criar documento do usuário:", err);
         }
     };
 
@@ -7260,24 +7239,24 @@ const PermissionErrorScreen = ({ type }) => (
 
 // --- VERIFICADOR DE AUTENTICAÇÃO E RENDERIZAÇÃO PRINCIPAL (COM LÓGICA DE ONBOARDING) ---
 function AppWithAuthCheck() {
-  // Adicionamos 'currentUserData' para saber quando os dados do usuário foram carregados
   const {
     user,
-    loading,
+    isAuthLoading, // Nome correto da variável de carregamento da autenticação
+    isUserDataLoading, // Nova variável para o carregamento dos dados
     permissionError,
     onboardingCompleted,
-    currentUserData,
   } = useContext(AppContext);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsSplashVisible(false), 4000); // Mantém a duração mínima do splash
+    const timer = setTimeout(() => setIsSplashVisible(false), 4000); 
     return () => clearTimeout(timer);
   }, []);
 
-  // --- LÓGICA DE CARREGAMENTO CORRIGIDA ---
-  // A SplashScreen agora espera o auth (loading) E TAMBÉM os dados do usuário (currentUserData)
-  if (isSplashVisible || loading || (user && !currentUserData)) {
+  // --- LÓGICA DE CARREGAMENTO DEFINITIVA ---
+  // A SplashScreen agora espera o splash, o carregamento da autenticação (isAuthLoading)
+  // e também o carregamento dos dados do usuário (isUserDataLoading) se houver um usuário.
+  if (isSplashVisible || isAuthLoading || (user && isUserDataLoading)) {
     return <SplashScreen />;
   }
 
