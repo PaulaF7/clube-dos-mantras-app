@@ -828,7 +828,7 @@ const CHAKRAS_DATA = [
     mudra: "Gyan Mudra",
     desc: "A base, o alicerce. O chakra da raiz nos conecta com a terra, a segurança e a sobrevivência.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/LAM1.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/LAM%20FADE.MP3",
   },
   {
     id: 2,
@@ -838,7 +838,7 @@ const CHAKRAS_DATA = [
     mudra: "Shakti Mudra",
     desc: "O centro da criatividade, da sexualidade e das emoções. Relacionado com a fluidez e a adaptabilidade.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/VAM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/VAM%20FADE.MP3",
   },
   {
     id: 3,
@@ -848,7 +848,7 @@ const CHAKRAS_DATA = [
     mudra: "Hakini Mudra",
     desc: "O centro do poder pessoal, da força de vontade e do metabolismo. A 'cidade das joias'.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/RAM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/RAM%20FADE.MP3",
   },
   {
     id: 4,
@@ -858,7 +858,7 @@ const CHAKRAS_DATA = [
     mudra: "Hridaya Mudra",
     desc: "O chakra do coração, o centro do amor, da compaixão e da cura.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/YAM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/YAM%20FADE.MP3",
   },
   {
     id: 5,
@@ -868,7 +868,7 @@ const CHAKRAS_DATA = [
     mudra: "Granthi Mudra",
     desc: "O centro da comunicação e da expressão. A garganta é o canal para a verdade interior.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/HAM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/HAM%20FADE.MP3",
   },
   {
     id: 6,
@@ -878,7 +878,7 @@ const CHAKRAS_DATA = [
     mudra: "Shambhavi Mudra",
     desc: "O terceiro olho. Símbolo da intuição, da sabedoria e da percepção extrasensorial.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/OM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/OM%20FADE.MP3",
   },
   {
     id: 7,
@@ -888,7 +888,7 @@ const CHAKRAS_DATA = [
     mudra: "Dhyana Mudra",
     desc: "O lótus de mil pétalas. Conecta-nos com o universo, a iluminação e a consciência pura.",
     audioSrc:
-      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/AUM.MP3",
+      "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/AUM%20FADE.MP3",
   },
 ];
 
