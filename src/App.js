@@ -1390,11 +1390,12 @@ useEffect(() => {
 
     const unsubscribe = onAuthStateChanged(auth, async (userAuth) => {
         if (userAuth) {
-            setUser(userAuth);
-            setUserId(userAuth.uid);
-
+            
             // 🔑 Garante inicialização completa do documento
             await createUserIfNotExists(userAuth);
+
+            setUser(userAuth);
+            setUserId(userAuth.uid);
 
         } else {
             // Limpeza completa no logout
@@ -1701,7 +1702,7 @@ const AuthScreen = () => {
           activeTheme: "default",
           unlockedThemes: ["default"],
           perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
-        });
+        }, { merge: true });
 
         if (isPremium) {
           setMessage(
