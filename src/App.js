@@ -33,7 +33,7 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 
-import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit } from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, Timestamp, writeBatch, limit, where } from "firebase/firestore";
 import {
   getStorage,
   ref,
@@ -422,7 +422,7 @@ const GlobalStyles = memo(() => (
     /* Otimização: Adicionado 'will-change' para promover os cards a sua própria camada de composição durante animações,
        reduzindo o custo de repintura e a interferência com a camada do background. */
     .glass-card, .glass-modal { 
-  background: rgba(255, 255, 255, 0.08); /* igual ao btn-secondary */
+    background: rgba(255, 255, 255, 0.08); /* igual ao btn-secondary */
   backdrop-filter: blur(12px); /* menos blur para não “foscar” tanto */
   -webkit-backdrop-filter: blur(12px); 
   border-radius: 1.5rem; 
@@ -433,6 +433,15 @@ const GlobalStyles = memo(() => (
   will-change: transform, opacity;
 }
 
+/* Correção específica para Safari iOS - evita variação de opacidade nos cards */
+@supports (-webkit-touch-callout: none) {
+    background: rgba(255, 255, 255, 0.08) !important; /* fixa opacidade */
+  .glass-card, .glass-modal {
+    transition: none !important; /* remove qualquer fade inesperado */
+    will-change: transform !important; /* impede mudanças de opacidade */
+  }
+}
+
     .premium-card-glow { border-color: rgba(255, 213, 79, 0.3); animation: premium-glow 3s ease-in-out infinite; }
     @keyframes premium-glow { 0% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 50% { box-shadow: 0 0 16px rgba(255, 213, 79, 0.4), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } 100% { box-shadow: 0 0 8px rgba(255, 213, 79, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.1); } }
     .glass-card.clickable:hover { transform: translateY(-5px); box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.15); transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out; }
@@ -441,6 +450,7 @@ const GlobalStyles = memo(() => (
     /* .page-container foi movido para o início para incorporar as melhorias */
     .page-title { font-family: var(--font-display); font-size: 1.8rem; color: #FFFFFF; margin-bottom: 0.25rem; line-height: 1.2; font-weight: 400; text-align: center; }
     .page-subtitle { text-align: center; color: #D1C4E9; opacity: 0.8; margin-top: 0.25rem; margin-bottom: 1rem; font-weight: 300; max-width: 90%; margin-left: auto; margin-right: auto; }
+    .ebook-highlight { color: #FFD54F; font-weight: 300; } /* CLASSE ADICIONADA AQUI */
     .modern-btn-primary { background: #FFD54F; color: #2c0b4d; padding: 1rem 2rem; border-radius: 9999px; font-weight: 600; font-size: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease; box-shadow: 0 4px 15px -5px rgba(255, 213, 79, 0.5); border: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; }
     .modern-btn-primary:hover { transform: translateY(-3px); filter: brightness(1.1); box-shadow: 0 7px 20px -5px rgba(255, 213, 79, 0.6); }
     .modern-btn-primary:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.4); cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
@@ -802,6 +812,179 @@ const MANTRAS_DATA = [
  
 ];
 
+// --- DADOS DO EBOOK ---
+const EBOOK_DATA = {
+  title: "Guia Rápido para Mantras",
+  image: "Capa.png",
+  chapters: [
+    {
+      title: "Aviso Legal",
+      content: [
+        { type: 'text', value: "Este guia é protegido por direitos autorais. Sua reprodução total ou parcial para fins comerciais não é permitida sem autorização prévia." },
+        { type: 'text', value: "O conteúdo aqui apresentado tem caráter educativo e informativo. Ele não substitui orientações médicas, psicológicas ou espirituais específicas." }
+      ]
+    },
+    {
+      title: "Introdução",
+      content: [
+        { type: 'text', value: "Seja bem-vindo ao <span class=\"ebook-highlight\">Guia Prático para Mantras</span>." },
+        { type: 'text', value: "Este material foi criado com carinho para quem deseja aprender a usar mantras de forma simples, prática e transformadora, mesmo sem nenhuma experiência." },
+        { type: 'text', value: "Neste guia, você vai encontrar:" },
+        { type: 'text', value: "• Explicações diretas e fáceis de entender;" },
+        { type: 'text', value: "• Instruções práticas para começar a usar os mantras;" },
+        { type: 'text', value: "• Um catálogo com 12 mantras, prontos para usar conforme o que você estiver sentindo ou precisando no momento." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Não é preciso saber nada complicado.</span> Você só precisa de um tempinho para si e disposição para experimentar algo novo com o coração aberto." },
+        { type: 'text', value: "Vamos juntos?" },
+        { type: 'image', value: 'IMG_01.png' }
+      ]
+    },
+    {
+      title: "O que é um mantra?",
+      content: [
+        { type: 'text', value: "Um <span class=\"ebook-highlight\">mantra</span> é uma palavra, som ou frase curta que você repete com <span class=\"ebook-highlight\">intenção e presença.</span>" },
+        { type: 'text', value: "Ele ajuda a acalmar a mente, aliviar a ansiedade, fortalecer o espírito e trazer mais equilíbrio para o seu dia." },
+        { type: 'text', value: "Podemos pensar no mantra como uma espécie de <span class=\"ebook-highlight\">chave energética.</span> Ele muda a vibração do ambiente e do seu próprio corpo." },
+        { type: 'text', value: "Ao repetir um mantra com o coração, você ativa uma <span class=\"ebook-highlight\">força positiva</span>, mesmo nos momentos mais difíceis." },
+        { type: 'text', value: "Os mantras vêm de tradições muito antigas, como o sânscrito (da Índia) e o hebraico. Mas hoje, qualquer pessoa pode usá-los, em qualquer lugar. Não importa sua religião, idade ou rotina." },
+        { type: 'text', value: "E não se preocupe: você não precisa entender cada palavra. O mais importante é perceber o que ela faz você sentir. Se o som tocar seu coração, ele já está funcionando." }
+      ]
+    },
+    {
+      title: "Para que servem os mantras?",
+      content: [
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Acalmar</span> a mente agitada."}, 
+        {type: 'text', value: "<span class=\"ebook-highlight\">• Elevar</span> sua energia."}, 
+        {type: 'text', value: "<span class=\"ebook-highlight\">• Fortalecer</span> a autoestima e a confiança."}, 
+        {type: 'text', value: " <span class=\"ebook-highlight\">• Proteger</span> contra energias negativas e <span class=\"ebook-highlight\">atrair</span> o que você deseja: cura, amor, prosperidade e paz." },
+        { type: 'image', value: 'IMG_02.png' }
+      ]
+    },
+    {
+      title: "Como os mantras funcionam?",
+      content: [
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Na mente:</span> Ajudam a silenciar pensamentos repetitivos e negativos. Trazem foco, calma e clareza mental." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• No corpo:</span> A vibração do som estimula pontos da língua e do céu da boca, ativando áreas ligadas ao sistema imunológico e neurológico. Isso ajuda o corpo a se equilibrar naturalmente." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Nas emoções:</span> A repetição do mantra acalma sentimentos como medo, tristeza, culpa e ansiedade. Com o tempo, você se sente mais estável, centrado e confiante." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Na energia:</span> Os mantras limpam e fortalecem o seu campo energético, afastando o que não te faz bem. Eles também elevam sua vibração e facilitam a conexão com algo maior, seja você spiritualizado ou não." }
+      ]
+    },
+    {
+      title: "Porque usar mantras?",
+      image: "porque_usar.png",
+      content: [
+        { type: 'text', value: "Muita gente tem sentido vontade de olhar mais para dentro, cuidar de si, curar feridas antigas ou simplesmente reencontrar o próprio caminho. Se esse for o seu momento, os mantras podem ser grandes aliados." },
+        { type: 'text', value: "Eles se encaixam na sua rotina, mesmo que você tenha pouco tempo. Em apenas alguns minutos por dia, você já pode sentir os efeitos: mais paz, mais clareza, mais conexão com você mesmo." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">E o melhor:</span> Você não precisa mudar sua vida inteira para começar. Só precisa dar o primeiro passo, com gentileza, no seu ritmo." },
+        { type: 'image', value: 'IMG_03.png' }
+      ]
+    },
+    {
+      title: "Como usar os mantras deste guia?",
+      image: "como_usar.png",
+      content: [
+        { type: 'text', value: "Os mantras que você vai encontrar aqui são simples, mas muito poderosos. Eles servem para transformar o seu interior, manifestar desejos e fortalecer sua conexão espiritual, tudo de forma leve, prática e possível no seu dia a dia." },
+        { type: 'text', value: "Você não precisa fazer nada complicado. Basta separar alguns minutos, respirar fundo e deixar as palavras agirem dentro de você." },
+        { type: 'text', value: "Mesmo com finalidades diferentes, todos os mantras seguem três princípios básicos:" },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Intenção:</span> Escolha o mantra com um propósito claro, pensando no que você quer sentir, curar ou atrair." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Fé:</span> Confie no processo. Não é sobre perfeição, mas sobre presença." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">• Constância:</span> A repetição é o que faz o efeito acontecer. Quanto mais você pratica, mais percebe a mudança." },
+        { type: 'image', value: 'IMG_04.png' }
+      ]
+    },
+    {
+      title: "Como começar?",
+      image: "como_comecar.png",
+      content: [
+        { type: 'text', value: "<span class=\"ebook-highlight\">Escolha um mantra com base na sua intenção.</span> Neste guia, cada mantra vem com uma finalidade. Leia com calma e escolha aquele que mais combina com o que você está vivendo agora." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Encontre um lugar calmo.</span> Sente-se confortavelmente, de preferência com a coluna ereta. Pode ser no chão, numa cadeira ou até na cama, o que funcionar para você. O ideal é estar num lugar onde não será interrompido." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Respire profundamente.</span> Antes de começar, faça três respirações lentas e conscientes. Isso ajuda a acalmar a mente e te traz para o momento presente." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Mentalize sua intenção.</span> Pense com clareza no que você quer manifestar, curar ou fortalecer. Seja objetivo, mas também aberto ao que a vida pode te trazer de melhor." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Repita o mantra com presença e fé.</span> Agora, comece a repetir o mantra. Pode ser em voz alta ou mentalmente, o importante é falar com o coração. Cada palavra é como uma semente. Quanto mais presença e fé você colocar, mais profundo será o efeito." },
+        { type: 'image', value: 'IMG_05.png' }
+      ]
+    },
+    {
+      title: "Quantas repetições fazer?",
+      image: "quantas_repeticoes.png",
+      content: [
+        { type: 'text', value: "Você pode escolher o número de repetições de acordo com o seu tempo, energia e intuição. Não existe um número certo ou obrigatório. A prática é livre e respeita o seu ritmo." },
+        { type: 'text', value: "Se quiser uma orientação, aqui está uma progressão tradicional:"},
+        { type: 'text', value: "<span class=\"ebook-highlight\">12 repetições</span> (mínimo para começar),"}, 
+        { type: 'text', value: "<span class=\"ebook-highlight\">24, 36, 48, 60, 72, 84, 96</span>, até <span class=\"ebook-highlight\">108 repetições</span>, que é o número sagrado na tradição dos mantras." },
+        { type: 'text', value: "Você pode começar com 12 repetições por dia e aumentar aos poucos, conforme for se sentindo à vontade." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Mais importante do que a quantidade é a constância da prática.</span>" },
+        { type: 'text', value: "Repita o mantra todos os dias, com presença e entrega, até que:" },
+        { type: 'text', value: "• O desejo se manifeste;" },
+        { type: 'text', value: "• Uma transformação interna aconteça;" },
+        { type: 'text', value: "• Ou seu coração diga que o ciclo chegou ao fim." },
+        { type: 'text', value: "<span class=\"ebook-highlight\">Não tenha pressa.</span> A prática de mantras é um movimento sutil de realinhamento energético e emocional. <span class=\"ebook-highlight\">Confie no processo.</span> Você vai sentir quando for hora de mudar o mantra ou ajustar a sua rotina." },
+        { type: 'image', value: 'IMG_06.png' }
+      ]
+    },
+    {
+      title: "Um Lembrete Final",
+      image: "lembrete_final.png",
+      content: [
+        { type: 'text', value: "Mais do que a quantidade, o que realmente importa é a <span class=\"ebook-highlight\">qualidade da sua presença.</span>" },
+        { type: 'text', value: "É melhor fazer 12 repetições com o coração inteiro, do que 108 repetições com a mente longe." },
+        { type: 'text', value: "Quando você traz o mantra para dentro, com intenção e atenção, ele age de forma silenciosa, profunda e transformadora. <span class=\"ebook-highlight\">Confie: o efeito acontece de dentro para fora.</span>" },
+        { type: 'image', value: 'IMG_07.png' }
+      ]
+    },
+    {
+      title: "Catálogo de Mantras",
+      image: "catalogo.png",
+      content: [
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 1 - Paz Interior:"},
+        { type: 'text', value: "</span> Eu sou, Eu sou, Eu sou a luz que emana paz."},
+        { type: 'text', value: "• Para acalmar a mente e afastar pensamentos negativos. (12 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 2 - Purificação:"},
+        { type: 'text', value: "</span> Eu sou um ser de fogo violeta, eu sou a pureza que Deus deseja. "},
+        { type: 'text', value: "• Para limpar culpas, libera o passado e eleva a vibração. (36 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 3 - Relacionamentos:"},
+        { type: 'text', value: "</span> Satya Naraya Ni Namostute Sarva Mangala Mangayê."}, 
+        { type: 'text', value: "• Para melhorar vínculos e atrair harmonia. (24 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 4 - Limpeza Mental:"},
+        { type: 'text', value: "</span> Om Vajra Sattva Hum."}, 
+        { type: 'text', value: "• Para purificar pensamentos, emoções e o campo energético. (36 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 5 - Manifestação:"},
+        { type: 'text', value: "</span> Hansa Soham Ekam."}, 
+        { type: 'text', value: "• Para ajudar a realizar desejos e intenções positivas. (48 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 6 - Proteção Familiar:"},
+        { type: 'text', value: "</span> Jey Sita Ram. "},
+        { type: 'text', value: "• Para proteger você e sua família contra energias negativas. (24 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 7 - Abertura de Caminhos:"},
+        { type: 'text', value: "</span> Om Shri Ganesha Namaha."}, 
+        { type: 'text', value: "• Para remover obstáculos e favorecer novos começos. (108 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 8 - Possibilidades:"},
+        { type: 'text', value: "</span> Ganesha Sharanam, Sharanam Ganesha."}, 
+        { type: 'text', value: "• Para ajudar a tornar o impossível, possível. (48 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 9 - Cura e Prosperidade:"},
+        { type: 'text', value: "</span> Om Kala Vidê Namaha."}, 
+        { type: 'text', value: "• Para ativar cura, paz interior e prosperidade. (108 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 10 - Aprendizado:"},
+        { type: 'text', value: "</span> Om Mará Patchá Na Dhi."}, 
+        { type: 'text', value: "• Para melhorar o foco, a memória e o aprendizado. (24 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 11 - Riqueza:"},
+        { type: 'text', value: "</span> Om Zambalá Za Len Dhra Ye Soha. "},
+        { type: 'text', value: "• Para atrair riqueza, abundância e segurança financeira. (36 repetições)" },
+        { type: 'text', value: "🕉 <span class=\"ebook-highlight\">Mantra 12 - Ansiedade:"},
+        { type: 'text', value: "</span> Hare Krishna Hare Krishna Krishna Krishna Hare Hare — Hare Rama Hare Rama Rama Rama Hare Hare."}, 
+        { type: 'text', value: "• Para acalmar a ansiedade e traz leveza emocional. (24 repetições)" }
+      ]
+    },
+    {
+      title: "Conclusão",
+      content: [
+        { type: 'text', value: "Que este guia esteja sempre ao seu lado como uma bússola de luz. Que cada mantra que você repetir plante uma semente no seu coração, e que, com o tempo, essa semente floresça em paz, força e verdade." },
+        { type: 'text', value: "Gratidão por caminhar por aqui. Com carinho,"},
+        { type: 'text', value: "Equipe Evoluo.ir" },
+        { type: 'image', value: 'IMG_08.png' }
+      ]
+    }
+  ]
+};
+
 // --- DADOS DAS MEDALHAS ---
 const BADGES_DATA = {
   magneto_da_abundancia: {
@@ -1147,6 +1330,23 @@ const AppProvider = ({ children }) => {
     const [perguntasAvulsas, setPerguntasAvulsas] = useState(0);
     const [unlockedBadges, setUnlockedBadges] = useState([]);
 
+    const [ebookFontSize, setEbookFontSize] = useState(16); // Tamanho padrão da fonte
+    const [lastReadChapter, setLastReadChapter] = useState(0); // Começa no primeiro capítulo
+
+    const updateEbookProgress = useCallback(async (progress) => {
+        if (!userId) return;
+        // O objeto 'progress' pode ter 'fontSize' ou 'chapterIndex'
+        const updates = {};
+        if (progress.fontSize) updates.ebookFontSize = progress.fontSize;
+        if (typeof progress.chapterIndex === 'number') updates.lastReadChapter = progress.chapterIndex;
+
+        // Atualiza o estado local correspondente
+        if (updates.ebookFontSize) setEbookFontSize(updates.ebookFontSize);
+        if (typeof updates.lastReadChapter === 'number') setLastReadChapter(updates.lastReadChapter);
+
+        await setDoc(doc(db, `users/${userId}`), updates, { merge: true });
+    }, [userId]);
+
     const unlockBadge = useCallback(async (badgeId) => {
         if (!userId || (currentUserData?.unlockedBadges || []).includes(badgeId)) return;
 
@@ -1351,23 +1551,25 @@ useEffect(() => {
 
             // SÓ EXECUTA A CRIAÇÃO SE O DOCUMENTO REALMENTE NÃO EXISTIR
             if (!userSnap.exists()) {
-                console.log(`Documento para o usuário ${userAuth.uid} não encontrado. Criando...`);
+                console.log(`Documento para o usuário ${userAuth.uid} não encontrado. Criando perfil completo...`);
                 const safeName = userAuth.displayName || (userAuth.providerData?.[0]?.displayName) || "";
                 const safePhoto = userAuth.photoURL || (userAuth.providerData?.[0]?.photoURL) || null;
                 const safeEmail = userAuth.email || (userAuth.providerData?.[0]?.email) || "";
                 const safeCreatedAt = userAuth.metadata?.creationTime ? new Date(userAuth.metadata.creationTime) : new Date();
 
+                // LISTA COMPLETA DE CAMPOS PADRÃO PARA UM NOVO USUÁRIO
                 const defaultFields = {
                     uid: userAuth.uid,
                     email: safeEmail,
                     name: safeName,
                     photoURL: safePhoto,
-                    isPremium: false, // Começa como não-premium
                     createdAt: safeCreatedAt,
+                    isPremium: false,
+                    onboardingCompleted: false,
                     favorites: [],
                     activeTheme: "default",
                     unlockedThemes: ["default"],
-                    onboardingCompleted: false, // Começa o onboarding
+                    unlockedBadges: [],
                     freeQuestionUsed: false,
                     perguntasAvulsas: 0,
                     currentStreak: 0,
@@ -1376,12 +1578,13 @@ useEffect(() => {
                     astroHistory: [],
                     journeyProgress: {},
                     userGoal: null,
+                    ebookFontSize: 16,
+                    lastReadChapter: 0,
                 };
                 
                 await setDoc(userRef, defaultFields);
             }
-            // Se o documento já existe, não fazemos NADA aqui. 
-            // O listener onSnapshot será o único responsável por ler os dados.
+            // Se o documento já existe, a função não faz nada, preservando os dados.
 
         } catch (err) {
             console.error("Erro ao verificar/criar documento do usuário:", err);
@@ -1441,6 +1644,11 @@ useEffect(() => {
                 setUnlockedThemes(data.unlockedThemes || ['default']);
                 setActiveThemeState(data.activeTheme || 'default');
                 setUnlockedBadges(data.unlockedBadges || []); // Carrega as medalhas
+                
+                // CARREGA AS PREFERÊNCIAS DO EBOOK
+                setEbookFontSize(data.ebookFontSize || 16);
+                setLastReadChapter(data.lastReadChapter || 0);
+
                 setPerguntasAvulsas(
                     typeof data.perguntasAvulsas === "number" ? data.perguntasAvulsas : 0
                 );
@@ -1496,6 +1704,8 @@ useEffect(() => {
         astroProfile, setAstroProfile, astroHistory, userGoal, journeyProgress, updateJourneyProgress,
         unlockedThemes, unlockTheme, activeTheme, setActiveTheme, perguntasAvulsas, logPlaybackActivity,
         unlockedBadges, unlockBadge, // Adiciona medalhas ao contexto
+        ebookFontSize, lastReadChapter, updateEbookProgress, // <-- ADICIONADO AQUI
+
     };
 
     return (
@@ -1663,51 +1873,55 @@ const AuthScreen = () => {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         await updateProfile(user, { displayName: name });
 
         let isPremium = false;
         try {
-          const pendingRef = collection(db, "pendingPremium");
-          const q = query(pendingRef, where("email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            isPremium = true;
-            const pendingDoc = querySnapshot.docs[0];
-            await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
-            console.log(
-              `Assinatura pendente para ${user.email} ativada e registro removido.`
-            );
-          }
+            const pendingRef = collection(db, "pendingPremium");
+            const q = query(pendingRef, where("email", "==", user.email));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                isPremium = true;
+                const pendingDoc = querySnapshot.docs[0];
+                await deleteDoc(doc(db, "pendingPremium", pendingDoc.id));
+            }
         } catch (checkError) {
-          console.error("Erro ao verificar assinatura pendente:", checkError);
+            console.error("Erro ao verificar assinatura pendente:", checkError);
         }
 
         const userRef = doc(db, `users/${user.uid}`);
-        await setDoc(userRef, {
-          name: name,
-          email: user.email,
-          isPremium: isPremium,
-          favorites: [],
-          currentStreak: 0,
-          lastPracticedDate: null,
-          createdAt: Timestamp.now(),
-          onboardingCompleted: false,
-          activeTheme: "default",
-          unlockedThemes: ["default"],
-          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
-        }, { merge: true });
+        
+        // LISTA COMPLETA DE CAMPOS PADRÃO, IGUAL À DO AppProvider
+        const defaultFields = {
+            uid: user.uid,
+            email: user.email,
+            name: name, // Pega o nome digitado no formulário
+            photoURL: user.photoURL,
+            createdAt: Timestamp.now(),
+            isPremium: isPremium,
+            onboardingCompleted: false,
+            favorites: [],
+            activeTheme: "default",
+            unlockedThemes: ["default"],
+            unlockedBadges: [],
+            freeQuestionUsed: false,
+            perguntasAvulsas: 0,
+            currentStreak: 0,
+            lastPracticedDate: null,
+            astroProfile: null,
+            astroHistory: [],
+            journeyProgress: {},
+            userGoal: null,
+            ebookFontSize: 16,
+            lastReadChapter: 0,
+        };
+
+        await setDoc(userRef, defaultFields);
 
         if (isPremium) {
-          setMessage(
-            "Sua conta foi criada e sua assinatura premium ativada automaticamente!"
-          );
+          setMessage("Conta criada e assinatura premium ativada!");
           setIsSubscribed(true);
         } else {
           setMessage("Conta criada com sucesso!");
@@ -1759,19 +1973,28 @@ const handleSocialLogin = async (providerName) => {
         }
 
         await setDoc(userRef, {
-          name: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          isPremium: isPremium,
-          favorites: [],
-          currentStreak: 0,
-          lastPracticedDate: null,
-          createdAt: Timestamp.now(),
-          onboardingCompleted: false,
-          activeTheme: "default",
-          unlockedThemes: ["default"],
-          perguntasAvulsas: 0, // <-- CAMPO ADICIONADO AQUI
-        });
+  uid: user.uid,
+  email: user.email || (user.providerData?.[0]?.email) || "",
+  name: user.displayName || (user.providerData?.[0]?.displayName) || "",
+  photoURL: user.photoURL || (user.providerData?.[0]?.photoURL) || null,
+  createdAt: Timestamp.now(),
+  isPremium: isPremium,
+  onboardingCompleted: false,
+  favorites: [],
+  activeTheme: "default",
+  unlockedThemes: ["default"],
+  unlockedBadges: [],
+  freeQuestionUsed: false,
+  perguntasAvulsas: 0,
+  currentStreak: 0,
+  lastPracticedDate: null,
+  astroProfile: null,
+  astroHistory: [],
+  journeyProgress: {},
+  userGoal: null,
+  ebookFontSize: 16,
+  lastReadChapter: 0
+}, { merge: true });
 
         if (isPremium) setIsSubscribed(true);
       }
@@ -6467,6 +6690,7 @@ const JourneyDetailScreen = ({
 const MoreScreen = ({ setActiveScreen }) => {
   const secondaryNavItems = [
     { id: "journeysList", icon: Map, label: "Jornadas de Prática" },
+    { id: "ebook", icon: BookOpen, label: "Ebook: Guia Rápido para Mantras" }, // <-- ADICIONADO AQUI
     { id: "chakras", icon: Circle, label: "Meditação de Chakras" },
     { id: "mantras", icon: Music, label: "Músicas Mântricas" },
     {
@@ -6474,7 +6698,7 @@ const MoreScreen = ({ setActiveScreen }) => {
       icon: MessageCircleQuestion,
       label: "Pergunte ao Astrólogo",
     },
-    { id: "history", icon: BookOpen, label: "Meu Diário" }, // <-- CORREÇÃO APLICADA AQUI
+    { id: "history", icon: History, label: "Meu Diário" },
     { id: "oracle", icon: BrainCircuit, label: "Oráculo dos Mantras" },
   ];
 
@@ -7051,6 +7275,10 @@ const AppContent = () => {
             suggestedQuestion={activeScreen.payload?.suggestedQuestion}
           />
         );
+
+        case "ebook":
+        return <EbookScreen setActiveScreen={setActiveScreen} />;
+
       case "favorites":
         return <FavoritesScreen onPlayMantra={handlePlayMantra} />;
       case "chakras":
@@ -7762,6 +7990,254 @@ const JourneyCompletionScreen = ({ journey, onNext }) => {
 };
 
 // --- FIM: NOVOS COMPONENTES PARA JORNADAS ---
+
+// --- INÍCIO: NOVO COMPONENTE PARA IMAGENS DINÂMICAS DO EBOOK ---
+const EbookImage = ({ fileName }) => {
+  const [imageUrl, setImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      if (!storage || !fileName) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        // Monta a referência completa da imagem na pasta correta
+        const imageRef = ref(storage, `ebookImages/${fileName}`);
+        const url = await getDownloadURL(imageRef);
+        setImageUrl(url);
+      } catch (error) {
+        console.error(`Erro ao buscar a imagem do ebook (${fileName}):`, error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchImage();
+  }, [fileName]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full aspect-video bg-white/5 rounded-lg flex items-center justify-center mb-4">
+        <div className="w-8 h-8 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Se a URL não for encontrada, simplesmente não renderiza nada
+  if (!imageUrl) return null;
+
+  return <img src={imageUrl} alt={`Ilustração do capítulo`} className="w-full rounded-lg mb-4" />;
+};
+// --- FIM: NOVO COMPONENTE PARA IMAGENS DINÂMICAS DO EBOOK ---
+
+// --- TELA DO EBOOK (COM CAPA E IMAGENS INTERNAS E LEITOR DE AUDIO) ---
+const EbookScreen = ({ setActiveScreen }) => {
+  const { ebookFontSize, lastReadChapter, updateEbookProgress, activeTheme } = useContext(AppContext);
+  const [currentChapterIndex, setCurrentChapterIndex] = useState(lastReadChapter || 0);
+  const [showCover, setShowCover] = useState(lastReadChapter === 0);
+
+  // Lógica para busca dinâmica da imagem da capa
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [isCoverLoading, setIsCoverLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCoverImage = async () => {
+      if (!storage) return;
+      setIsCoverLoading(true);
+      try {
+        const imageRef = ref(storage, 'ebookImages/Capa.png');
+        const url = await getDownloadURL(imageRef);
+        setCoverImageUrl(url);
+      } catch (error) {
+        console.error("Erro ao buscar a imagem de capa do ebook:", error);
+      } finally {
+        setIsCoverLoading(false);
+      }
+    };
+
+    if (showCover) {
+      fetchCoverImage();
+    } else {
+      setIsCoverLoading(false);
+    }
+  }, [showCover]);
+
+  useEffect(() => {
+    setShowCover(currentChapterIndex === 0);
+  }, [currentChapterIndex]);
+
+  useEffect(() => {
+    if (currentChapterIndex !== lastReadChapter) {
+      updateEbookProgress({ chapterIndex: currentChapterIndex });
+    }
+  }, [currentChapterIndex, lastReadChapter, updateEbookProgress]);
+
+  const { title, chapters } = EBOOK_DATA;
+  const currentChapter = chapters[currentChapterIndex];
+
+  // --- LÓGICA DE ÁUDIO CORRIGIDA ---
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [spokenParagraphIndex, setSpokenParagraphIndex] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      speechSynthesis.cancel();
+      setIsPlaying(false);
+      setSpokenParagraphIndex(null);
+    };
+  }, [currentChapterIndex]);
+
+  const handleTogglePlay = () => {
+    if (speechSynthesis.speaking && !speechSynthesis.paused) {
+      speechSynthesis.pause();
+      setIsPlaying(false);
+    } else if (speechSynthesis.paused) {
+      speechSynthesis.resume();
+      setIsPlaying(true);
+    } else {
+      speechSynthesis.cancel();
+      const contentItems = currentChapter.content;
+      let currentIndex = 0;
+
+      const speakNext = () => {
+        // Procura o próximo item que seja do tipo 'text' para ler
+        let currentItem = contentItems[currentIndex];
+        while (currentItem && currentItem.type !== 'text') {
+          currentIndex++;
+          currentItem = contentItems[currentIndex];
+        }
+
+        // Se encontrou um item de texto, fala ele
+        if (currentItem) {
+          const textToSpeak = currentItem.value.replace(/<[^>]+>/g, ''); // Remove tags HTML
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.lang = 'pt-BR';
+          
+          utterance.onstart = () => {
+            setSpokenParagraphIndex(currentIndex);
+          };
+
+          utterance.onend = () => {
+            currentIndex++;
+            speakNext(); // Chama a função para o próximo item
+          };
+          
+          utterance.onerror = (event) => {
+            console.error("Erro na síntese de voz:", event.error);
+            setIsPlaying(false);
+            setSpokenParagraphIndex(null);
+          };
+
+          speechSynthesis.speak(utterance);
+        } else {
+          // Chegou ao fim da lista de conteúdos
+          setIsPlaying(false);
+          setSpokenParagraphIndex(null);
+        }
+      };
+      
+      setIsPlaying(true);
+      speakNext();
+    }
+  };
+  
+  // Lógica de fonte (sem alteração)
+  const FONT_STEP = 2;
+  const MIN_FONT_SIZE = 12;
+  const MAX_FONT_SIZE = 28;
+  const handleFontSizeChange = (change) => {
+    const newSize = ebookFontSize + change;
+    if (newSize >= MIN_FONT_SIZE && newSize <= MAX_FONT_SIZE) {
+      updateEbookProgress({ fontSize: newSize });
+    }
+  };
+  const resetFontSize = () => updateEbookProgress({ fontSize: 16 });
+
+  // Renderização da Capa (sem alteração)
+  if (showCover) {
+    return (
+      <div className="page-container flex flex-col items-center justify-center text-center">
+        {isCoverLoading ? (
+          <div className="w-full max-w-xs aspect-[2/3] bg-white/5 rounded-lg flex items-center justify-center mb-8">
+            <div className="w-8 h-8 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <img src={coverImageUrl} alt={title} className="w-full max-w-xs rounded-lg shadow-2xl mb-8" />
+        )}
+        <h1 className="page-title !text-3xl">{title}</h1>
+        <button 
+          onClick={() => setShowCover(false)} 
+          className="w-full max-w-xs mx-auto modern-btn-primary h-14 mt-6"
+        >
+          Começar a Ler
+        </button>
+      </div>
+    );
+  }
+
+  // Layout normal do leitor (sem alteração)
+  return (
+    <div className="page-container">
+      <div className="flex justify-between items-center mb-4">
+          <button onClick={() => setActiveScreen("more")} className="flex items-center gap-2 text-sm text-[#FFD54F]">
+            <ChevronLeft size={16} /> Voltar
+          </button>
+          <div className="flex items-center gap-2 bg-black/20 p-1 rounded-full">
+              <button onClick={() => handleFontSizeChange(-FONT_STEP)} className="p-2 text-white/70 hover:text-white rounded-full transition-colors">-A</button>
+              <button onClick={resetFontSize} className="p-2 text-white/70 hover:text-white rounded-full transition-colors text-sm">A</button>
+              <button onClick={() => handleFontSizeChange(FONT_STEP)} className="p-2 text-white/70 hover:text-white rounded-full transition-colors">+A</button>
+          </div>
+      </div>
+      
+      <PageTitle subtitle={title}>{currentChapter.title}</PageTitle>
+
+      <div className={`w-full max-w-lg mx-auto glass-card space-y-4 !p-6 sm:!p-8 transition-colors ${activeTheme === 'serenity_theme' ? 'theme-serenity_theme' : ''}`}>
+        
+        {currentChapter.image && (
+          <EbookImage fileName={currentChapter.image} />
+        )}
+
+        <div className="flex justify-center mb-4">
+          <button onClick={handleTogglePlay} className="modern-btn-primary !py-2 !px-5 !text-sm !font-semibold">
+            {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            {isPlaying ? 'Pausar Áudio' : (speechSynthesis.paused && speechSynthesis.speaking) ? 'Continuar Áudio' : 'Ouvir Capítulo'}
+          </button>
+        </div>
+
+        {currentChapter.content.map((item, index) => {
+          if (item.type === 'text') {
+            return (
+              <p 
+                key={index} 
+                className={`font-light leading-relaxed transition-all duration-500 ${spokenParagraphIndex === index ? 'text-white' : 'text-white/70'}`}
+                style={{ fontSize: `${ebookFontSize}px` }}
+                dangerouslySetInnerHTML={{ __html: item.value }}
+              />
+            );
+          }
+          if (item.type === 'image') {
+            return <EbookImage key={index} fileName={item.value} />;
+          }
+          return null;
+        })}
+      </div>
+      
+      <div className="w-full max-w-lg mx-auto flex justify-between items-center mt-4">
+        <button onClick={() => setCurrentChapterIndex(prev => Math.max(0, prev - 1))} disabled={currentChapterIndex === 0} className="btn-secondary flex items-center gap-2">
+          <ChevronLeft size={16} /> Anterior
+        </button>
+        <span className="text-sm text-white/70"> {currentChapterIndex + 1} de {chapters.length}</span>
+        <button onClick={() => setCurrentChapterIndex(prev => Math.min(chapters.length - 1, prev + 1))} disabled={currentChapterIndex === chapters.length - 1} className="btn-secondary flex items-center gap-2">
+          Próximo <ChevronLeft size={16} className="transform rotate-180" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- FIM NOVA TELA DO EBOOK ---
+
 
 // --- INÍCIO: NOVOS COMPONENTES PARA CONCLUSÃO DE PRÁTICA ---
 
