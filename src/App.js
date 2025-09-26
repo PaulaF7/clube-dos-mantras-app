@@ -6096,7 +6096,7 @@ useEffect(() => {
             return;
         }
         setStatus('submitting');
-        setStatusMessage('Salvando perfil e enviando pergunta...');
+        setStatusMessage('Enviando pergunta...');
         try {
             const userRef = doc(db, "users", userId);
             await setDoc(userRef, { astroProfile }, { merge: true });
@@ -6184,7 +6184,7 @@ useEffect(() => {
 
 
                     <div className="space-y-4 pt-4 border-t border-white/10">
-                        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta sobre sua missão de vida, carreira ou relacionamentos..." disabled={!canAsk} />
+                        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea-field" rows="4" placeholder="Faça sua pergunta..." disabled={!canAsk} />
                         
                         <button onClick={handlePrimaryAction} className="w-full modern-btn-primary h-14" disabled={status === 'submitting'}>
                         {status === 'submitting' ? 'Enviando...' : (needsToPayOrSubscribe ? 'Faça uma nova pergunta' : 'Enviar Pergunta')}
