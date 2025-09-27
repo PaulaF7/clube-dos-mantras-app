@@ -467,6 +467,25 @@ const GlobalStyles = memo(() => (
     @keyframes screen-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .screen-animation { animation: screen-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
+.glass-card, .glass-modal { 
+    background: rgba(255, 255, 255, 0.08); /* igual ao btn-secondary */
+  backdrop-filter: blur(12px); /* menos blur para não “foscar” tanto */
+  -webkit-backdrop-filter: blur(12px); 
+  border-radius: 1.5rem; 
+  border: 1px solid rgba(255, 255, 255, 0.08); 
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); 
+  padding: 2rem; 
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+  will-change: transform, opacity;
+}
+
+/* --- NOVO: ESTILO OPACO PARA O LEITOR DE EBOOK --- */
+.ebook-reader-card {
+  background: #1f0c3d !important; /* Um roxo escuro e sólido do tema */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
     @keyframes favorite-pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
     .favorite-animation { animation: favorite-pop 0.3s ease-in-out; }
     .dragging { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
@@ -8192,7 +8211,7 @@ const EbookScreen = ({ setActiveScreen }) => {
       
       <PageTitle subtitle={title}>{currentChapter.title}</PageTitle>
 
-      <div className={`w-full max-w-lg mx-auto glass-card space-y-4 !p-6 sm:!p-8 transition-colors ${activeTheme === 'serenity_theme' ? 'theme-serenity_theme' : ''}`}>
+      <div className={`w-full max-w-lg mx-auto glass-card ebook-reader-card space-y-4 !p-6 sm:!p-8 transition-colors ${activeTheme === 'serenity_theme' ? 'theme-serenity_theme' : ''}`}>
         
         {currentChapter.image && (
           <EbookImage fileName={currentChapter.image} />
