@@ -844,6 +844,22 @@ const EBOOK_DATA = {
       ]
     },
     {
+      title: "Índice",
+      content: [
+        { type: 'text', value: "• Introdução" },
+        { type: 'text', value: "• O que é um mantra?" },
+        { type: 'text', value: "• Para que servem os mantras?" },
+        { type: 'text', value: "• Como os mantras funcionam?" },
+        { type: 'text', value: "• Porque usar os mantras?" },
+        { type: 'text', value: "• Como usar os mantras deste guia?" },
+        { type: 'text', value: "• Como começar?" },
+        { type: 'text', value: "• Quantas repetições fazer?" },
+        { type: 'text', value: "• Um lembrete final" },
+        { type: 'text', value: "• Catálogo de mantras" },
+        { type: 'text', value: "• Conclusão" }
+      ]
+    },
+    {
       title: "Introdução",
       content: [
         { type: 'text', value: "Seja bem-vindo ao <span class=\"ebook-highlight\">Guia Prático para Mantras</span>." },
@@ -8108,7 +8124,7 @@ const EbookScreen = ({ setActiveScreen }) => {
   const { title, chapters } = EBOOK_DATA;
   const currentChapter = chapters[currentChapterIndex];
 
-  // --- LÓGICA DE ÁUDIO CORRIGIDA ---
+  // --- LÓGICA DE ÁUDIO E FONTE (sem alterações) ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [spokenParagraphIndex, setSpokenParagraphIndex] = useState(null);
 
@@ -8186,7 +8202,12 @@ const EbookScreen = ({ setActiveScreen }) => {
   };
   const resetFontSize = () => updateEbookProgress({ fontSize: 16 });
 
-  // Renderização da Capa (sem alteração)
+  // --- NOVA FUNÇÃO PARA VOLTAR AO INÍCIO ---
+  const handleGoToStart = () => {
+    setCurrentChapterIndex(0);
+  };
+
+  // Renderização da Capa (sem alterações)
   if (showCover) {
     return (
       <div className="page-container flex flex-col items-center justify-center text-center">
@@ -8208,12 +8229,13 @@ const EbookScreen = ({ setActiveScreen }) => {
     );
   }
 
-  // Layout normal do leitor (sem alteração)
+  // Layout normal do leitor
   return (
     <div className="page-container">
       <div className="flex justify-between items-center mb-4">
-          <button onClick={() => setActiveScreen("more")} className="flex items-center gap-2 text-sm text-[#FFD54F]">
-            <ChevronLeft size={16} /> Voltar
+          {/* --- BOTÃO ALTERADO AQUI --- */}
+          <button onClick={handleGoToStart} className="btn-secondary !py-2 !px-3 flex items-center gap-2">
+            <Home size={16} /> Início
           </button>
           <div className="flex items-center gap-2 bg-black/20 p-1 rounded-full">
               <button onClick={() => handleFontSizeChange(-FONT_STEP)} className="p-2 text-white/70 hover:text-white rounded-full transition-colors">-A</button>
@@ -8255,6 +8277,7 @@ const EbookScreen = ({ setActiveScreen }) => {
         })}
       </div>
       
+      {/* Navegação inferior (sem alterações) */}
       <div className="w-full max-w-lg mx-auto flex justify-between items-center mt-4">
         <button onClick={() => setCurrentChapterIndex(prev => Math.max(0, prev - 1))} disabled={currentChapterIndex === 0} className="btn-secondary flex items-center gap-2">
           <ChevronLeft size={16} /> Anterior
