@@ -7036,6 +7036,17 @@ const AppContent = () => {
     triggerPushPermissionRequest();
   };
 
+  const handleDiaryExit = () => {
+    setEntryToEdit(null); // Limpa qualquer edição pendente
+    // Se houver uma tarefa de jornada ativa, conclui a jornada.
+    if (activeJourneyTask) {
+      handleTaskCompletion();
+    } else {
+      // Senão, executa o comportamento padrão de ir para o histórico.
+      setActiveScreen("history");
+    }
+  };
+
   // FUNÇÃO PARA INICIAR UMA TAREFA DA JORNADA
   const handleStartJourneyTask = (journeyId, dayInfo) => {
     const startTask = () => {
@@ -7188,12 +7199,9 @@ const AppContent = () => {
       case "diary":
         return (
           <DiaryScreen
-            onSave={handleSaveOrUpdate}
+            onSave={handleDiaryExit} // <-- ALTERADO AQUI
             entryToEdit={entryToEdit}
-            onCancel={() => {
-              setEntryToEdit(null);
-              setActiveScreen(entryToEdit ? "history" : "home");
-            }}
+            onCancel={handleDiaryExit} // <-- ALTERADO AQUI
             openPremiumModal={openPremiumModal}
           />
         );
@@ -7508,20 +7516,25 @@ const AppContent = () => {
       {practiceResult && (
         <PracticeCompletionScreen
           result={practiceResult}
-          onClose={() => setPracticeResult(null)}
+          onClose={() => {
+            setPracticeResult(null);
+            // Se a prática concluída era parte de uma jornada, finaliza a tarefa.
+            if (activeJourneyTask) {
+              handleTaskCompletion();
+            }
+          }}
           onExportToDiary={() => {
             const entryData = {
               mantraId: practiceResult.mantra.id,
               repetitions: practiceResult.count,
               practicedAt: { toDate: () => practiceResult.completedAt }, // Simula um objeto do Firestore para edição
-              // Preenchemos com valores padrão para o diário
               timeOfDay: [],
               feelings: "",
               observations: ""
             };
-            setPracticeResult(null); // Fecha a tela de conclusão
-            setEntryToEdit(entryData); // Define os dados para o diário
-            setActiveScreen("diary"); // Abre o diário
+            setPracticeResult(null);
+            setEntryToEdit(entryData);
+            setActiveScreen("diary");
           }}
         />
       )}
