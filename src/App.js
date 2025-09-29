@@ -2451,18 +2451,14 @@ const PremiumButton = ({ onClick, children, className = "" }) => (
 );
 const Header = ({ setActiveScreen }) => {
   const LOGO_URL =
-    "https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png";
+    "";
   return (
     <header className="fixed top-0 left-0 right-0 z-30 p-4 glass-nav">
       <div className="max-w-4xl mx-auto flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img
-            src={LOGO_URL}
-            alt="Logo Clube dos Mantras"
-            className="w-10 h-10"
-          />
+          
           <span
-            className="text-lg text-white/90"
+            className="text-lg text-white/60"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Mantras Mais
