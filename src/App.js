@@ -2073,19 +2073,9 @@ const handleSocialLogin = async (providerName) => {
     <div className="min-h-screen flex items-center justify-center p-4 modern-body">
       <div className="w-full max-w-md mx-auto glass-card p-8 space-y-6">
         <div className="text-center">
-          <img
-            src="https://i.postimg.cc/Gm7sPsQL/6230-C8-D1-AC9-B-4744-8809-341-B6-F51964-C.png"
-            alt="Logo Clube dos Mantras"
-            className="mx-auto w-16 h-16 mb-4"
-          />
           <h2 className="page-title !text-2xl !text-white !-mt-2 text-center">
             {isLogin ? "Bem-vindo(a)" : "Crie a Sua Conta"}
           </h2>
-          <p className="mt-[-0.5rem] text-base text-white/70 text-center">
-            {isLogin
-              ? "Acesse seu diário espiritual."
-              : "Comece a sua jornada de transformação."}
-          </p>
         </div>
         <form className="space-y-4" onSubmit={handleEmailAuth}>
           {!isLogin && (
