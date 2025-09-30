@@ -636,7 +636,7 @@ const MANTRAS_DATA = [
     texto: "A paz de Jesus, o Cristo, está em mim e nos outros",
     finalidade: "Cultiva a paz interior e a harmonia com os outros.",
     repeticoes: 12,
-    libraryAudioSrc: null, // Sem versão musical por enquanto
+    libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/A%20Paz%20de%20Jesus.mp3",
     spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/1%20fade.MP3",
     imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
     imagePrompt: "The calming and universal presence of peace.",
@@ -1298,6 +1298,570 @@ const JOURNEYS_DATA = [
     ],
   },
 ];
+// --- INÍCIO DA ESCALA HAWKINS ---
+
+// --- NOVOS DADOS: ESCALA HAWKINS (FONTE DE VERDADE PARA O MAPA) ---
+const HAWKINS_SCALE = [
+  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação" },
+  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa" },
+  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero" },
+  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento" },
+  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade" },
+  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração" },
+  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio" },
+  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo" },
+  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação" },
+  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro" },
+  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista" },
+  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão" },
+  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão" },
+  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência" },
+  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade" },
+  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade" },
+  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível" },
+];
+
+// --- NOVOS HELPERS: API DO MAPA DA MANIFESTAÇÃO ---
+// Wrapper para chamadas às Firebase Cloud Functions (callable)
+async function createCheckin(payload) {
+  if (!functions) return;
+  const fn = httpsCallable(functions, 'createVibrationCheckin');
+  const res = await fn(payload);
+  return res.data;
+}
+
+async function fetchManifestationMap({ date = null } = {}) {
+  if (!functions) return;
+  const fn = httpsCallable(functions, 'getManifestationMap');
+  const res = await fn({ date });
+  return res.data;
+}
+
+async function saveMeta(payload) {
+  if (!functions) return;
+  const fn = httpsCallable(functions, 'saveManifestationMeta');
+  const res = await fn(payload);
+  return res.data;
+}
+
+async function deleteMeta() {
+  if (!functions) return;
+  const fn = httpsCallable(functions, 'deleteManifestationMeta');
+  const res = await fn();
+  return res.data;
+}
+
+// --- NOVOS COMPONENTES: MAPA DA MANIFESTAÇÃO ---
+
+const LevelBar = ({ nivel, hz }) => {
+    // Usamos a mesma escala logarítmica do backend para consistência visual
+    const MIN_HZ_LOG = Math.log(20);
+    const MAX_HZ_LOG = Math.log(900);
+
+    // Calcula o progresso do usuário na escala logarítmica
+    const userPercentage = hz > 20
+        ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100
+        : 0;
+
+    // Calcula a posição do marcador de 200 Hz na mesma escala
+    const manifestationMarkerPosition = ((Math.log(200) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100;
+
+    return (
+        <div className="glass-card space-y-3">
+            {/* Container do cabeçalho corrigido para ser responsivo */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1 sm:gap-2">
+                <h3 className="font-semibold text-base">Seu Nível de Consciência</h3>
+                {nivel && <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap self-start sm:self-auto">{nivel.rotulo}</span>}
+            </div>
+            
+            {/* Container para a barra e o marcador acima */}
+            <div className="relative pt-8">
+                <div className="w-full bg-black/20 rounded-full h-4 overflow-hidden">
+                    {/* Barra de progresso do usuário */}
+                    <div
+                        className="h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-400 transition-all duration-1000 ease-out"
+                        style={{ width: `${Math.min(100, Math.max(0, userPercentage))}%` }}
+                    ></div>
+                </div>
+
+                {/* Marcador Aprimorado do Início da Manifestação */}
+                <div
+                    className="absolute -top-1 flex flex-col items-center -translate-x-1/2"
+                    style={{ left: `${manifestationMarkerPosition}%` }}
+                    title="Início da manifestação (Coragem 200Hz)"
+                >
+                    <span className="text-yellow-400 text-2xl" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}>🔑</span>
+                    <span className="text-xs text-white/80 mt-1 font-bold">200 Hz</span>
+                </div>
+            </div>
+            
+            <div className="flex justify-between text-xs text-white/60">
+                <span>Sobrevivência</span>
+                <span>Neutralidade</span>
+                <span>Iluminação</span>
+            </div>
+
+            {/* Legenda Explicativa */}
+            <p className="text-sm text-center text-white/70 pt-2 border-t border-white/10">
+              <span className="text-yellow-400">🔑</span> <strong>Ponto de Manifestação:</strong> a partir de 200 Hz (Coragem), você ativa seu poder de criar a realidade que deseja.
+            </p>
+        </div>
+    );
+};
+
+const MiniChartBar = ({ label, value, onClick }) => {
+    const MAX_HZ = 800;
+    const heightPercentage = value > 0 ? Math.min(100, (value / MAX_HZ) * 100) : 0;
+    const barColor = value < 200 ? 'bg-red-400/70' : value < 500 ? 'bg-yellow-400/70' : 'bg-green-400/70';
+
+    return (
+        <button onClick={onClick} className="flex-1 flex flex-col items-center gap-2 text-left w-full rounded-lg hover:bg-white/5 p-2 transition-colors">
+            <div className="w-full h-32 bg-black/20 rounded-lg flex items-end justify-center p-1">
+                <div 
+                    className={`w-full rounded-t-md transition-all duration-700 ease-out ${barColor}`}
+                    style={{ height: `${heightPercentage}%` }}
+                ></div>
+            </div>
+            <span className="text-xs text-white/70 whitespace-nowrap">{label} ({value} Hz)</span>
+        </button>
+    );
+};
+
+// Componente placeholder, pois o código não foi fornecido
+const Historico = () => (
+    <div className="glass-card">
+        <h3 className="font-semibold">Histórico (Em breve)</h3>
+        <p className="text-sm text-white/70 mt-2">Aqui você verá a sua evolução nos últimos 7 e 30 dias.</p>
+    </div>
+);
+
+// INÍCIO DA FUNÇÃO RAIO-X (CHECKIN) //
+const CheckinModal = ({ open, onClose, editingCheckin }) => {
+  const [period, setPeriod] = useState('manha');
+  const [emotionSelected, setEmotionSelected] = useState('');
+  const [freeText, setFreeText] = useState('');
+  const [intensity, setIntensity] = useState(5);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const EMOTIONS = useMemo(() => HAWKINS_SCALE.map(e => e.nivel), []);
+
+  useEffect(() => {
+    if (open) {
+      // Se estiver a editar, preenche o formulário. Senão, define um estado inicial.
+      if (editingCheckin) {
+        setPeriod(editingCheckin.period || 'manha');
+        // A emoção é derivada do `emotionLabel`, que é o rótulo completo.
+        const foundEmotion = HAWKINS_SCALE.find(e => e.rotulo === editingCheckin.emotion);
+        setEmotionSelected(foundEmotion?.nivel || '');
+        setFreeText(''); // Limpa o texto livre ao editar
+        setIntensity(editingCheckin.intensity || 5);
+        setNote(editingCheckin.note || '');
+      } else {
+        const currentHour = new Date().getHours();
+        if (currentHour < 12) setPeriod('manha');
+        else if (currentHour < 18) setPeriod('tarde');
+        else setPeriod('noite');
+        
+        setEmotionSelected('');
+        setFreeText('');
+        setIntensity(5);
+        setNote('');
+      }
+      setError(null);
+      setLoading(false);
+    }
+  }, [open, editingCheckin]);
+
+  if (!open) return null;
+
+  const submit = async () => {
+    setLoading(true); 
+    setError(null);
+    try {
+      let payload = { period, emotionSelected: emotionSelected || null, freeText: freeText || null, intensity: Number(intensity), note };
+      const res = await createCheckin(payload);
+
+      if (res.needsConfirmation) {
+        // Usar um modal customizado em vez de window.confirm no futuro
+        const confirmed = window.confirm(`A nossa análise sugere a emoção: "${res.suggestion}". Deseja confirmar e registar com base nela?`);
+        if (confirmed) {
+          await createCheckin({ period, emotionSelected: res.suggestion, intensity: Number(intensity), note });
+        } else {
+          setError('Por favor, selecione uma emoção da lista para garantir o registo correto.');
+          setLoading(false);
+          return;
+        }
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Ocorreu um erro ao salvar o registo.');
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const isSubmitDisabled = loading || (!emotionSelected && !freeText.trim());
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold text-white">Raio-X Vibracional</h3>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button>
+        </div>
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          <div>
+            <label className="text-sm font-light text-white/80 block mb-1">Período</label>
+            <select value={period} onChange={e=>setPeriod(e.target.value)} className="select-field" disabled={!!editingCheckin}>
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+              <option value="noite">Noite</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-light text-white/80 block mb-1">Como se sente?</label>
+            <select value={emotionSelected} onChange={e=>setEmotionSelected(e.target.value)} className="select-field mb-2">
+              <option value="">-- Selecione uma emoção --</option>
+              {EMOTIONS.map(em => <option key={em} value={em}>{em}</option>)}
+            </select>
+            <p className="text-center text-xs text-white/60 my-2">ou</p>
+            <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} className="textarea-field" rows="3" placeholder="Descreva em poucas palavras..."/>
+          </div>
+          
+          {/* Slider de Intensidade Aprimorado */}
+          <div>
+            <label className="text-sm font-light text-white/80 block mb-1">Intensidade ({intensity})</label>
+            <input type="range" min="1" max="10" value={intensity} onChange={e=>setIntensity(e.target.value)} className="w-full"/>
+            <div className="flex justify-between text-xs text-white/70 mt-1 px-1">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                <span key={num} className={`transition-colors ${Number(intensity) === num ? 'text-yellow-400 font-bold' : ''}`}>{num}</span>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <label className="text-sm font-light text-white/80 block mb-1">Observações (opcional)</label>
+            <input className="input-field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Algum insight ou evento relevante?" />
+          </div>
+
+          {error && <p className="text-red-400 text-sm bg-red-500/20 p-3 rounded-lg">{error}</p>}
+          <div className="flex gap-4 pt-4 border-t border-white/10">
+            <button onClick={onClose} className="w-full btn-secondary">Cancelar</button>
+            <button onClick={submit} className="w-full modern-btn-primary" disabled={isSubmitDisabled}>
+                {loading ? 'A salvar...' : 'Salvar Registo'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// FIM DA FUNÇÃO RAIO-X (CHECKIN) //
+
+
+// INÍCIO DA FUNÇÃO EDITAR META ATUAL //
+const EditarMetaModal = ({ open, onClose, currentMeta }) => {
+  const [titulo, setTitulo] = useState('');
+  const [hz_meta, setHzMeta] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTitulo(currentMeta?.titulo || '');
+      setHzMeta(currentMeta?.hz_meta || '');
+      setError(null);
+      setLoading(false);
+    }
+  }, [open, currentMeta]);
+
+  if (!open) return null;
+
+  const handleSave = async () => {
+    if (!titulo.trim() || !hz_meta) {
+      setError('Por favor, preencha todos os campos.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await saveMeta({ titulo, hz_meta: Number(hz_meta) });
+      onClose(true); 
+    } catch (err) {
+      setError(err.message || 'Ocorreu um erro ao salvar a meta.');
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteMeta();
+      setIsDeleteConfirmOpen(false);
+      onClose(true); // Recarrega os dados na tela principal
+    } catch (err) {
+      setError(err.message || 'Ocorreu um erro ao remover a meta.');
+      setLoading(false);
+    }
+  };
+  
+  const metaOptions = HAWKINS_SCALE.filter(level => level.hz >= 200);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => onClose(false)}>
+        <div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-white">Gerir Meta de Manifestação</h3>
+              <button onClick={() => onClose(false)} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-light text-white/80 block mb-1">A minha Meta (Ex: "Viver em paz")</label>
+              <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="input-field" placeholder="Descreva a sua intenção..."/>
+            </div>
+            <div>
+              <label className="text-sm font-light text-white/80 block mb-1">Qual emoção representa você ao alcançar essa meta?</label>
+              <select value={hz_meta} onChange={e => setHzMeta(e.target.value)} className="select-field">
+                <option value="">-- Escolha um nível de consciência --</option>
+                {metaOptions.map(level => <option key={level.nivel} value={level.hz}>{level.hz} Hz - {level.nivel}</option>)}
+              </select>
+            </div>
+
+            {error && <p className="text-red-400 text-sm bg-red-500/20 p-3 rounded-lg">{error}</p>}
+            
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
+              {currentMeta && (
+                <button onClick={() => setIsDeleteConfirmOpen(true)} className="btn-danger-outline !text-xs !py-1 !px-3" disabled={loading}>
+                  Remover Meta
+                </button>
+              )}
+              <div className="flex gap-4 flex-grow justify-end">
+                <button onClick={() => onClose(false)} className="btn-secondary">Cancelar</button>
+                <button onClick={handleSave} className="modern-btn-primary" disabled={loading}>
+                    {loading ? 'A guardar...' : 'Guardar Meta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ConfirmationModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Remover Meta"
+        message="Tem a certeza de que deseja remover a sua meta atual? Esta ação não pode ser desfeita."
+      />
+    </>
+  );
+};
+// FIM DA FUNÇÃO EDITAR META ATUAL //
+
+const TrialExpiredModal = ({ open, onClose, onSubscribe }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="glass-modal w-full max-w-sm text-center">
+        <h2 className="text-2xl text-white" style={{ fontFamily: "var(--font-display)" }}>Seu teste terminou ✨</h2>
+        <p className="text-white/70 my-3 font-light text-base">
+          O seu período gratuito de 24 horas terminou. Para continuar a usar o <strong>Mapa da Manifestação</strong> e outros recursos, torne-se um assinante Premium.
+        </p>
+        <div className="flex flex-col gap-3 mt-6">
+          <button
+            onClick={onSubscribe}
+            className="w-full modern-btn-primary !py-3 !text-base"
+          >
+            Tornar-se Premium
+          </button>
+          <button
+            onClick={onClose}
+            className="text-sm text-white/60 hover:underline py-2"
+          >
+            Talvez depois
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// INÍCIO DO COMPONENTE MapaManifestacaoScreen //
+const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
+  const { isSubscribed } = useContext(AppContext);
+  const [data, setData] = useState(null);
+  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+  const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
+  const [editingCheckin, setEditingCheckin] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isTrialExpiredModalOpen, setIsTrialExpiredModalOpen] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  const handleTrialError = (error) => {
+    if (error.code === 'permission-denied' && error.message.includes('24h')) {
+      setIsTrialExpiredModalOpen(true);
+      return true;
+    }
+    return false;
+  };
+
+  const loadData = useCallback(async (date = null) => {
+    if(isInitialLoad) setLoading(true);
+    try {
+      const res = await fetchManifestationMap({ date });
+      setData(res);
+    } catch(error) {
+      console.error("Erro ao carregar dados do mapa:", error);
+      if (handleTrialError(error) && isInitialLoad) {
+          setData(null); // Limpa os dados se o trial expirou no carregamento inicial
+      }
+    } finally {
+      if(isInitialLoad) {
+        setLoading(false);
+        setIsInitialLoad(false);
+      }
+    }
+  }, [isInitialLoad]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleOpenCheckinModal = (checkinToEdit = null) => {
+    setEditingCheckin(checkinToEdit);
+    setIsCheckinModalOpen(true);
+  };
+  
+  const handleCloseCheckinModal = () => {
+      setIsCheckinModalOpen(false);
+      setEditingCheckin(null);
+      loadData();
+  };
+
+  const handleCloseMetaModal = (didSave) => {
+      setIsMetaModalOpen(false);
+      if (didSave) {
+          loadData();
+      }
+  };
+  
+  const Card = ({ children, className }) => (
+    <div className={`glass-card space-y-4 ${className || ''}`}>
+        {children}
+    </div>
+  );
+
+  if (loading) {
+      return (
+          <div className="page-container flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+          </div>
+      );
+  }
+  
+  const getCheckinForPeriod = (period) => data?.checkins?.find(c => c.period === period);
+
+  return (
+    <div className="page-container">
+      <PageTitle subtitle="Acompanhe sua energia diária e veja se está alinhado para realizar os seus sonhos.">
+        Mapa da Manifestação
+      </PageTitle>
+      
+      {!isSubscribed && (
+        <div className="bg-yellow-400/20 text-yellow-300 text-sm text-center rounded-lg p-3">
+          🎁 Primeiro dia de uso grátis! Após 24h, este recurso será exclusivo para assinantes premium.
+        </div>
+      )}
+
+      <Card>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <button onClick={() => setIsMetaModalOpen(true)} className="w-full text-left group">
+            <div className="flex items-center gap-2">
+                <h2 className="text-lg font-medium text-white/80 group-hover:text-white transition-colors">Meta Atual</h2>
+                <Edit3 size={16} className="text-white/50 group-hover:text-[#FFD54F] transition-colors" />
+            </div>
+            <p className="text-base text-white truncate">{data?.meta?.titulo || 'Clique para definir a sua meta'}</p>
+            <div className="text-2xl font-bold text-[#FFD54F]">{data?.meta?.hz_meta ? `${data.meta.hz_meta} Hz` : '-- Hz'}</div>
+          </button>
+          
+          <div className="w-full sm:w-auto flex-shrink-0">
+            <button 
+              onClick={() => handleOpenCheckinModal(null)} 
+              className="modern-btn-primary w-full sm:w-auto"
+            >
+              Registar Raio-X
+            </button>
+          </div>
+        </div>
+      </Card>
+      
+      {data ? (
+        <>
+          <Card>
+            <h3 className="font-semibold">Padrão Vibratório (Hoje)</h3>
+            <div className="flex gap-2 sm:gap-4">
+              <MiniChartBar 
+                label="Manhã" 
+                value={getCheckinForPeriod('manha')?.hz ?? 0}
+                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('manha') || { period: 'manha' })}
+              />
+              <MiniChartBar 
+                label="Tarde" 
+                value={getCheckinForPeriod('tarde')?.hz ?? 0}
+                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('tarde') || { period: 'tarde' })}
+              />
+              <MiniChartBar 
+                label="Noite" 
+                value={getCheckinForPeriod('noite')?.hz ?? 0}
+                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('noite') || { period: 'noite' })}
+              />
+            </div>
+            <div className="pt-4 mt-2 border-t border-white/10 text-center">
+                {data.hz_medio ? (
+                     <p className="text-sm font-light text-white/90">A sua energia média hoje foi <strong>{data.hz_medio} Hz ({data.nivel?.nivel || 'N/A'})</strong>, resultando em <strong>{data.pontos || 0} Pontos de Vibração</strong>.</p>
+                ) : (
+                    <p className="text-sm font-light text-white/70">Nenhum registo hoje. Faça o seu primeiro Raio-X Vibracional.</p>
+                )}
+            </div>
+          </Card>
+          <LevelBar nivel={data.nivel} hz={data.hz_medio} />
+        </>
+      ) : (
+        <Card className="text-center">
+            <Sparkles className="mx-auto h-12 w-12 text-white/50" />
+            <h3 className="font-semibold">Recurso Premium</h3>
+            <p className="text-sm text-white/70">O seu período de teste de 24 horas terminou. Assine o Premium para continuar a usar o Mapa da Manifestação.</p>
+            <button onClick={openPremiumModal} className="modern-btn-primary w-full sm:w-auto mt-2">Tornar-se Premium</button>
+        </Card>
+      )}
+
+      <Historico />
+
+      <CheckinModal 
+        open={isCheckinModalOpen} 
+        onClose={handleCloseCheckinModal}
+        editingCheckin={editingCheckin}
+      />
+      <EditarMetaModal 
+        open={isMetaModalOpen} 
+        onClose={handleCloseMetaModal} 
+        currentMeta={data?.meta}
+      />
+      <TrialExpiredModal
+        open={isTrialExpiredModalOpen}
+        onClose={() => setIsTrialExpiredModalOpen(false)}
+        onSubscribe={() => {
+          setIsTrialExpiredModalOpen(false);
+          openPremiumModal();
+        }}
+      />
+    </div>
+  );
+}
+// FIM DO COMPONENTE MapaManifestacaoScreen //
+
 
 // --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
@@ -2480,6 +3044,7 @@ const BottomNav = ({ activeScreen, setActiveScreen }) => {
   const navItems = [
     { id: "home", icon: Home, label: "Início" },
     { id: "spokenMantras", icon: HandCoins, label: "Mantras" },
+    { id: "mapaManifestacao", icon: Map, label: "Mapa" }, // <-- ADICIONADO AQUI
     { id: "meuSantuario", icon: Leaf, label: "Santuário" },
     { id: "more", icon: AlignJustify, label: "Mais" },
   ];
@@ -7189,6 +7754,8 @@ const AppContent = () => {
     const openPremiumModal = () => setIsPremiumModalOpen(true);
 
     switch (activeScreen.screen) {
+      case "mapaManifestacao": // <-- ADICIONADO AQUI
+        return <MapaManifestacaoScreen setActiveScreen={setActiveScreen} />;
       case "home":
         return (
           <HomeScreen

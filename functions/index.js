@@ -583,3 +583,343 @@ exports.cleanupUserData = functions.auth.user().onDelete(async (user) => {
   logger.log(`Limpeza de dados para o usuário ${uid} concluída.`);
   return null;
 });
+
+//=====================================================================
+//  INÍCIO: MÓDULO MAPA DA MANIFESTAÇÃO
+//=====================================================================
+
+// Fonte de verdade para os cálculos de vibração
+const HAWKINS_SCALE = [
+    { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação" },
+    { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa" },
+    { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero" },
+    { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento" },
+    { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade" },
+    { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração" },
+    { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio" },
+    { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo" },
+    { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação" },
+    { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro" },
+    { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista" },
+    { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão" },
+    { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão" },
+    { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência" },
+    { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade" },
+    { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade" },
+    { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível" },
+];
+
+/**
+ * Helper: Encontra o nível de consciência mais próximo para um dado Hz.
+ */
+const findClosestNivel = (hz) => {
+    if (!hz) return null;
+    return HAWKINS_SCALE.reduce((prev, curr) =>
+        Math.abs(curr.hz - hz) < Math.abs(prev.hz - hz) ? curr : prev
+    );
+};
+
+/**
+ * Helper: Calcula os Pontos de Vibração usando a fórmula logarítmica.
+ */
+const calculateVibrationPoints = (hz) => {
+    if (!hz || hz <= 20) return 0;
+    if (hz >= 900) return 100;
+    const points = Math.round(
+        (Math.log(hz) - Math.log(20)) / (Math.log(900) - Math.log(20)) * 100
+    );
+    return points;
+};
+
+/**
+ * Helper: Classificador NLP simples baseado em palavras-chave (fallback).
+ */
+const NLP_classifyEmotion = (text) => {
+    if (!text || typeof text !== "string") return { emotion: null, confidence: 0 };
+    const t = text.toLowerCase();
+    const mapping = [
+      { keywords: ["culpa", "culpado"], nivel: "Culpa" },
+      { keywords: ["vergonha", "humilha"], nivel: "Vergonha" },
+      { keywords: ["triste", "tristeza", "arrepend"], nivel: "Tristeza" },
+      { keywords: ["medo", "ansiedade", "ansioso"], nivel: "Medo" },
+      { keywords: ["raiva", "ódio", "odio", "irritad"], nivel: "Raiva" },
+      { keywords: ["desejo", "querer", "desejar"], nivel: "Desejo" },
+      { keywords: ["orgulho"], nivel: "Orgulho" },
+      { keywords: ["coragem", "confiante"], nivel: "Coragem" },
+      { keywords: ["neutro", "neutralidade"], nivel: "Neutralidade" },
+      { keywords: ["boa vontade", "otimista"], nivel: "Boa vontade" },
+      { keywords: ["aceitação", "perdo"], nivel: "Aceitação" },
+      { keywords: ["razão", "racional"], nivel: "Razão" },
+      { keywords: ["amor", "amoroso", "amando"], nivel: "Amor" },
+      { keywords: ["alegria", "feliz", "seren"], nivel: "Alegria" },
+      { keywords: ["paz", "felicidade"], nivel: "Paz" },
+      { keywords: ["ilumina", "iluminação", "iluminado"], nivel: "Iluminação" },
+      { keywords: ["apático", "apatia", "desespero"], nivel: "Apatia" },
+    ];
+  
+    let best = null;
+    let bestCount = 0;
+    mapping.forEach(m => {
+      let count = 0;
+      m.keywords.forEach(k => { if (t.includes(k)) count++; });
+      if (count > bestCount) { best = m; bestCount = count; }
+    });
+  
+    if (!best) return { emotion: null, confidence: 0 };
+  
+    const confidence = Math.min(0.95, 0.4 + 0.3 * bestCount);
+    return { emotion: best.nivel, confidence };
+};
+
+/**
+ * Helper: Sugere ações com base no Hz médio.
+ */
+function suggestActionsForHz(hz) {
+    if (!hz) return [];
+    const suggestions = [];
+    if (hz < 100) {
+      suggestions.push({ type: 'respiracao', title: 'Respiração 4-4-8', duration: 5, cta: 'Fazer agora' });
+      suggestions.push({ type: 'grounding', title: 'Grounding (calcanhar/respiração)', duration: 5, cta: 'Fazer agora' });
+      suggestions.push({ type: 'meditacao', title: 'Meditação guiada (5 min)', duration: 5, cta: 'Fazer agora' });
+    } else if (hz < 200) {
+      suggestions.push({ type: 'journaling', title: 'Journaling: 3 coisas que posso melhorar', duration: 8, cta: 'Escrever' });
+      suggestions.push({ type: 'caminhada', title: 'Caminhada 10 minutos', duration: 10, cta: 'Agendar' });
+      suggestions.push({ type: 'reframe', title: 'Técnica de Reframing', duration: 6, cta: 'Fazer agora' });
+    } else if (hz < 350) {
+      suggestions.push({ type: 'microtarefas', title: '1 micro-tarefa para progresso', duration: 10, cta: 'Criar tarefa' });
+      suggestions.push({ type: 'gratidao', title: 'Exercício de gratidão (3 itens)', duration: 5, cta: 'Fazer agora' });
+      suggestions.push({ type: 'checklist', title: 'Checklist de pequenas vitórias', duration: 7, cta: 'Fazer agora' });
+    } else {
+      suggestions.push({ type: 'visualizacao', title: 'Visualização da meta (10 min)', duration: 10, cta: 'Fazer agora' });
+      suggestions.push({ type: 'afirmacao', title: 'Afirmações da meta', duration: 5, cta: 'Fazer agora' });
+      suggestions.push({ type: 'meditacao_expansiva', title: 'Meditação de expansão/gratidão', duration: 12, cta: 'Fazer agora' });
+    }
+    return suggestions;
+}
+
+/**
+ * Cloud Function (Callable): Cria um novo check-in de vibração (versão aprimorada).
+ */
+exports.createVibrationCheckin = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Você precisa estar logado.");
+    const userId = context.auth.uid;
+
+    // Verificação de Premium ou Trial
+    await checkPremiumOrTrial(userId);
+
+    const { period, emotionSelected, freeText, intensity = 5, note = null } = data;
+    if (!period || (!emotionSelected && !freeText)) {
+      throw new functions.https.HttpsError("invalid-argument", "Dados do check-in incompletos.");
+    }
+  
+    let hz, emotionLabel;
+    if (emotionSelected) {
+      const found = HAWKINS_SCALE.find(e => e.nivel === emotionSelected);
+      if (!found) throw new functions.https.HttpsError("not-found", "Emoção selecionada não encontrada.");
+      hz = found.hz;
+      emotionLabel = found.rotulo;
+    } else {
+      const { emotion, confidence } = NLP_classifyEmotion(freeText);
+      if (!emotion || confidence < 0.7) {
+        return { success: false, needsConfirmation: true, suggestion: emotion, confidence };
+      }
+      const found = HAWKINS_SCALE.find(e => e.nivel === emotion);
+      hz = found.hz;
+      emotionLabel = found.rotulo;
+    }
+  
+    const hzClamped = Math.max(20, Math.min(900, hz));
+    const docData = {
+      userId,
+      period,
+      hz: hzClamped,
+      emotionLabel,
+      intensity,
+      note,
+      createdAt: FieldValue.serverTimestamp(),
+    };
+  
+    const ref = await db.collection(`users/${userId}/vibrationCheckins`).doc();
+    await ref.set(docData);
+    return { success: true, checkinId: ref.id };
+});
+
+/**
+ * Helper: Verifica se o usuário tem acesso Premium ou se está dentro do período de trial de 24h.
+ * Inicia o trial no primeiro uso.
+ * @param {string} userId O ID do usuário a ser verificado.
+ * @throws {HttpsError} Se o usuário não tiver permissão.
+ */
+const checkPremiumOrTrial = async (userId) => {
+  const userRef = db.collection("users").doc(userId);
+  const userDoc = await userRef.get();
+  const userData = userDoc.exists ? userDoc.data() : {};
+
+  // Se for assinante Premium, permite o acesso.
+  if (userData.isPremium) {
+    return true;
+  }
+
+  const now = admin.firestore.Timestamp.now();
+
+  // Se não for premium e não tiver um trial iniciado, este é o primeiro uso.
+  // Inicia o trial e permite o acesso.
+  if (!userData.trialStart) {
+    await userRef.set({ trialStart: now }, { merge: true });
+    return true;
+  }
+  
+  // Se já tem um trial, verifica se expirou.
+  const trialStart = userData.trialStart.toDate();
+  const trialExpiration = new Date(trialStart.getTime() + 24 * 60 * 60 * 1000); // 24 horas depois
+
+  if (now.toDate() > trialExpiration) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "O período de teste de 24h expirou. Assine para continuar."
+    );
+  }
+
+  // Se chegou até aqui, o trial ainda é válido.
+  return true;
+};
+
+/**
+ * Cloud Function (Callable): Salva a meta de manifestação do usuário.
+ */
+exports.saveManifestationMeta = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Você precisa estar logado.");
+  const userId = context.auth.uid;
+
+  // Verificação de Premium ou Trial
+  await checkPremiumOrTrial(userId);
+
+  const { titulo, hz_meta } = data;
+    if (!titulo || !hz_meta) throw new functions.https.HttpsError("invalid-argument", "Meta inválida.");
+    await db.collection("users").doc(userId).set({
+      manifestationMeta: {
+        titulo,
+        hz_meta,
+        updatedAt: FieldValue.serverTimestamp()
+      }
+    }, { merge: true });
+    return { success: true };
+});
+
+/**
+ * Cloud Function (Callable): Calcula e retorna os dados do Mapa da Manifestação (versão aprimorada).
+ */
+exports.getManifestationMap = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Você precisa estar logado.");
+    }
+    
+    const userId = context.auth.uid;
+
+    // Verificação de Premium ou Trial
+    await checkPremiumOrTrial(userId);
+    
+    const targetDate = data.date ? new Date(data.date) : new Date();
+
+    const localTimezoneOffset = targetDate.getTimezoneOffset() * 60000;
+    const localDate = new Date(targetDate.getTime() - localTimezoneOffset);
+    const startOfDay = new Date(localDate.toISOString().split('T')[0] + "T00:00:00.000Z");
+    const endOfDay = new Date(localDate.toISOString().split('T')[0] + "T23:59:59.999Z");
+
+    try {
+        const userDocPromise = db.collection('users').doc(userId).get();
+        const checkinsPromise = db.collection(`users/${userId}/vibrationCheckins`)
+            .where('createdAt', '>=', startOfDay)
+            .where('createdAt', '<=', endOfDay)
+            .get();
+
+        const [userDoc, checkinsSnapshot] = await Promise.all([userDocPromise, checkinsPromise]);
+
+        const meta = userDoc.exists ? userDoc.data().manifestationMeta : null;
+        
+        // Objeto para armazenar apenas o check-in mais recente de cada período
+        const latestCheckins = {};
+
+        checkinsSnapshot.docs.forEach(doc => {
+            const checkinData = doc.data();
+            const period = checkinData.period;
+
+            // Se ainda não houver um check-in para este período, ou se o atual for mais recente,
+            // armazena/sobrescreve.
+            if (!latestCheckins[period] || checkinData.createdAt.toMillis() > latestCheckins[period].createdAt.toMillis()) {
+                latestCheckins[period] = checkinData;
+            }
+        });
+
+        // Converte o objeto de volta para um array para os cálculos
+        const finalCheckins = Object.values(latestCheckins);
+        
+        if (finalCheckins.length === 0) {
+            return {
+                date: startOfDay.toISOString().split('T')[0],
+                checkins: [],
+                hz_medio: null,
+                nivel: null,
+                pontos: 0,
+                meta: meta || null,
+                suggestions: suggestActionsForHz(null),
+            };
+        }
+        
+        let sumWeightedHz = 0;
+        let sumWeights = 0;
+        
+        finalCheckins.forEach(c => {
+            const weight = c.intensity || 1;
+            sumWeightedHz += c.hz * weight;
+            sumWeights += weight;
+        });
+
+        const hz_medio = sumWeightedHz / sumWeights;
+        const nivel = findClosestNivel(hz_medio);
+        const pontos = calculateVibrationPoints(hz_medio);
+        
+        return {
+            date: startOfDay.toISOString().split('T')[0],
+            checkins: finalCheckins.map(c => ({ 
+                period: c.period, 
+                hz: c.hz, 
+                emotion: c.emotionLabel, 
+                createdAt: c.createdAt ? c.createdAt.toDate().toISOString() : null 
+            })).sort((a,b) => (a.createdAt > b.createdAt) ? 1 : -1),
+            hz_medio: parseFloat(hz_medio.toFixed(2)),
+            nivel,
+            pontos,
+            meta: meta || null,
+            suggestions: suggestActionsForHz(hz_medio),
+        };
+
+    } catch (error) {
+        functions.logger.error("Erro ao calcular o mapa da manifestação:", error);
+        throw new functions.https.HttpsError("internal", "Não foi possível calcular o mapa.");
+    }
+});
+//=====================================================================
+//  FIM: MÓDULO MAPA DA MANIFESTAÇÃO
+//=====================================================================
+
+/**
+ * Cloud Function (Callable): Apaga a meta de manifestação do utilizador.
+ */
+exports.deleteManifestationMeta = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "É necessário estar autenticado.");
+  }
+  const userId = context.auth.uid;
+  const userRef = db.collection("users").doc(userId);
+
+  try {
+    await userRef.update({
+      manifestationMeta: FieldValue.delete()
+    });
+    return { success: true, message: "Meta removida com sucesso." };
+  } catch (error) {
+    functions.logger.error("Erro ao remover a meta de manifestação:", error);
+    throw new functions.https.HttpsError("internal", "Não foi possível remover a meta.");
+  }
+});
