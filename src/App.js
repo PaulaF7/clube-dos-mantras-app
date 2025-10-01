@@ -91,7 +91,9 @@ import {
   Cookie,
   Coffee,
   CakeSlice,
+  Info, // <-- ADICIONE ESTA LINHA
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
 
 // Adicione este novo componente no seu App.js
@@ -1302,23 +1304,23 @@ const JOURNEYS_DATA = [
 
 // --- NOVOS DADOS: ESCALA HAWKINS (FONTE DE VERDADE PARA O MAPA) ---
 const HAWKINS_SCALE = [
-  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação" },
-  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa" },
-  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero" },
-  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento" },
-  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade" },
-  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração" },
-  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio" },
-  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo" },
-  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação" },
-  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro" },
-  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista" },
-  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão" },
-  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão" },
-  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência" },
-  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade" },
-  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade" },
-  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível" },
+  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", descricao: "Emoção de humilhação. A vida é vista como miserável. Processo de eliminação." },
+  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", descricao: "Emoção de culpa e ofensa. A vida é vista como um infortúnio. Processo de destruição." },
+  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", descricao: "Emoção de desespero. A vida é vista como desesperançosa. Processo de abdicação (desistência)." },
+  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", descricao: "Emoção de arrependimento. A vida é vista como trágica. Processo de desânimo." },
+  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", descricao: "Emoção de ansiedade. A vida é vista como assustadora. Processo de evasão (fuga da realidade)." },
+  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", descricao: "Emoção de frustração. A vida é vista como desapontadora. Processo de escravização pelos desejos." },
+  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", descricao: "Emoção de ódio. A vida é vista de forma antagónica. Processo de agressão." },
+  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", descricao: "Emoção de desprezo. A vida é vista como exigente. Processo de inflação do ego." },
+  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", descricao: "PONTO DE VIRADA. Emoção de afirmação. A vida é vista como possível. Processo de empoderamento." },
+  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", descricao: "Emoção de confiança. A vida é vista como satisfatória. Processo de libertação." },
+  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", descricao: "Emoção de otimismo. A vida é vista como esperançosa. Processo de intenção." },
+  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", descricao: "Emoção de perdão. A vida é vista como harmoniosa. Processo de transcendência." },
+  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", descricao: "Emoção de compreensão. A vida é vista como significativa. Processo de abstração." },
+  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", descricao: "Emoção de reverência. A vida é vista como benigna. Processo de revelação." },
+  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", descricao: "Emoção de serenidade. A vida é vista como completa. Processo de transmutação." },
+  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", descricao: "Emoção de felicidade. A vida é vista como perfeita. Processo de iluminação." },
+  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", descricao: "Estado indescritível. A visão de vida é 'Eu Sou'. Processo de plena consciência." },
 ];
 
 // --- NOVOS HELPERS: API DO MAPA DA MANIFESTAÇÃO ---
@@ -1357,40 +1359,47 @@ async function deleteMeta() {
   return res.data;
 }
 
+async function getVibrationHistory(period) {
+  if (!functions) return;
+  const fn = httpsCallable(functions, 'getVibrationHistory');
+  const res = await fn({ period });
+  return res.data;
+}
+
 // --- NOVOS COMPONENTES: MAPA DA MANIFESTAÇÃO ---
 
 const LevelBar = ({ nivel, hz }) => {
-    // Usamos a mesma escala logarítmica do backend para consistência visual
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    // Lógica de cálculo (sem alteração)
     const MIN_HZ_LOG = Math.log(20);
     const MAX_HZ_LOG = Math.log(900);
-
-    // Calcula o progresso do usuário na escala logarítmica
-    const userPercentage = hz > 20
-        ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100
-        : 0;
-
-    // Calcula a posição do marcador de 200 Hz na mesma escala
+    const userPercentage = hz > 20 ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100 : 0;
     const manifestationMarkerPosition = ((Math.log(200) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100;
 
     return (
         <div className="glass-card space-y-3">
-            {/* Container do cabeçalho corrigido para ser responsivo */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1 sm:gap-2">
+            {/* Cabeçalho Responsivo com Ícone de Informação */}
+            <div className="flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1">
                 <h3 className="font-semibold text-base">Seu Nível de Consciência</h3>
-                {nivel && <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap self-start sm:self-auto">{nivel.rotulo}</span>}
+                {nivel && (
+                    <div className="relative flex items-center gap-2">
+                        <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{nivel.rotulo}</span>
+                        <button onClick={() => setIsPopoverOpen(true)} className="text-white/60 hover:text-white transition-colors">
+                            <Info size={16} />
+                        </button>
+                    </div>
+                )}
             </div>
             
-            {/* Container para a barra e o marcador acima */}
+            {/* Barra de Progresso e Marcador */}
             <div className="relative pt-8">
                 <div className="w-full bg-black/20 rounded-full h-4 overflow-hidden">
-                    {/* Barra de progresso do usuário */}
                     <div
                         className="h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-400 transition-all duration-1000 ease-out"
                         style={{ width: `${Math.min(100, Math.max(0, userPercentage))}%` }}
                     ></div>
                 </div>
-
-                {/* Marcador Aprimorado do Início da Manifestação */}
                 <div
                     className="absolute -top-1 flex flex-col items-center -translate-x-1/2"
                     style={{ left: `${manifestationMarkerPosition}%` }}
@@ -1407,10 +1416,22 @@ const LevelBar = ({ nivel, hz }) => {
                 <span>Iluminação</span>
             </div>
 
-            {/* Legenda Explicativa */}
             <p className="text-sm text-center text-white/70 pt-2 border-t border-white/10">
               <span className="text-yellow-400">🔑</span> <strong>Ponto de Manifestação:</strong> a partir de 200 Hz (Coragem), você ativa seu poder de criar a realidade que deseja.
             </p>
+
+            {/* Popover de explicação (CORRIGIDO) */}
+            {isPopoverOpen && nivel && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setIsPopoverOpen(false)}>
+                    <div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-lg text-yellow-400">{nivel.rotulo}</h3>
+                            <button onClick={() => setIsPopoverOpen(false)} className="p-2 -mr-2 rounded-full hover:bg-white/10"><X size={20} /></button>
+                        </div>
+                        <p className="text-white/80 font-light">{nivel.descricao}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1433,13 +1454,137 @@ const MiniChartBar = ({ label, value, onClick }) => {
     );
 };
 
-// Componente placeholder, pois o código não foi fornecido
-const Historico = () => (
-    <div className="glass-card">
-        <h3 className="font-semibold">Histórico (Em breve)</h3>
-        <p className="text-sm text-white/70 mt-2">Aqui você verá a sua evolução nos últimos 7 e 30 dias.</p>
-    </div>
-);
+// INÍCIO DO COMPONETE HISTÓRICO //
+const Historico = () => {
+    const [period, setPeriod] = useState('7d');
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadHistory = async () => {
+            setLoading(true);
+            try {
+                const historyData = await getVibrationHistory(period);
+                const formattedData = historyData.map(item => ({
+                    ...item,
+                    shortDate: new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                }));
+                setData(formattedData);
+            } catch (error) {
+                console.error("Erro ao carregar histórico:", error);
+                setData([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadHistory();
+    }, [period]);
+
+    const analise = useMemo(() => {
+        if (data.length < 2) {
+            return null;
+        }
+        const pontos = data.map(d => d.pontos);
+        const pontoMaximo = Math.max(...pontos);
+        const pontoMinimo = Math.min(...pontos);
+        const primeiroPonto = pontos[0];
+        const ultimoPonto = pontos[pontos.length - 1];
+        let tendencia;
+        const diferenca = ultimoPonto - primeiroPonto;
+        const limiarEstabilidade = 5;
+        if (diferenca > limiarEstabilidade) {
+            tendencia = { texto: 'ascensão', cor: 'text-green-400' };
+        } else if (diferenca < -limiarEstabilidade) {
+            tendencia = { texto: 'queda', cor: 'text-red-400' };
+        } else {
+            tendencia = { texto: 'estabilidade', cor: 'text-yellow-400' };
+        }
+        return { pontoMaximo, pontoMinimo, tendencia };
+    }, [data]);
+
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <div className="h-48 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+                </div>
+            );
+        }
+
+        if (data.length === 0) {
+            return (
+                <div className="h-48 flex flex-col items-center justify-center text-center">
+                    <History size={32} className="text-white/50 mb-2" />
+                    <p className="text-sm text-white/70">Nenhum dado encontrado para este período.</p>
+                </div>
+            );
+        }
+
+        return (
+            <>
+                <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer>
+                        {/* Gráfico com visual restaurado */}
+                        <LineChart data={data} margin={{ top: 5, right: 20, left: -25, bottom: 5 }}>
+                            <CartesianGrid stroke="rgba(255, 255, 255, 0.1)" strokeDasharray="3 3" />
+                            <XAxis dataKey="shortDate" stroke="#A78BFA" fontSize="12px" />
+                            <YAxis stroke="#A78BFA" fontSize="12px" domain={[0, 100]} />
+                            <Tooltip
+                                contentStyle={{ 
+                                    backgroundColor: 'rgba(26, 9, 51, 0.9)', 
+                                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '1rem',
+                                }}
+                                labelStyle={{ color: '#F3E5F5' }}
+                                formatter={(value) => [`${value} Pontos`, 'Vibração']}
+                            />
+                            <Line type="monotone" dataKey="pontos" stroke="#FFD54F" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+                {/* Secção de análise com layout responsivo corrigido */}
+                {analise && (
+                    <div className="pt-4 mt-4 border-t border-white/10 text-sm text-white/80 space-y-2">
+                        <div className="flex justify-between items-center">
+                            <span>Variação no Período:</span>
+                            <strong className="text-white">{analise.pontoMinimo} - {analise.pontoMaximo} pontos</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Tendência Geral:</span>
+                            <strong className={analise.tendencia.cor}>{analise.tendencia.texto}</strong>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
+
+    return (
+        <div className="glass-card">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Histórico de Vibração</h3>
+                <div className="flex bg-black/20 rounded-full p-1 text-sm">
+                    <button 
+                        onClick={() => setPeriod('7d')} 
+                        className={`px-3 py-1 rounded-full transition-colors ${period === '7d' ? 'bg-white/10' : 'text-white/70'}`}
+                    >
+                        7 Dias
+                    </button>
+                    <button 
+                        onClick={() => setPeriod('30d')} 
+                        className={`px-3 py-1 rounded-full transition-colors ${period === '30d' ? 'bg-white/10' : 'text-white/70'}`}
+                    >
+                        30 Dias
+                    </button>
+                </div>
+            </div>
+            {renderContent()}
+        </div>
+    );
+};
+// FIM DO COMPONETE HISTÓRICO //
+
 
 // INÍCIO DA FUNÇÃO RAIO-X (CHECKIN) //
 const CheckinModal = ({ open, onClose, editingCheckin }) => {

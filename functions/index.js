@@ -590,23 +590,23 @@ exports.cleanupUserData = functions.auth.user().onDelete(async (user) => {
 
 // Fonte de verdade para os cálculos de vibração
 const HAWKINS_SCALE = [
-    { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação" },
-    { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa" },
-    { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero" },
-    { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento" },
-    { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade" },
-    { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração" },
-    { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio" },
-    { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo" },
-    { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação" },
-    { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro" },
-    { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista" },
-    { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão" },
-    { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão" },
-    { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência" },
-    { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade" },
-    { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade" },
-    { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível" },
+  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", descricao: "Emoção de humilhação. A vida é vista como miserável. Processo de eliminação." },
+  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", descricao: "Emoção de culpa e ofensa. A vida é vista como um infortúnio. Processo de destruição." },
+  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", descricao: "Emoção de desespero. A vida é vista como desesperançosa. Processo de abdicação (desistência)." },
+  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", descricao: "Emoção de arrependimento. A vida é vista como trágica. Processo de desânimo." },
+  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", descricao: "Emoção de ansiedade. A vida é vista como assustadora. Processo de evasão (fuga da realidade)." },
+  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", descricao: "Emoção de frustração. A vida é vista como desapontadora. Processo de escravização pelos desejos." },
+  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", descricao: "Emoção de ódio. A vida é vista de forma antagónica. Processo de agressão." },
+  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", descricao: "Emoção de desprezo. A vida é vista como exigente. Processo de inflação do ego." },
+  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", descricao: "PONTO DE VIRADA. Emoção de afirmação. A vida é vista como possível. Processo de empoderamento." },
+  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", descricao: "Emoção de confiança. A vida é vista como satisfatória. Processo de libertação." },
+  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", descricao: "Emoção de otimismo. A vida é vista como esperançosa. Processo de intenção." },
+  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", descricao: "Emoção de perdão. A vida é vista como harmoniosa. Processo de transcendência." },
+  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", descricao: "Emoção de compreensão. A vida é vista como significativa. Processo de abstração." },
+  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", descricao: "Emoção de reverência. A vida é vista como benigna. Processo de revelação." },
+  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", descricao: "Emoção de serenidade. A vida é vista como completa. Processo de transmutação." },
+  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", descricao: "Emoção de felicidade. A vida é vista como perfeita. Processo de iluminação." },
+  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", descricao: "Estado indescritível. A visão de vida é 'Eu Sou'. Processo de plena consciência." },
 ];
 
 /**
@@ -930,4 +930,84 @@ exports.deleteManifestationMeta = functions.https.onCall(async (data, context) =
     functions.logger.error("Erro ao remover a meta de manifestação:", error);
     throw new functions.https.HttpsError("internal", "Não foi possível remover a meta.");
   }
+});
+
+/**
+ * Cloud Function (Callable): Busca e processa o histórico de vibração para um determinado período.
+ */
+exports.getVibrationHistory = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "É necessário estar autenticado.");
+    }
+
+    const userId = context.auth.uid;
+    const period = data.period === '30d' ? 30 : 7; // Padrão para 7 dias
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - period);
+
+    try {
+        const checkinsSnapshot = await db.collection(`users/${userId}/vibrationCheckins`)
+            .where('createdAt', '>=', startDate)
+            .where('createdAt', '<=', endDate)
+            .orderBy('createdAt', 'asc')
+            .get();
+
+        if (checkinsSnapshot.empty) {
+            return [];
+        }
+
+        // Agrupa os check-ins por dia
+        const dailyData = {};
+        checkinsSnapshot.forEach(doc => {
+            const checkin = doc.data();
+            // Garante que createdAt é um objeto Date
+            const createdAtDate = checkin.createdAt.toDate();
+            const dayString = createdAtDate.toISOString().slice(0, 10); // Formato YYYY-MM-DD
+
+            if (!dailyData[dayString]) {
+                dailyData[dayString] = [];
+            }
+            dailyData[dayString].push(checkin);
+        });
+
+        // Calcula a média para cada dia
+        const history = Object.keys(dailyData).map(dayString => {
+            const dayCheckins = dailyData[dayString];
+            
+            // Filtra para pegar apenas o mais recente de cada período (manhã, tarde, noite)
+            const latestPerPeriod = {};
+            dayCheckins.forEach(checkin => {
+                const p = checkin.period;
+                if (!latestPerPeriod[p] || checkin.createdAt.toMillis() > latestPerPeriod[p].createdAt.toMillis()) {
+                    latestPerPeriod[p] = checkin;
+                }
+            });
+            const finalCheckins = Object.values(latestPerPeriod);
+
+            let sumWeightedHz = 0;
+            let sumWeights = 0;
+            finalCheckins.forEach(c => {
+                const weight = c.intensity || 1;
+                sumWeightedHz += c.hz * weight;
+                sumWeights += weight;
+            });
+
+            const hz_medio = sumWeights > 0 ? sumWeightedHz / sumWeights : 0;
+            const pontos = calculateVibrationPoints(hz_medio);
+
+            return {
+                date: dayString,
+                hz_medio: parseFloat(hz_medio.toFixed(2)),
+                pontos: pontos,
+            };
+        });
+
+        return history.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    } catch (error) {
+        functions.logger.error("Erro ao buscar histórico de vibração:", error);
+        throw new functions.https.HttpsError("internal", "Não foi possível buscar o histórico.");
+    }
 });
