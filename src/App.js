@@ -1949,7 +1949,7 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
 
   return (
     <div className="page-container">
-      <PageTitle subtitle="Acompanhe o seu padrão vibratório diário com base na Escala de Hawkins.">
+      <PageTitle subtitle="Monitore sua energia todos os dias e descubra se está no caminho certo para manifestar os seus sonhos.">
         Mapa da Manifestação
       </PageTitle>
       
