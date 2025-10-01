@@ -7939,7 +7939,7 @@ const AppContent = () => {
 
     switch (activeScreen.screen) {
       case "mapaManifestacao": // <-- ADICIONADO AQUI
-        return <MapaManifestacaoScreen setActiveScreen={setActiveScreen} />;
+        return <MapaManifestacaoScreen setActiveScreen={setActiveScreen} openPremiumModal={openPremiumModal} />;
       case "home":
         return (
           <HomeScreen
