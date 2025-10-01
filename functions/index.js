@@ -811,7 +811,7 @@ exports.saveManifestationMeta = functions.https.onCall(async (data, context) => 
  */
 exports.getManifestationMap = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Você precisa estar logado.");
+        throw new functions.https.HttpsError("unauthenticated", "É necessário estar autenticado.");
     }
     
     const userId = context.auth.uid;
@@ -819,12 +819,20 @@ exports.getManifestationMap = functions.https.onCall(async (data, context) => {
     // Verificação de Premium ou Trial
     await checkPremiumOrTrial(userId);
     
-    const targetDate = data.date ? new Date(data.date) : new Date();
+    let startOfDay, endOfDay;
 
-    const localTimezoneOffset = targetDate.getTimezoneOffset() * 60000;
-    const localDate = new Date(targetDate.getTime() - localTimezoneOffset);
-    const startOfDay = new Date(localDate.toISOString().split('T')[0] + "T00:00:00.000Z");
-    const endOfDay = new Date(localDate.toISOString().split('T')[0] + "T23:59:59.999Z");
+    // Prioriza o timestamp enviado pelo cliente, que é fuso-horário-agnóstico
+    if (data.dateMs) {
+        startOfDay = new Date(data.dateMs);
+    } else {
+        // Fallback para o comportamento antigo, menos preciso
+        const targetDate = data.date ? new Date(data.date) : new Date();
+        const localTimezoneOffset = targetDate.getTimezoneOffset() * 60000;
+        const localDate = new Date(targetDate.getTime() - localTimezoneOffset);
+        startOfDay = new Date(localDate.toISOString().split('T')[0] + "T00:00:00.000Z");
+    }
+
+    endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 do mesmo dia
 
     try {
         const userDocPromise = db.collection('users').doc(userId).get();

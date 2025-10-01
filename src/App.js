@@ -1330,10 +1330,16 @@ async function createCheckin(payload) {
   return res.data;
 }
 
-async function fetchManifestationMap({ date = null } = {}) {
+/**
+ * fetchManifestationMap - envia ao backend uma representação não ambígua da data.
+ * Se `dateMs` for enviado, o backend usará esse instante (ms desde epoch).
+ * Mantemos compatibilidade com `date` (string) caso existam outros usos.
+ */
+async function fetchManifestationMap({ date = null, dateMs = null } = {}) {
   if (!functions) return;
   const fn = httpsCallable(functions, 'getManifestationMap');
-  const res = await fn({ date });
+  const payload = dateMs != null ? { dateMs } : (date ? { date } : {});
+  const res = await fn(payload);
   return res.data;
 }
 
@@ -1699,7 +1705,9 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
   const [editingCheckin, setEditingCheckin] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isTrialExpiredModalOpen, setIsTrialExpiredModalOpen] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Estado para guardar a data do dia local atual
+  const [currentDay, setCurrentDay] = useState(() => new Date().setHours(0, 0, 0, 0));
 
   const handleTrialError = (error) => {
     if (error.code === 'permission-denied' && error.message.includes('24h')) {
@@ -1709,25 +1717,56 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
     return false;
   };
 
-  const loadData = useCallback(async (date = null) => {
-    if(isInitialLoad) setLoading(true);
+  const loadData = useCallback(async (dateToLoadMs) => {
+    setLoading(true);
     try {
-      const res = await fetchManifestationMap({ date });
+      // Passa o timestamp exato do início do dia do utilizador
+      const res = await fetchManifestationMap({ dateMs: dateToLoadMs });
       setData(res);
     } catch(error) {
       console.error("Erro ao carregar dados do mapa:", error);
-      if (handleTrialError(error) && isInitialLoad) {
-          setData(null); // Limpa os dados se o trial expirou no carregamento inicial
+      if (handleTrialError(error)) {
+        setData(null);
       }
     } finally {
-      if(isInitialLoad) {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
+      setLoading(false);
     }
-  }, [isInitialLoad]);
+  }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Efeito principal: carrega os dados sempre que `currentDay` mudar.
+  useEffect(() => {
+    loadData(currentDay);
+  }, [currentDay, loadData]);
+
+  // Efeito robusto para verificar a mudança de dia
+  useEffect(() => {
+    const checkDate = () => {
+      const todayStartMs = new Date().setHours(0, 0, 0, 0);
+      if (todayStartMs !== currentDay) {
+        setCurrentDay(todayStartMs);
+      }
+    };
+
+    // Verifica imediatamente ao carregar
+    checkDate(); 
+
+    // Verifica a cada minuto
+    const interval = setInterval(checkDate, 60000); 
+
+    // Verifica quando o app volta do segundo plano
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkDate();
+      }
+    };
+    window.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [currentDay]);
+
 
   const handleOpenCheckinModal = (checkinToEdit = null) => {
     setEditingCheckin(checkinToEdit);
@@ -1737,13 +1776,13 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
   const handleCloseCheckinModal = () => {
       setIsCheckinModalOpen(false);
       setEditingCheckin(null);
-      loadData();
+      loadData(currentDay); // Recarrega os dados do dia atual
   };
 
   const handleCloseMetaModal = (didSave) => {
       setIsMetaModalOpen(false);
       if (didSave) {
-          loadData();
+          loadData(currentDay); // Recarrega os dados do dia atual
       }
   };
   
@@ -1753,7 +1792,7 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
     </div>
   );
 
-  if (loading) {
+  if (loading && !data) {
       return (
           <div className="page-container flex items-center justify-center">
               <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -1765,7 +1804,7 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
 
   return (
     <div className="page-container">
-      <PageTitle subtitle="Acompanhe sua energia diária e veja se está alinhado para realizar os seus sonhos.">
+      <PageTitle subtitle="Acompanhe o seu padrão vibratório diário com base na Escala de Hawkins.">
         Mapa da Manifestação
       </PageTitle>
       
