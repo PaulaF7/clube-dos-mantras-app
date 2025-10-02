@@ -1681,7 +1681,7 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
             <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} className="textarea-field" rows="3" placeholder="Descreva em poucas palavras..."/>
           </div>
           
-          {/* Slider de Intensidade Aprimorado */}
+          {/* Slider de Intensidade Aprimorado com Texto Explicativo */}
           <div>
             <label className="text-sm font-light text-white/80 block mb-1">Intensidade ({intensity})</label>
             <input type="range" min="1" max="10" value={intensity} onChange={e=>setIntensity(e.target.value)} className="w-full"/>
@@ -1690,6 +1690,9 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
                 <span key={num} className={`transition-colors ${Number(intensity) === num ? 'text-yellow-400 font-bold' : ''}`}>{num}</span>
               ))}
             </div>
+            <p className="text-xs text-white/60 mt-2 text-center font-light">
+              A intensidade mostra o quanto essa emoção o afetou: quanto maior, mais ela influencia na sua energia do dia.
+            </p>
           </div>
           
           <div>
