@@ -2191,7 +2191,8 @@ const AppProvider = ({ children }) => {
     const recalculateAndSetStreak = useCallback(async (entries, currentUserId) => {
   if (!currentUserId || !db) return;
   try {
-    const practiceTypes = ['mantra', 'gratitude', 'note', 'playback', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
+    // CORREÇÃO: O tipo 'playback' foi removido desta lista.
+    const practiceTypes = ['mantra', 'gratitude', 'note', 'meditacao_chakra', 'reflexao_guiada', 'acao_consciente'];
     const practiceEntries = entries.filter(e => e.type && practiceTypes.includes(e.type) && e.practicedAt?.toDate);
 
     if (practiceEntries.length === 0) {
@@ -7955,9 +7956,9 @@ const AppContent = () => {
       case "diary":
         return (
           <DiaryScreen
-            onSave={handleDiaryExit} // <-- ALTERADO AQUI
+            onSave={handleDiaryExit}
             entryToEdit={entryToEdit}
-            onCancel={handleDiaryExit} // <-- ALTERADO AQUI
+            onCancel={() => setActiveScreen("home")} // <-- CORREÇÃO APLICADA AQUI
             openPremiumModal={openPremiumModal}
           />
         );
