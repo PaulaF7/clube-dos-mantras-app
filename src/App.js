@@ -1304,23 +1304,23 @@ const JOURNEYS_DATA = [
 
 // --- NOVOS DADOS: ESCALA HAWKINS (FONTE DE VERDADE PARA O MAPA) ---
 const HAWKINS_SCALE = [
-  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", rotuloAmigavel: "Envergonhado(a)", descricao: "Emoção de humilhação. A vida é vista como miserável. Processo de eliminação." },
-  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", rotuloAmigavel: "Culpado(a)", descricao: "Emoção de culpa e ofensa. A vida é vista como um infortúnio. Processo de destruição." },
-  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", rotuloAmigavel: "Apático(a), sem esperança", descricao: "Emoção de desespero. A vida é vista como desesperançosa. Processo de abdicação (desistência)." },
-  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", rotuloAmigavel: "Triste, arrependido(a)", descricao: "Emoção de arrependimento. A vida é vista como trágica. Processo de desânimo." },
-  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", rotuloAmigavel: "Com medo, ansioso(a)", descricao: "Emoção de ansiedade. A vida é vista como assustadora. Processo de evasão (fuga da realidade)." },
-  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", rotuloAmigavel: "Com um forte desejo, frustrado(a)", descricao: "Emoção de frustração. A vida é vista como desapontadora. Processo de escravização pelos desejos." },
-  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", rotuloAmigavel: "Com raiva, irritado(a)", descricao: "Emoção de ódio. A vida é vista de forma antagónica. Processo de agressão." },
-  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", rotuloAmigavel: "Orgulhoso(a), superior", descricao: "Emoção de desprezo. A vida é vista como exigente. Processo de inflação do ego." },
-  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", rotuloAmigavel: "Corajoso(a), confiante", descricao: "PONTO DE VIRADA. Emoção de afirmação. A vida é vista como possível. Processo de empoderamento." },
-  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", rotuloAmigavel: "Normal, neutro(a)", descricao: "Emoção de confiança. A vida é vista como satisfatória. Processo de libertação." },
-  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", rotuloAmigavel: "Otimista, com boa vontade", descricao: "Emoção de otimismo. A vida é vista como esperançosa. Processo de intenção." },
-  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", rotuloAmigavel: "Em aceitação, sereno(a)", descricao: "Emoção de perdão. A vida é vista como harmoniosa. Processo de transcendência." },
-  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", rotuloAmigavel: "Compreensivo(a), racional", descricao: "Emoção de compreensão. A vida é vista como significativa. Processo de abstração." },
-  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", rotuloAmigavel: "Amoroso(a), grato(a)", descricao: "Emoção de reverência. A vida é vista como benigna. Processo de revelação." },
-  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", rotuloAmigavel: "Alegre, feliz", descricao: "Emoção de serenidade. A vida é vista como completa. Processo de transmutação." },
-  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", rotuloAmigavel: "Em paz", descricao: "Emoção de felicidade. A vida é vista como perfeita. Processo de iluminação." },
-  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", rotuloAmigavel: "Iluminado(a)", descricao: "Estado indescritível. A visão de vida é 'Eu Sou'. Processo de plena consciência." },
+  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", rotuloAmigavel: "Envergonhado(a)", descricao: "Sentimento de se sentir pequeno(a) e inadequado(a). A energia está muito baixa, focada em se esconder do mundo." },
+  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", rotuloAmigavel: "Culpado(a)", descricao: "Carrega o peso de erros passados. A energia é usada para se punir, o que impede o progresso e a manifestação." },
+  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", rotuloAmigavel: "Apático(a), sem esperança", descricao: "Falta de esperança e energia para mudar. A vida parece não ter sentido e você se sente desconectado(a) de tudo." },
+  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", rotuloAmigavel: "Triste, arrependido(a)", descricao: "Sentimento de perda e desapontamento. É uma energia pesada que nos prende ao que já passou, dificultando ver o futuro." },
+  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", rotuloAmigavel: "Com medo, ansioso(a)", descricao: "A energia é gasta se preocupando com o futuro e vendo perigo em tudo. Impede de tomar riscos e confiar na vida." },
+  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", rotuloAmigavel: "Com um forte desejo, frustrado(a)", descricao: "Foco intenso no que falta, gerando frustração e insatisfação constantes. A felicidade parece estar sempre fora de alcance." },
+  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", rotuloAmigavel: "Com raiva, irritado(a)", descricao: "Uma energia reativa que busca culpar os outros. Pode ser um motor para a mudança, mas consome se não for bem canalizada." },
+  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", rotuloAmigavel: "Orgulhoso(a), superior", descricao: "Sentimento de superioridade que depende da validação externa. É frágil e impede o verdadeiro crescimento, pois não admite falhas." },
+  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", rotuloAmigavel: "Corajoso(a), confiante", descricao: "Aqui a mágica começa! Você para de culpar o mundo e percebe que tem o poder de mudar sua vida. A energia é de ação e otimismo." },
+  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", rotuloAmigavel: "Normal, neutro(a)", descricao: "Você se sente seguro(a) e está em paz com o mundo. Não precisa provar nada a ninguém. A energia é de flexibilidade e confiança." },
+  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", rotuloAmigavel: "Otimista, com boa vontade", descricao: "Você vê o bem em si mesmo(a) e nos outros. A energia é de serviço e contribuição, com um desejo genuíno de ajudar e crescer junto." },
+  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", rotuloAmigavel: "Em aceitação, sereno(a)", descricao: "Você entende que é o criador(a) da sua própria experiência. Perdoa a si e aos outros, vivendo em harmonia com o fluxo da vida." },
+  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", rotuloAmigavel: "Compreensivo(a), racional", descricao: "A mente se torna uma ferramenta poderosa para entender o mundo e a si mesmo(a). A energia é de clareza, sabedoria e foco em soluções." },
+  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", rotuloAmigavel: "Amoroso(a), grato(a)", descricao: "É o amor incondicional, que não julga e vê a beleza em tudo. A energia é de gratidão, perdão e conexão com toda a vida." },
+  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", rotuloAmigavel: "Alegre, feliz", descricao: "Um estado de felicidade que vem de dentro, independente das circunstâncias. A vida é vista como um milagre a cada momento." },
+  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", rotuloAmigavel: "Em paz", descricao: "Um estado de silêncio interior e unidade total. Não há mais conflito, apenas a serenidade da existência e a certeza de que tudo está bem." },
+  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", rotuloAmigavel: "Iluminado(a)", descricao: "A consciência se funde com o Todo. É a união com o Divino, um estado que transcende palavras e a dualidade do mundo." },
 ];
 
 // --- NOVOS HELPERS: API DO MAPA DA MANIFESTAÇÃO ---
@@ -1368,10 +1368,22 @@ async function getVibrationHistory(period) {
 
 // --- NOVOS COMPONENTES: MAPA DA MANIFESTAÇÃO ---
 
-const LevelBar = ({ nivel, hz }) => {
+// INÍCIO DO COMPONENTE LevelBar //
+
+const LevelBar = ({ hz }) => {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    // Lógica de cálculo (sem alteração)
+    // Lógica de cálculo do nível de consciência (agora dentro do componente)
+    const nivel = useMemo(() => {
+        // Se hz não existir ou for menor que o mínimo, usa o primeiro nível como padrão.
+        if (!hz || hz < 20) {
+            return HAWKINS_SCALE[0];
+        }
+        // Procura na escala (de cima para baixo) qual o primeiro nível que a pontuação atinge.
+        return HAWKINS_SCALE.slice().reverse().find(level => hz >= level.hz) || HAWKINS_SCALE[0];
+    }, [hz]);
+
+    // Lógica de cálculo da barra (sem alteração)
     const MIN_HZ_LOG = Math.log(20);
     const MAX_HZ_LOG = Math.log(900);
     const userPercentage = hz > 20 ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100 : 0;
@@ -1382,14 +1394,13 @@ const LevelBar = ({ nivel, hz }) => {
             {/* Cabeçalho Responsivo com Ícone de Informação */}
             <div className="flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1">
                 <h3 className="font-semibold text-base">Seu Nível de Consciência</h3>
-                {nivel && (
-                    <div className="relative flex items-center gap-2">
-                        <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{nivel.rotulo}</span>
-                        <button onClick={() => setIsPopoverOpen(true)} className="text-white/60 hover:text-white transition-colors">
-                            <Info size={16} />
-                        </button>
-                    </div>
-                )}
+                {/* O rótulo agora é sempre exibido porque 'nivel' é calculado internamente */}
+                <div className="relative flex items-center gap-2">
+                    <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{nivel.rotuloAmigavel}</span>
+                    <button onClick={() => setIsPopoverOpen(true)} className="text-white/60 hover:text-white transition-colors">
+                        <Info size={16} />
+                    </button>
+                </div>
             </div>
             
             {/* Barra de Progresso e Marcador */}
@@ -1421,11 +1432,11 @@ const LevelBar = ({ nivel, hz }) => {
             </p>
 
             {/* Popover de explicação (CORRIGIDO) */}
-            {isPopoverOpen && nivel && (
+            {isPopoverOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setIsPopoverOpen(false)}>
                     <div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg text-yellow-400">{nivel.rotulo}</h3>
+                            <h3 className="text-lg text-yellow-400">{nivel.rotuloAmigavel}</h3>
                             <button onClick={() => setIsPopoverOpen(false)} className="p-2 -mr-2 rounded-full hover:bg-white/10"><X size={20} /></button>
                         </div>
                         <p className="text-white/80 font-light">{nivel.descricao}</p>
@@ -1435,6 +1446,7 @@ const LevelBar = ({ nivel, hz }) => {
         </div>
     );
 };
+// FIM DO COMPONENTE LevelBar //
 
 const MiniChartBar = ({ label, value, onClick }) => {
     const MAX_HZ = 800;
