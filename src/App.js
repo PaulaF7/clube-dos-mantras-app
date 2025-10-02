@@ -1782,10 +1782,10 @@ const EditarMetaModal = ({ open, onClose, currentMeta }) => {
               <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="input-field" placeholder="Descreva a sua intenção..."/>
             </div>
             <div>
-              <label className="text-sm font-light text-white/80 block mb-1">Qual emoção representa você ao alcançar essa meta?</label>
+              <label className="text-sm font-light text-white/80 block mb-1">Como você se sentiria quando alcançasse essa meta?</label>
               <select value={hz_meta} onChange={e => setHzMeta(e.target.value)} className="select-field">
-                <option value="">-- Escolha um nível de consciência --</option>
-                {metaOptions.map(level => <option key={level.nivel} value={level.hz}>{level.hz} Hz - {level.nivel}</option>)}
+                <option value="">-- Eu me sentiria... --</option>
+                {metaOptions.map(level => <option key={level.nivel} value={level.hz}>{level.rotuloAmigavel}</option>)}
               </select>
             </div>
 
