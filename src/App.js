@@ -1304,23 +1304,23 @@ const JOURNEYS_DATA = [
 
 // --- NOVOS DADOS: ESCALA HAWKINS (FONTE DE VERDADE PARA O MAPA) ---
 const HAWKINS_SCALE = [
-  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", descricao: "Emoção de humilhação. A vida é vista como miserável. Processo de eliminação." },
-  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", descricao: "Emoção de culpa e ofensa. A vida é vista como um infortúnio. Processo de destruição." },
-  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", descricao: "Emoção de desespero. A vida é vista como desesperançosa. Processo de abdicação (desistência)." },
-  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", descricao: "Emoção de arrependimento. A vida é vista como trágica. Processo de desânimo." },
-  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", descricao: "Emoção de ansiedade. A vida é vista como assustadora. Processo de evasão (fuga da realidade)." },
-  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", descricao: "Emoção de frustração. A vida é vista como desapontadora. Processo de escravização pelos desejos." },
-  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", descricao: "Emoção de ódio. A vida é vista de forma antagónica. Processo de agressão." },
-  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", descricao: "Emoção de desprezo. A vida é vista como exigente. Processo de inflação do ego." },
-  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", descricao: "PONTO DE VIRADA. Emoção de afirmação. A vida é vista como possível. Processo de empoderamento." },
-  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", descricao: "Emoção de confiança. A vida é vista como satisfatória. Processo de libertação." },
-  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", descricao: "Emoção de otimismo. A vida é vista como esperançosa. Processo de intenção." },
-  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", descricao: "Emoção de perdão. A vida é vista como harmoniosa. Processo de transcendência." },
-  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", descricao: "Emoção de compreensão. A vida é vista como significativa. Processo de abstração." },
-  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", descricao: "Emoção de reverência. A vida é vista como benigna. Processo de revelação." },
-  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", descricao: "Emoção de serenidade. A vida é vista como completa. Processo de transmutação." },
-  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", descricao: "Emoção de felicidade. A vida é vista como perfeita. Processo de iluminação." },
-  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", descricao: "Estado indescritível. A visão de vida é 'Eu Sou'. Processo de plena consciência." },
+  { nivel: "Vergonha", hz: 20, rotulo: "Vergonha / Humilhação", rotuloAmigavel: "Envergonhado(a)", descricao: "Emoção de humilhação. A vida é vista como miserável. Processo de eliminação." },
+  { nivel: "Culpa", hz: 30, rotulo: "Culpa / Ofensa", rotuloAmigavel: "Culpado(a)", descricao: "Emoção de culpa e ofensa. A vida é vista como um infortúnio. Processo de destruição." },
+  { nivel: "Apatia", hz: 50, rotulo: "Apatia / Desespero", rotuloAmigavel: "Apático(a), sem esperança", descricao: "Emoção de desespero. A vida é vista como desesperançosa. Processo de abdicação (desistência)." },
+  { nivel: "Tristeza", hz: 75, rotulo: "Tristeza / Arrependimento", rotuloAmigavel: "Triste, arrependido(a)", descricao: "Emoção de arrependimento. A vida é vista como trágica. Processo de desânimo." },
+  { nivel: "Medo", hz: 100, rotulo: "Medo / Ansiedade", rotuloAmigavel: "Com medo, ansioso(a)", descricao: "Emoção de ansiedade. A vida é vista como assustadora. Processo de evasão (fuga da realidade)." },
+  { nivel: "Desejo", hz: 125, rotulo: "Desejo / Frustração", rotuloAmigavel: "Com um forte desejo, frustrado(a)", descricao: "Emoção de frustração. A vida é vista como desapontadora. Processo de escravização pelos desejos." },
+  { nivel: "Raiva", hz: 150, rotulo: "Raiva / Ódio", rotuloAmigavel: "Com raiva, irritado(a)", descricao: "Emoção de ódio. A vida é vista de forma antagónica. Processo de agressão." },
+  { nivel: "Orgulho", hz: 175, rotulo: "Orgulho / Desprezo", rotuloAmigavel: "Orgulhoso(a), superior", descricao: "Emoção de desprezo. A vida é vista como exigente. Processo de inflação do ego." },
+  { nivel: "Coragem", hz: 200, rotulo: "Coragem / Afirmação", rotuloAmigavel: "Corajoso(a), confiante", descricao: "PONTO DE VIRADA. Emoção de afirmação. A vida é vista como possível. Processo de empoderamento." },
+  { nivel: "Neutralidade", hz: 250, rotulo: "Neutralidade / Verdadeiro", rotuloAmigavel: "Normal, neutro(a)", descricao: "Emoção de confiança. A vida é vista como satisfatória. Processo de libertação." },
+  { nivel: "Boa vontade", hz: 310, rotulo: "Boa vontade / Otimista", rotuloAmigavel: "Otimista, com boa vontade", descricao: "Emoção de otimismo. A vida é vista como esperançosa. Processo de intenção." },
+  { nivel: "Aceitação", hz: 350, rotulo: "Aceitação / Perdão", rotuloAmigavel: "Em aceitação, sereno(a)", descricao: "Emoção de perdão. A vida é vista como harmoniosa. Processo de transcendência." },
+  { nivel: "Razão", hz: 400, rotulo: "Razão / Compreensão", rotuloAmigavel: "Compreensivo(a), racional", descricao: "Emoção de compreensão. A vida é vista como significativa. Processo de abstração." },
+  { nivel: "Amor", hz: 500, rotulo: "Amor / Reverência", rotuloAmigavel: "Amoroso(a), grato(a)", descricao: "Emoção de reverência. A vida é vista como benigna. Processo de revelação." },
+  { nivel: "Alegria", hz: 540, rotulo: "Alegria / Serenidade", rotuloAmigavel: "Alegre, feliz", descricao: "Emoção de serenidade. A vida é vista como completa. Processo de transmutação." },
+  { nivel: "Paz", hz: 600, rotulo: "Paz / Felicidade", rotuloAmigavel: "Em paz", descricao: "Emoção de felicidade. A vida é vista como perfeita. Processo de iluminação." },
+  { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", rotuloAmigavel: "Iluminado(a)", descricao: "Estado indescritível. A visão de vida é 'Eu Sou'. Processo de plena consciência." },
 ];
 
 // --- NOVOS HELPERS: API DO MAPA DA MANIFESTAÇÃO ---
@@ -1591,23 +1591,21 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
   const [period, setPeriod] = useState('manha');
   const [emotionSelected, setEmotionSelected] = useState('');
   const [freeText, setFreeText] = useState('');
-  const [intensity, setIntensity] = useState(5);
+  const [intensity, setIntensity] = useState(1); // <-- RESTAURADO
   const [note, setNote] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const EMOTIONS = useMemo(() => HAWKINS_SCALE.map(e => e.nivel), []);
+  const EMOTIONS_LIST = useMemo(() => HAWKINS_SCALE, []);
 
   useEffect(() => {
     if (open) {
-      // Se estiver a editar, preenche o formulário. Senão, define um estado inicial.
       if (editingCheckin) {
         setPeriod(editingCheckin.period || 'manha');
-        // A emoção é derivada do `emotionLabel`, que é o rótulo completo.
         const foundEmotion = HAWKINS_SCALE.find(e => e.rotulo === editingCheckin.emotion);
         setEmotionSelected(foundEmotion?.nivel || '');
-        setFreeText(''); // Limpa o texto livre ao editar
-        setIntensity(editingCheckin.intensity || 5);
+        setFreeText('');
+        setIntensity(editingCheckin.intensity || 1); // <-- RESTAURADO
         setNote(editingCheckin.note || '');
       } else {
         const currentHour = new Date().getHours();
@@ -1617,7 +1615,7 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
         
         setEmotionSelected('');
         setFreeText('');
-        setIntensity(5);
+        setIntensity(1); // <-- RESTAURADO
         setNote('');
       }
       setError(null);
@@ -1631,13 +1629,14 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
     setLoading(true); 
     setError(null);
     try {
+      // Payload agora inclui a intensidade novamente
       let payload = { period, emotionSelected: emotionSelected || null, freeText: freeText || null, intensity: Number(intensity), note };
       const res = await createCheckin(payload);
 
       if (res.needsConfirmation) {
-        // Usar um modal customizado em vez de window.confirm no futuro
         const confirmed = window.confirm(`A nossa análise sugere a emoção: "${res.suggestion}". Deseja confirmar e registar com base nela?`);
         if (confirmed) {
+          // Reenvia com intensidade
           await createCheckin({ period, emotionSelected: res.suggestion, intensity: Number(intensity), note });
         } else {
           setError('Por favor, selecione uma emoção da lista para garantir o registo correto.');
@@ -1674,14 +1673,18 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
           <div>
             <label className="text-sm font-light text-white/80 block mb-1">Como se sente?</label>
             <select value={emotionSelected} onChange={e=>setEmotionSelected(e.target.value)} className="select-field mb-2">
-              <option value="">-- Selecione uma emoção --</option>
-              {EMOTIONS.map(em => <option key={em} value={em}>{em}</option>)}
+              <option value="">-- Selecione como se sente --</option>
+              {EMOTIONS_LIST.map(em => (
+                <option key={em.nivel} value={em.nivel}>
+                  {em.rotuloAmigavel}
+                </option>
+              ))}
             </select>
             <p className="text-center text-xs text-white/60 my-2">ou</p>
             <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} className="textarea-field" rows="3" placeholder="Descreva em poucas palavras..."/>
           </div>
           
-          {/* Slider de Intensidade Aprimorado com Texto Explicativo */}
+          {/* Slider de Intensidade Aprimorado com Texto Explicativo (RESTAURADO) */}
           <div>
             <label className="text-sm font-light text-white/80 block mb-1">Intensidade ({intensity})</label>
             <input type="range" min="1" max="10" value={intensity} onChange={e=>setIntensity(e.target.value)} className="w-full"/>
@@ -1704,14 +1707,14 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
           <div className="flex gap-4 pt-4 border-t border-white/10">
             <button onClick={onClose} className="w-full btn-secondary">Cancelar</button>
             <button onClick={submit} className="w-full modern-btn-primary" disabled={isSubmitDisabled}>
-                {loading ? 'A salvar...' : 'Salvar Registo'}
+                {loading ? 'A guardar...' : 'Guardar Registo'}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 // FIM DA FUNÇÃO RAIO-X (CHECKIN) //
 
 
