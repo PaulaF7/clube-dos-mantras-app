@@ -1375,18 +1375,8 @@ async function getVibrationHistory(period) {
 
 // INÍCIO DO COMPONENTE LevelBar //
 
-const LevelBar = ({ hz }) => {
+const LevelBar = ({ nivel, hz }) => {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
-    // Lógica de cálculo do nível de consciência (agora dentro do componente)
-    const nivel = useMemo(() => {
-        // Se hz não existir ou for menor que o mínimo, usa o primeiro nível como padrão.
-        if (!hz || hz < 20) {
-            return HAWKINS_SCALE[0];
-        }
-        // Procura na escala (de cima para baixo) qual o primeiro nível que a pontuação atinge.
-        return HAWKINS_SCALE.slice().reverse().find(level => hz >= level.hz) || HAWKINS_SCALE[0];
-    }, [hz]);
 
     // Lógica de cálculo da barra (sem alteração)
     const MIN_HZ_LOG = Math.log(20);
@@ -1394,14 +1384,17 @@ const LevelBar = ({ hz }) => {
     const userPercentage = hz > 20 ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100 : 0;
     const manifestationMarkerPosition = ((Math.log(200) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100;
 
+    // Garante que existe sempre um objeto 'nivel' para evitar erros, mesmo que os dados ainda não tenham carregado.
+    // Ele usará o primeiro nível da escala como um fallback seguro.
+    const displayNivel = nivel || HAWKINS_SCALE[0];
+
     return (
         <div className="glass-card space-y-3">
             {/* Cabeçalho Responsivo com Ícone de Informação */}
             <div className="flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1">
                 <h3 className="font-semibold text-base">Seu Nível de Consciência</h3>
-                {/* O rótulo agora é sempre exibido porque 'nivel' é calculado internamente */}
                 <div className="relative flex items-center gap-2">
-                    <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{nivel.rotuloAmigavel}</span>
+                    <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{displayNivel.rotuloAmigavel}</span>
                     <button onClick={() => setIsPopoverOpen(true)} className="text-white/60 hover:text-white transition-colors">
                         <Info size={16} />
                     </button>
@@ -1436,15 +1429,15 @@ const LevelBar = ({ hz }) => {
               <span className="text-yellow-400">🔑</span> <strong>Ponto de Manifestação:</strong> a partir de 200 Hz (Coragem), você ativa seu poder de criar a realidade que deseja.
             </p>
 
-            {/* Popover de explicação (CORRIGIDO) */}
+            {/* Popover de explicação */}
             {isPopoverOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setIsPopoverOpen(false)}>
                     <div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg text-yellow-400">{nivel.rotuloAmigavel}</h3>
+                            <h3 className="text-lg text-yellow-400">{displayNivel.rotuloAmigavel}</h3>
                             <button onClick={() => setIsPopoverOpen(false)} className="p-2 -mr-2 rounded-full hover:bg-white/10"><X size={20} /></button>
                         </div>
-                        <p className="text-white/80 font-light">{nivel.descricao}</p>
+                        <p className="text-white/80 font-light">{displayNivel.descricao}</p>
                     </div>
                 </div>
             )}
