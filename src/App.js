@@ -95,6 +95,10 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
+// --- INÍCIO: CONTROLO DE VERSÃO E ATUALIZAÇÃO AUTOMÁTICA ---
+const CURRENT_APP_VERSION = '1.1.0'; // IMPORTANTE: Mude esta versão a cada novo deploy!
+// --- FIM: CONTROLO DE VERSÃO ---
+
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
 
 // Adicione este novo componente no seu App.js
@@ -8375,9 +8379,53 @@ function AppWithAuthCheck() {
 }
 
 export default function App() {
+  // --- INÍCIO: LÓGICA DE VERIFICAÇÃO DE VERSÃO ---
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+
+  useEffect(() => {
+    const storedVersion = localStorage.getItem('appVersion');
+    if (storedVersion !== CURRENT_APP_VERSION) {
+      // Se a versão for diferente, mostra a notificação
+      setShowUpdateNotification(true);
+    }
+  }, []);
+
+  const handleUpdateApp = () => {
+    // 1. Tenta limpar o Service Worker (se existir)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    // 2. Atualiza a versão no localStorage
+    localStorage.setItem('appVersion', CURRENT_APP_VERSION);
+    // 3. Força o recarregamento da página a partir do servidor (ignora o cache)
+    window.location.reload(true);
+  };
+  // --- FIM: LÓGICA DE VERIFICAÇÃO DE VERSÃO ---
   return (
     <AppProvider>
       <GlobalStyles />
+      {/* --- INÍCIO: COMPONENTE DE NOTIFICAÇÃO DE ATUALIZAÇÃO --- */}
+      {showUpdateNotification && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-sm p-4">
+            <div className="glass-card !p-4 flex items-center justify-between gap-4 shadow-2xl">
+                <div className="text-left">
+                    <p className="font-semibold text-white">Nova versão disponível!</p>
+                    <p className="text-sm text-white/80 font-light">Atualize para a melhor experiência.</p>
+                </div>
+                <button 
+                    onClick={handleUpdateApp}
+                    className="modern-btn-primary !py-2 !px-4 !text-sm flex-shrink-0"
+                >
+                    Atualizar
+                </button>
+            </div>
+        </div>
+      )}
+      {/* --- FIM: COMPONENTE DE NOTIFICAÇÃO DE ATUALIZAÇÃO --- */}
       <AppWithAuthCheck />
     </AppProvider>
   );
