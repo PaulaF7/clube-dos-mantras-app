@@ -94,6 +94,7 @@ import {
   Info, // <-- ADICIONE ESTA LINHA
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
 // import ReactGA from 'react-ga4'; // Removido para compilar no ambiente do editor
 
 // Adicione este novo componente no seu App.js
@@ -640,7 +641,7 @@ const MANTRAS_DATA = [
     repeticoes: 12,
     libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Clube-dos-Mantras@main/A%20Paz%20de%20Jesus.mp3",
     spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/1%20fade.MP3",
-    imageSrc: "https://i.postimg.cc/bNbZDBGR/paz.png", // Imagem genérica
+    imageSrc: "https://i.postimg.cc/K884zvRM/img-passaros.png",
     imagePrompt: "The calming and universal presence of peace.",
   },
   {
