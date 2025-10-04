@@ -440,6 +440,16 @@ const GlobalStyles = memo(() => (
   will-change: transform, opacity;
 }
 
+.dark-modal {
+  background: rgba(26, 9, 51, 0.9); /* Roxo escuro do tema, 90% opaco */
+  backdrop-filter: blur(8px); /* Um desfoque mais sutil */
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
 /* Correção específica para Safari iOS - evita variação de opacidade nos cards */
 @supports (-webkit-touch-callout: none) {
     background: rgba(255, 255, 255, 0.08) !important; /* fixa opacidade */
@@ -1328,6 +1338,28 @@ const HAWKINS_SCALE = [
   { nivel: "Iluminação", hz: 800, rotulo: "Iluminação / Indescritível", rotuloAmigavel: "Iluminado(a)", descricao: "A consciência se funde com o Todo. É a união com o Divino, um estado que transcende palavras e a dualidade do mundo." },
 ];
 
+// --- NOVOS HELPERS (MOVIMENTEI DO BACKEND PARA O FRONTEND) ---
+/**
+ * Helper: Encontra o nível de consciência mais próximo para um dado Hz.
+ */
+const findClosestNivel = (hz) => {
+    if (!hz) return null;
+    // Encontra o nível mais alto que a pontuação atinge
+    return HAWKINS_SCALE.slice().reverse().find(level => hz >= level.hz) || null;
+};
+
+/**
+ * Helper: Calcula os Pontos de Vibração usando a fórmula logarítmica.
+ */
+const calculateVibrationPoints = (hz) => {
+    if (!hz || hz <= 0) return 0;
+    if (hz >= 900) return 100;
+    const points = Math.round(
+        (Math.log(Math.max(20, hz)) - Math.log(20)) / (Math.log(900) - Math.log(20)) * 100
+    );
+    return points;
+};
+
 // --- NOVOS HELPERS: API DO MAPA DA MANIFESTAÇÃO ---
 // Wrapper para chamadas às Firebase Cloud Functions (callable)
 async function createCheckin(payload) {
@@ -1380,18 +1412,25 @@ const LevelBar = ({ hz }) => {
 
     // Lógica de cálculo do nível de consciência (agora dentro do componente)
     const nivel = useMemo(() => {
-        // Se hz não existir ou for menor que o mínimo, usa o primeiro nível como padrão.
-        if (!hz || hz < 20) {
+        // CORREÇÃO: Se hz não existir ou for 0, retorna null para indicar ausência de dados.
+        if (!hz || hz <= 0) {
+            return null;
+        }
+        // Se for menor que o mínimo mas maior que 0, retorna o primeiro nível.
+        if (hz < 20) {
             return HAWKINS_SCALE[0];
         }
         // Procura na escala (de cima para baixo) qual o primeiro nível que a pontuação atinge.
         return HAWKINS_SCALE.slice().reverse().find(level => hz >= level.hz) || HAWKINS_SCALE[0];
     }, [hz]);
 
-    // Lógica de cálculo da barra (sem alteração)
+    // 'hasData' é verdadeiro apenas se 'nivel' não for nulo.
+    const hasData = !!nivel;
+
+    // Lógica de cálculo da barra (ajustada para hz nulo)
     const MIN_HZ_LOG = Math.log(20);
     const MAX_HZ_LOG = Math.log(900);
-    const userPercentage = hz > 20 ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100 : 0;
+    const userPercentage = (hz && hz > 0) ? ((Math.log(hz) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100 : 0;
     const manifestationMarkerPosition = ((Math.log(200) - MIN_HZ_LOG) / (MAX_HZ_LOG - MIN_HZ_LOG)) * 100;
 
     return (
@@ -1399,10 +1438,17 @@ const LevelBar = ({ hz }) => {
             {/* Cabeçalho Responsivo com Ícone de Informação */}
             <div className="flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1">
                 <h3 className="font-semibold text-base">Seu Nível de Consciência</h3>
-                {/* O rótulo agora é sempre exibido porque 'nivel' é calculado internamente */}
                 <div className="relative flex items-center gap-2">
-                    <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">{nivel.rotuloAmigavel}</span>
-                    <button onClick={() => setIsPopoverOpen(true)} className="text-white/60 hover:text-white transition-colors">
+                    {/* O rótulo agora mostra '--' se não houver dados, ou o rótulo amigável se houver. */}
+                    <span className="text-sm font-light bg-white/10 px-2 py-1 rounded whitespace-nowrap">
+                        {hasData ? nivel.rotuloAmigavel : '--'}
+                    </span>
+                    {/* O botão de informação só fica ativo se houver dados para mostrar. */}
+                    <button 
+                        onClick={() => hasData && setIsPopoverOpen(true)} 
+                        className={`text-white/60 ${hasData ? 'hover:text-white cursor-pointer' : 'cursor-default opacity-50'}`}
+                        disabled={!hasData}
+                    >
                         <Info size={16} />
                     </button>
                 </div>
@@ -1436,8 +1482,8 @@ const LevelBar = ({ hz }) => {
               <span className="text-yellow-400">🔑</span> <strong>Ponto de Manifestação:</strong> a partir de 200 Hz (Coragem), você ativa seu poder de criar a realidade que deseja.
             </p>
 
-            {/* Popover de explicação (CORRIGIDO) */}
-            {isPopoverOpen && (
+            {/* Popover de explicação (só abre se hasData for verdadeiro) */}
+            {isPopoverOpen && hasData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setIsPopoverOpen(false)}>
                     <div className="glass-modal w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2">
@@ -1473,30 +1519,76 @@ const MiniChartBar = ({ label, value, onClick }) => {
 
 // INÍCIO DO COMPONETE HISTÓRICO //
 const Historico = () => {
+    const { userId } = useContext(AppContext);
     const [period, setPeriod] = useState('7d');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadHistory = async () => {
-            setLoading(true);
-            try {
-                const historyData = await getVibrationHistory(period);
-                const formattedData = historyData.map(item => ({
-                    ...item,
-                    shortDate: new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                }));
-                setData(formattedData);
-            } catch (error) {
-                console.error("Erro ao carregar histórico:", error);
-                setData([]);
-            } finally {
-                setLoading(false);
-            }
-        };
+        if (!userId || !db) return;
 
-        loadHistory();
-    }, [period]);
+        setLoading(true);
+        
+        // Define a data de início com base no período selecionado
+        const days = period === '7d' ? 7 : 30;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days + 1);
+        startDate.setHours(0, 0, 0, 0);
+
+        // Cria a query para buscar os check-ins do período
+        const checkinsQuery = query(
+            collection(db, `users/${userId}/vibrationCheckins`),
+            where('createdAt', '>=', startDate)
+        );
+
+        // --- Início da Lógica em Tempo Real ---
+        const unsubscribe = onSnapshot(checkinsQuery, (snapshot) => {
+            const checkins = snapshot.docs.map(doc => doc.data());
+
+            // 1. Agrega os check-ins por dia
+            const dailyAggregates = {};
+            checkins.forEach(checkin => {
+                if (!checkin.createdAt) return;
+                const date = checkin.createdAt.toDate();
+                const dateString = date.toISOString().split('T')[0]; // ex: "2025-10-04"
+
+                if (!dailyAggregates[dateString]) {
+                    dailyAggregates[dateString] = {
+                        weightedHzSum: 0,
+                        weightSum: 0,
+                        date: date,
+                    };
+                }
+                const weight = checkin.intensity || 1;
+                dailyAggregates[dateString].weightedHzSum += checkin.hz * weight;
+                dailyAggregates[dateString].weightSum += weight;
+            });
+
+            // 2. Calcula os pontos diários e formata para o gráfico
+            const formattedData = Object.values(dailyAggregates).map(day => {
+                const hz_medio = day.weightSum > 0 ? day.weightedHzSum / day.weightSum : 0;
+                const pontos = calculateVibrationPoints(hz_medio);
+                return {
+                    date: day.date.toISOString(),
+                    pontos: pontos,
+                    shortDate: day.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                };
+            });
+
+            // 3. Ordena os dados por data
+            formattedData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            setData(formattedData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Erro no listener do histórico:", error);
+            setLoading(false);
+        });
+
+        // Retorna a função de limpeza para desativar o listener
+        return () => unsubscribe();
+
+    }, [period, userId]); // Re-executa se o período ou o usuário mudar
 
     const analise = useMemo(() => {
         if (data.length < 2) {
@@ -1542,7 +1634,6 @@ const Historico = () => {
             <>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer>
-                        {/* Gráfico com visual restaurado */}
                         <LineChart data={data} margin={{ top: 5, right: 20, left: -25, bottom: 5 }}>
                             <CartesianGrid stroke="rgba(255, 255, 255, 0.1)" strokeDasharray="3 3" />
                             <XAxis dataKey="shortDate" stroke="#A78BFA" fontSize="12px" />
@@ -1560,7 +1651,6 @@ const Historico = () => {
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
-                {/* Secção de análise com layout responsivo corrigido */}
                 {analise && (
                     <div className="pt-4 mt-4 border-t border-white/10 text-sm text-white/80 space-y-2">
                         <div className="flex justify-between items-center">
@@ -1604,11 +1694,11 @@ const Historico = () => {
 
 
 // INÍCIO DA FUNÇÃO RAIO-X (CHECKIN) //
-const CheckinModal = ({ open, onClose, editingCheckin }) => {
+const CheckinModal = ({ open, onClose, editingCheckin, position = "center" }) => {
   const [period, setPeriod] = useState('manha');
   const [emotionSelected, setEmotionSelected] = useState('');
   const [freeText, setFreeText] = useState('');
-  const [intensity, setIntensity] = useState(1); // <-- RESTAURADO
+  const [intensity, setIntensity] = useState(1);
   const [note, setNote] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1622,7 +1712,7 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
         const foundEmotion = HAWKINS_SCALE.find(e => e.rotulo === editingCheckin.emotion);
         setEmotionSelected(foundEmotion?.nivel || '');
         setFreeText('');
-        setIntensity(editingCheckin.intensity || 1); // <-- RESTAURADO
+        setIntensity(editingCheckin.intensity || 1);
         setNote(editingCheckin.note || '');
       } else {
         const currentHour = new Date().getHours();
@@ -1632,7 +1722,7 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
         
         setEmotionSelected('');
         setFreeText('');
-        setIntensity(1); // <-- RESTAURADO
+        setIntensity(1);
         setNote('');
       }
       setError(null);
@@ -1646,14 +1736,12 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
     setLoading(true); 
     setError(null);
     try {
-      // Payload agora inclui a intensidade novamente
       let payload = { period, emotionSelected: emotionSelected || null, freeText: freeText || null, intensity: Number(intensity), note };
       const res = await createCheckin(payload);
 
       if (res.needsConfirmation) {
         const confirmed = window.confirm(`A nossa análise sugere a emoção: "${res.suggestion}". Deseja confirmar e registar com base nela?`);
         if (confirmed) {
-          // Reenvia com intensidade
           await createCheckin({ period, emotionSelected: res.suggestion, intensity: Number(intensity), note });
         } else {
           setError('Por favor, selecione uma emoção da lista para garantir o registo correto.');
@@ -1671,9 +1759,13 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
 
   const isSubmitDisabled = loading || (!emotionSelected && !freeText.trim());
 
+  const positionClasses = position === 'top' 
+    ? 'items-start pt-36' 
+    : 'items-center';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 flex ${positionClasses} justify-center p-4 bg-black/60`} onClick={onClose}>
+      <div className="dark-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-semibold text-white">Raio-X Vibracional</h3>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button>
@@ -1701,7 +1793,6 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
             <textarea value={freeText} onChange={e=>setFreeText(e.target.value)} className="textarea-field" rows="3" placeholder="Descreva em poucas palavras..."/>
           </div>
           
-          {/* Slider de Intensidade Aprimorado com Texto Explicativo (RESTAURADO) */}
           <div>
             <label className="text-sm font-light text-white/80 block mb-1">Intensidade ({intensity})</label>
             <input type="range" min="1" max="10" value={intensity} onChange={e=>setIntensity(e.target.value)} className="w-full"/>
@@ -1724,7 +1815,7 @@ const CheckinModal = ({ open, onClose, editingCheckin }) => {
           <div className="flex gap-4 pt-4 border-t border-white/10">
             <button onClick={onClose} className="w-full btn-secondary">Cancelar</button>
             <button onClick={submit} className="w-full modern-btn-primary" disabled={isSubmitDisabled}>
-                {loading ? 'A guardar...' : 'Guardar Registo'}
+                {loading ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
@@ -1787,19 +1878,19 @@ const EditarMetaModal = ({ open, onClose, currentMeta }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => onClose(false)}>
+      <div className="fixed inset-0 z-40 flex items-start justify-center p-4 pt-36 bg-black/60" onClick={() => onClose(false)}>
         <div className="glass-modal w-full max-w-md" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-white">Gerir Meta de Manifestação</h3>
+              <h3 className="text-xl font-semibold text-white">Defina um Sonho para Manifestação</h3>
               <button onClick={() => onClose(false)} className="p-2 rounded-full hover:bg-white/10"><X size={20}/></button>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-light text-white/80 block mb-1">A minha Meta (Ex: "Viver em paz")</label>
+              <label className="text-sm font-light text-white/80 block mb-1">O meu sonho (Ex: "Comprar uma casa")</label>
               <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="input-field" placeholder="Descreva a sua intenção..."/>
             </div>
             <div>
-              <label className="text-sm font-light text-white/80 block mb-1">Como você se sentiria quando alcançasse essa meta?</label>
+              <label className="text-sm font-light text-white/80 block mb-1">Como você se sentiria quando alcançasse esse sonho?</label>
               <select value={hz_meta} onChange={e => setHzMeta(e.target.value)} className="select-field">
                 <option value="">-- Eu me sentiria... --</option>
                 {metaOptions.map(level => <option key={level.nivel} value={level.hz}>{level.rotuloAmigavel}</option>)}
@@ -1808,27 +1899,37 @@ const EditarMetaModal = ({ open, onClose, currentMeta }) => {
 
             {error && <p className="text-red-400 text-sm bg-red-500/20 p-3 rounded-lg">{error}</p>}
             
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
-              {currentMeta && (
-                <button onClick={() => setIsDeleteConfirmOpen(true)} className="btn-danger-outline !text-xs !py-1 !px-3" disabled={loading}>
-                  Remover Meta
+            <div className="pt-4 border-t border-white/10 space-y-4">
+              {/* Grupo de botões principais, agora centralizado */}
+              <div className="flex gap-4 justify-center">
+                <button onClick={() => onClose(false)} className="btn-secondary w-32 justify-center"> {/* Largura fixa */}
+                  Cancelar
                 </button>
-              )}
-              <div className="flex gap-4 flex-grow justify-end">
-                <button onClick={() => onClose(false)} className="btn-secondary">Cancelar</button>
-                <button onClick={handleSave} className="modern-btn-primary" disabled={loading}>
-                    {loading ? 'A guardar...' : 'Guardar Meta'}
+                <button onClick={handleSave} className="modern-btn-primary w-32 justify-center" disabled={loading}> {/* Largura fixa */}
+                    {loading ? (
+                      <div className="w-6 h-6 border-2 border-purple-900/50 border-t-purple-900 rounded-full animate-spin"></div>
+                    ) : 'Salvar'}
                 </button>
               </div>
+
+              {/* Botão de remover, posicionado separadamente abaixo */}
+              {currentMeta && (
+                <div className="text-center">
+                  <button onClick={() => setIsDeleteConfirmOpen(true)} className="btn-danger-outline !text-xs !py-1 !px-3" disabled={loading}>
+                    Remover Registro
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
       <ConfirmationModal
+        position="top" // <-- PROPRIEDADE APLICADA AQUI
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={handleDelete}
-        title="Remover Meta"
+        title="Remover Registro"
         message="Tem a certeza de que deseja remover a sua meta atual? Esta ação não pode ser desfeita."
       />
     </>
@@ -1866,47 +1967,130 @@ const TrialExpiredModal = ({ open, onClose, onSubscribe }) => {
 
 // INÍCIO DO COMPONENTE MapaManifestacaoScreen //
 const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
-  const { isSubscribed } = useContext(AppContext);
+  const { userId, isSubscribed, currentUserData } = useContext(AppContext);
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
   const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
+  const [checkinModalPosition, setCheckinModalPosition] = useState('center');
   const [editingCheckin, setEditingCheckin] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [isTrialExpiredModalOpen, setIsTrialExpiredModalOpen] = useState(false);
-  
+
+  // --- NOVOS ESTADOS PARA LIMPEZA DE DADOS ---
+  const [isDayCleared, setIsDayCleared] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
+  const handleClearDayData = async () => {
+    // Apaga os documentos da subcoleção do dia
+    const startOfDay = new Date(currentDay);
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+    const checkinsQuery = query(
+      collection(db, `users/${userId}/vibrationCheckins`),
+      where('createdAt', '>=', startOfDay),
+      where('createdAt', '<=', endOfDay)
+    );
+
+    const snapshot = await getDocs(checkinsQuery);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    setIsClearConfirmOpen(false);
+    // O listener onSnapshot irá detetar a remoção e atualizar a UI automaticamente.
+  };
+
   // Estado para guardar a data do dia local atual
   const [currentDay, setCurrentDay] = useState(() => new Date().setHours(0, 0, 0, 0));
 
-  const handleTrialError = (error) => {
-    if (error.code === 'permission-denied' && error.message.includes('24h')) {
-      setIsTrialExpiredModalOpen(true);
-      return true;
-    }
-    return false;
-  };
-
-  const loadData = useCallback(async (dateToLoadMs) => {
-    setLoading(true);
-    try {
-      // Passa o timestamp exato do início do dia do utilizador
-      const res = await fetchManifestationMap({ dateMs: dateToLoadMs });
-      setData(res);
-    } catch(error) {
-      console.error("Erro ao carregar dados do mapa:", error);
-      if (handleTrialError(error)) {
-        setData(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Efeito principal: carrega os dados sempre que `currentDay` mudar.
+  // EFEITO EM TEMPO REAL: Escuta as mudanças nos check-ins e na meta do utilizador
   useEffect(() => {
-    loadData(currentDay);
-  }, [currentDay, loadData]);
+    if (!userId || !db) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Constrói as datas de início e fim do dia atual
+    const startOfDay = new Date(currentDay);
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  // Efeito robusto para verificar a mudança de dia
+    const checkinsQuery = query(
+      collection(db, `users/${userId}/vibrationCheckins`),
+      where('createdAt', '>=', startOfDay),
+      where('createdAt', '<=', endOfDay)
+    );
+
+    // 1. Cria o listener para os check-ins do dia
+    const unsubscribeCheckins = onSnapshot(checkinsQuery, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filtra para obter apenas o registo mais recente de cada período
+      const latestCheckins = {};
+      docs.forEach(checkin => {
+        const period = checkin.period;
+        if (!latestCheckins[period] || checkin.createdAt.toMillis() > latestCheckins[period].createdAt.toMillis()) {
+          latestCheckins[period] = checkin;
+        }
+      });
+      const finalCheckins = Object.values(latestCheckins);
+
+      // Calcula os dados com base nos check-ins recebidos
+      if (finalCheckins.length === 0) {
+        setData(prevData => ({ ...prevData, checkins: [], hz_medio: 0, nivel: null, pontos: 0 }));
+      } else {
+        let sumWeightedHz = 0;
+        let sumWeights = 0;
+        finalCheckins.forEach(c => {
+          const weight = c.intensity || 1;
+          sumWeightedHz += c.hz * weight;
+          sumWeights += weight;
+        });
+
+        const hz_medio = sumWeightedHz / sumWeights;
+        const nivel = findClosestNivel(hz_medio);
+        const pontos = calculateVibrationPoints(hz_medio);
+        
+        setData(prevData => ({
+          ...prevData,
+          checkins: finalCheckins.map(c => ({ period: c.period, hz: c.hz, ...c })), // Adiciona o checkin completo
+          hz_medio: parseFloat(hz_medio.toFixed(2)),
+          nivel,
+          pontos,
+        }));
+      }
+      setLoading(false);
+
+    }, (error) => {
+      console.error("Erro no listener de check-ins:", error);
+      if (error.code === 'permission-denied' && error.message.includes('24h')) {
+        setIsTrialExpiredModalOpen(true);
+      }
+      setLoading(false);
+    });
+    
+    // 2. Cria o listener para a meta do utilizador (que está no documento principal)
+    const userDocRef = doc(db, 'users', userId);
+    const unsubscribeMeta = onSnapshot(userDocRef, (doc) => {
+        if (doc.exists()) {
+            const userData = doc.data();
+            setData(prevData => ({ ...prevData, meta: userData.manifestationMeta || null }));
+        }
+    });
+
+    // Função de limpeza: remove os listeners quando o componente desmonta ou o dia muda
+    return () => {
+      unsubscribeCheckins();
+      unsubscribeMeta();
+    };
+
+  }, [userId, currentDay]); // Re-executa se o utilizador ou o dia mudar
+
+  // Efeito para verificar a mudança de dia (sem alteração)
   useEffect(() => {
     const checkDate = () => {
       const todayStartMs = new Date().setHours(0, 0, 0, 0);
@@ -1914,27 +2098,17 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
         setCurrentDay(todayStartMs);
       }
     };
-
-    // Verifica imediatamente ao carregar
     checkDate(); 
-
-    // Verifica a cada minuto
     const interval = setInterval(checkDate, 60000); 
-
-    // Verifica quando o app volta do segundo plano
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkDate();
-      }
+      if (document.visibilityState === 'visible') checkDate();
     };
     window.addEventListener('visibilitychange', onVisibilityChange);
-
     return () => {
       clearInterval(interval);
       window.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [currentDay]);
-
 
   const handleOpenCheckinModal = (checkinToEdit = null) => {
     setEditingCheckin(checkinToEdit);
@@ -1944,14 +2118,12 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
   const handleCloseCheckinModal = () => {
       setIsCheckinModalOpen(false);
       setEditingCheckin(null);
-      loadData(currentDay); // Recarrega os dados do dia atual
+      // Não precisa mais recarregar os dados, o listener faz isso
   };
 
-  const handleCloseMetaModal = (didSave) => {
+  const handleCloseMetaModal = () => {
       setIsMetaModalOpen(false);
-      if (didSave) {
-          loadData(currentDay); // Recarrega os dados do dia atual
-      }
+      // Não precisa mais recarregar os dados
   };
   
   const Card = ({ children, className }) => (
@@ -1986,8 +2158,8 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <button onClick={() => setIsMetaModalOpen(true)} className="w-full text-left group">
             <div className="flex items-center gap-2">
-                <h2 className="text-lg font-medium text-white/80 group-hover:text-white transition-colors">Meta Atual</h2>
-                <Edit3 size={16} className="text-white/50 group-hover:text-[#FFD54F] transition-colors" />
+                <h2 className="text-lg font-medium text-white/80 group-hover:text-white transition-colors">Qual sonho quer realizar?</h2>
+                <Edit3 size={16} className="text-[#FFD54F]" />
             </div>
             <p className="text-base text-white truncate">{data?.meta?.titulo || 'Clique para definir a sua meta'}</p>
             <div className="text-2xl font-bold text-[#FFD54F]">{data?.meta?.hz_meta ? `${data.meta.hz_meta} Hz` : '-- Hz'}</div>
@@ -1995,7 +2167,10 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
           
           <div className="w-full sm:w-auto flex-shrink-0">
             <button 
-              onClick={() => handleOpenCheckinModal(null)} 
+              onClick={() => {
+                setCheckinModalPosition('top');
+                handleOpenCheckinModal(null);
+              }} 
               className="modern-btn-primary w-full sm:w-auto"
             >
               Registar Raio-X
@@ -2007,26 +2182,42 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
       {data ? (
         <>
           <Card>
-            <h3 className="font-semibold">Padrão Vibratório (Hoje)</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">Padrão Vibratório (Hoje)</h3>
+              {data?.checkins?.length > 0 && (
+                <button onClick={() => setIsClearConfirmOpen(true)} className="p-2 rounded-full text-white/60 hover:bg-white/10 hover:text-red-400 transition-colors">
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
             <div className="flex gap-2 sm:gap-4">
               <MiniChartBar 
                 label="Manhã" 
                 value={getCheckinForPeriod('manha')?.hz ?? 0}
-                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('manha') || { period: 'manha' })}
+                onClick={() => {
+                  setCheckinModalPosition('center');
+                  handleOpenCheckinModal(getCheckinForPeriod('manha') || { period: 'manha' });
+                }}
               />
               <MiniChartBar 
                 label="Tarde" 
                 value={getCheckinForPeriod('tarde')?.hz ?? 0}
-                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('tarde') || { period: 'tarde' })}
+                onClick={() => {
+                  setCheckinModalPosition('center');
+                  handleOpenCheckinModal(getCheckinForPeriod('tarde') || { period: 'tarde' });
+                }}
               />
               <MiniChartBar 
                 label="Noite" 
                 value={getCheckinForPeriod('noite')?.hz ?? 0}
-                onClick={() => handleOpenCheckinModal(getCheckinForPeriod('noite') || { period: 'noite' })}
+                onClick={() => {
+                  setCheckinModalPosition('center');
+                  handleOpenCheckinModal(getCheckinForPeriod('noite') || { period: 'noite' });
+                }}
               />
             </div>
             <div className="pt-4 mt-2 border-t border-white/10 text-center">
-                {data.hz_medio ? (
+                {data.hz_medio > 0 ? (
                      <p className="text-sm font-light text-white/90">A sua energia média hoje foi <strong>{data.hz_medio} Hz ({data.nivel?.nivel || 'N/A'})</strong>, resultando em <strong>{data.pontos || 0} Pontos de Vibração</strong>.</p>
                 ) : (
                     <p className="text-sm font-light text-white/70">Nenhum registo hoje. Faça o seu primeiro Raio-X Vibracional.</p>
@@ -2036,12 +2227,14 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
           <LevelBar nivel={data.nivel} hz={data.hz_medio} />
         </>
       ) : (
-        <Card className="text-center">
-            <Sparkles className="mx-auto h-12 w-12 text-white/50" />
-            <h3 className="font-semibold">Recurso Premium</h3>
-            <p className="text-sm text-white/70">O seu período de teste de 24 horas terminou. Assine o Premium para continuar a usar o Mapa da Manifestação.</p>
-            <button onClick={openPremiumModal} className="modern-btn-primary w-full sm:w-auto mt-2">Tornar-se Premium</button>
-        </Card>
+        !loading && (
+          <Card className="text-center">
+              <Sparkles className="mx-auto h-12 w-12 text-white/50" />
+              <h3 className="font-semibold">Recurso Premium</h3>
+              <p className="text-sm text-white/70">O seu período de teste de 24 horas terminou. Assine o Premium para continuar a usar o Mapa da Manifestação.</p>
+              <button onClick={openPremiumModal} className="modern-btn-primary w-full sm:w-auto mt-2">Tornar-se Premium</button>
+          </Card>
+        )
       )}
 
       <Historico />
@@ -2050,11 +2243,22 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
         open={isCheckinModalOpen} 
         onClose={handleCloseCheckinModal}
         editingCheckin={editingCheckin}
+        position={checkinModalPosition}
       />
       <EditarMetaModal 
         open={isMetaModalOpen} 
         onClose={handleCloseMetaModal} 
         currentMeta={data?.meta}
+        />
+        <ConfirmationModal
+        position="top" // <-- PROPRIEDADE APLICADA AQUI
+        isOpen={isClearConfirmOpen}
+        onClose={() => setIsClearConfirmOpen(false)}
+        onConfirm={handleClearDayData}
+        title="Limpar Registos do Dia"
+        message="Tem a certeza de que deseja apagar todos os registos de Raio-X Vibracional de hoje? Esta ação não pode ser desfeita."
+        confirmText="Sim, Limpar"
+        confirmClass="btn-danger"
       />
       <TrialExpiredModal
         open={isTrialExpiredModalOpen}
@@ -2062,6 +2266,7 @@ const MapaManifestacaoScreen = ({ setActiveScreen, openPremiumModal }) => {
         onSubscribe={() => {
           setIsTrialExpiredModalOpen(false);
           openPremiumModal();
+        
         }}
       />
     </div>
@@ -3307,10 +3512,17 @@ const ConfirmationModal = ({
   message,
   confirmText = "Confirmar",
   confirmClass = "btn-danger",
+  position = "center", // <-- NOVA PROPRIEDADE ADICIONADA
 }) => {
   if (!isOpen) return null;
+
+  // Lógica para escolher a classe de posição
+  const positionClasses = position === 'top' 
+    ? 'items-start pt-36' 
+    : 'items-center';
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className={`fixed inset-0 bg-black/60 flex ${positionClasses} justify-center z-50 p-4`}>
       <div
         className="glass-modal w-full max-w-sm"
         onClick={(e) => e.stopPropagation()}
