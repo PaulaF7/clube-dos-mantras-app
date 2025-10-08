@@ -666,7 +666,7 @@ const MANTRAS_DATA = [
     repeticoes: 12,
     libraryAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/Eu%20Sou%20a%20Ressurreic%CC%A7a%CC%83o%20e%20a%20Vida.mp3",
     spokenAudioSrc: "https://cdn.jsdelivr.net/gh/PaulaF7/Mantras@main/2%20fade.MP3",
-    imageSrc: "https://i.postimg.cc/HnktsCW3/healing.png",
+    imageSrc: "https://i.postimg.cc/htTz3WXp/vida.png",
     imagePrompt: "The eternal cycle of renewal and life force.",
   },
   {
