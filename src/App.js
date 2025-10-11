@@ -4425,8 +4425,6 @@ const MantraSelectionModal = ({
 };
 // SUBSTITUA TODO O SEU COMPONENTE 'MantrasScreen' POR ESTE
 const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
-  const { isSubscribed } = useContext(AppContext);
-  const FREE_MANTRA_IDS = [1, 2, 13, 14, 15, 16, 17]; // <-- ALTERAÇÃO APLICADA AQUI
   return (
     <div className="page-container">
       <PageTitle subtitle="Explore melodias sagradas para relaxar e meditar.">
@@ -4437,31 +4435,18 @@ const MantrasScreen = ({ onPlayMantra, openPremiumModal }) => {
           // Apenas mostra mantras que têm uma versão musical (libraryAudioSrc)
           if (!mantra.libraryAudioSrc) return null;
 
-          const isLocked =
-            !isSubscribed && !FREE_MANTRA_IDS.includes(mantra.id);
           return (
             <div
               key={mantra.id}
               className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group clickable"
-              onClick={() =>
-                isLocked
-                  ? openPremiumModal()
-                  : onPlayMantra(mantra, 1, "library")
-              }
+              onClick={() => onPlayMantra(mantra, 1, "library")}
             >
               <img
                 src={mantra.imageSrc}
                 alt={`Visual para ${mantra.nome}`}
-                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${
-                  isLocked ? "filter grayscale brightness-50" : ""
-                }`}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-              {isLocked && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Lock className="h-10 w-10 text-white/70" />
-                </div>
-              )}
               <div className="absolute bottom-0 left-0 p-4">
                 <h3
                   className="text-white text-base leading-tight"
@@ -5385,7 +5370,6 @@ const FavoritesScreen = ({ onPlayMantra }) => {
 };
 
 // INÍCIO DO COMPONENTE 'MantraPlayer' //
-
 const MantraPlayer = ({
   currentMantra,
   onClose,
@@ -5393,6 +5377,8 @@ const MantraPlayer = ({
   onPracticeComplete,
   totalRepetitions = 1,
   audioType,
+  isSubscribed,
+  onPreviewEnd,
 }) => {
   const { favorites, updateFavorites } = useContext(AppContext);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -5405,6 +5391,7 @@ const MantraPlayer = ({
   const [showSpeedModal, setShowSpeedModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [practiceTimer, setPracticeTimer] = useState({ endTime: null, duration: null });
+  const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
 
   const audioRef = useRef(null);
   const repetitionCountRef = useRef(1);
@@ -5425,6 +5412,8 @@ const MantraPlayer = ({
     const audio = audioRef.current;
     if (!audio || !audioSrc) return;
 
+    setShowPreviewOverlay(false);
+    audio.volume = 1;
     repetitionCountRef.current = 1;
     setRepetitionCount(1);
     lastTimeRef.current = 0;
@@ -5433,9 +5422,23 @@ const MantraPlayer = ({
     }
 
     audio.loop = isSpokenPractice && totalRepetitions > 1;
-    
+
     const handleTimeUpdate = () => {
       const currentAudioTime = audio.currentTime;
+
+      if (!isSubscribed && audioType === 'library') {
+        if (currentAudioTime >= 60) {
+          audio.pause();
+          audio.currentTime = 60;
+          if (!showPreviewOverlay) setShowPreviewOverlay(true);
+        } else if (currentAudioTime > 57) {
+          const timeLeft = 60 - currentAudioTime;
+          audio.volume = Math.max(0, timeLeft / 3);
+        } else {
+          audio.volume = 1;
+        }
+      }
+
       if (isSpokenPractice && currentAudioTime < lastTimeRef.current && repetitionCountRef.current < totalRepetitions) {
         repetitionCountRef.current += 1;
         setRepetitionCount(repetitionCountRef.current);
@@ -5448,7 +5451,6 @@ const MantraPlayer = ({
     };
 
     const handleAudioEnd = () => {
-      // Lógica para timer de prática (Músicas Mântricas) - FUNCIONALIDADE RESTAURADA
       const timer = practiceTimerRef.current;
       if (!isSpokenPractice && timer && timer.endTime && Date.now() < timer.endTime) {
         audio.currentTime = 0;
@@ -5488,9 +5490,10 @@ const MantraPlayer = ({
       audio.removeEventListener('ended', handleAudioEnd);
       audio.loop = false;
     };
-  }, [audioSrc, totalRepetitions, isSpokenPractice, onPracticeComplete, currentMantra]);
+  }, [audioSrc, totalRepetitions, isSpokenPractice, onPracticeComplete, currentMantra, isSubscribed, audioType, onPreviewEnd]);
 
   const togglePlayPause = useCallback(() => {
+    if (showPreviewOverlay) return;
     const audio = audioRef.current;
     if (!audio) return;
     if (isPlaying) {
@@ -5504,7 +5507,7 @@ const MantraPlayer = ({
       audio.play();
     }
     setIsPlaying(!isPlaying);
-  }, [isPlaying]);
+  }, [isPlaying, showPreviewOverlay]);
 
   const showControls = useCallback(() => {
     clearTimeout(hideControlsTimeoutRef.current);
@@ -5513,7 +5516,7 @@ const MantraPlayer = ({
       hideControlsTimeoutRef.current = setTimeout(() => setAreControlsVisible(false), 4000);
     }
   }, [isSpokenPractice, isOptionsMenuOpen, showSpeedModal, showTimerModal]);
-  
+
   useEffect(() => {
     showControls();
     return () => clearTimeout(hideControlsTimeoutRef.current);
@@ -5523,7 +5526,7 @@ const MantraPlayer = ({
     const newFavorites = isFavorite ? favorites.filter((id) => id !== currentMantra.id) : [...favorites, currentMantra.id];
     updateFavorites(newFavorites);
   }, [isFavorite, favorites, currentMantra.id, updateFavorites]);
-  
+
   const changePlaybackRate = useCallback((rate) => {
     if (audioRef.current) audioRef.current.playbackRate = rate;
     setPlaybackRate(rate);
@@ -5595,7 +5598,7 @@ const MantraPlayer = ({
       <MantraVisualizer mantra={currentMantra} isPlaying={isPlaying} />
       <div
         className={`absolute inset-0 z-10 flex flex-col h-full w-full p-6 text-white text-center justify-between transition-opacity duration-500 ${
-          areControlsVisible
+          areControlsVisible && !showPreviewOverlay
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
         }`}
@@ -5635,6 +5638,30 @@ const MantraPlayer = ({
         </div>
         <div />
       </div>
+
+      {showPreviewOverlay && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 text-center bg-black/70 backdrop-blur-sm screen-animation">
+          <h3 className="text-2xl text-white" style={{ fontFamily: "var(--font-display)" }}>
+            Continue sua jornada
+          </h3>
+          <p className="mt-2 text-base font-light text-white/80">
+            Ouça a versão completa e acesse todos os recursos com a assinatura Premium.
+          </p>
+          <button
+            onClick={onPreviewEnd}
+            className="mt-6 modern-btn-primary w-full max-w-xs"
+          >
+            Tornar-se Premium
+          </button>
+          <button
+            onClick={onClose}
+            className="mt-4 text-sm text-white/60 hover:underline"
+          >
+            Agora não
+          </button>
+        </div>
+      )}
+
       <audio ref={audioRef} src={audioSrc} crossOrigin="anonymous" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} playsInline />
       <OptionsMenu isOpen={isOptionsMenuOpen} onClose={closeOptionsMenu} isFavorite={isFavorite} onFavorite={toggleFavorite} onSpeed={openSpeedModal} onTimer={openTimerModal} />
       {showSpeedModal && <PlaybackSpeedModal currentRate={playbackRate} onSelectRate={changePlaybackRate} onClose={closeSpeedModal} />}
@@ -5642,7 +5669,6 @@ const MantraPlayer = ({
     </div>
   );
 };
-
 // FIM DO COMPONENTE 'MantraPlayer' //
 
 const OptionsMenu = memo(
@@ -7813,6 +7839,7 @@ const AppContent = () => {
   const {
     isSubscribed,
     userId,
+    currentUserData, // <-- VARIÁVEL ADICIONADA AQUI
     journeyProgress,
     fetchAllEntries,
     recalculateStreak,
@@ -7850,6 +7877,27 @@ const AppContent = () => {
     setGratitudeToEdit(entry);
     setActiveScreen("gratitude");
   };
+
+  // --- LÓGICA DE CHECKOUT DIRETO ---
+  const OFFER_URL = "https://pay.kiwify.com.br/efohCIH";
+  const REGULAR_URL = "https://pay.kiwify.com.br/efohCIH";
+
+  const handleGoToCheckout = () => {
+    let isOfferActive = false;
+    if (currentUserData?.createdAt) {
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      const createdAtDate = currentUserData.createdAt.toDate
+        ? currentUserData.createdAt.toDate()
+        : new Date(currentUserData.createdAt);
+      const expirationTime = createdAtDate.getTime() + twentyFourHours;
+      if (Date.now() < expirationTime) {
+        isOfferActive = true;
+      }
+    }
+    const url = isOfferActive ? OFFER_URL : REGULAR_URL;
+    window.open(url, "_blank");
+  };
+  // --- FIM DA LÓGICA DE CHECKOUT ---
 
   useEffect(() => {
     // Esta lógica é executada apenas uma vez para atribuir o usuário a um grupo.
@@ -8376,10 +8424,12 @@ const AppContent = () => {
       currentMantra={playerData.mantra}
       totalRepetitions={playerData.repetitions}
       audioType={playerData.audioType}
+      isSubscribed={isSubscribed}
+      onPreviewEnd={handleGoToCheckout} // <-- ALTERADO: APONTA DIRETAMENTE PARA O CHECKOUT
       onPracticeComplete={(result) => {
         setPlayerData({ mantra: null, repetitions: 1, audioType: "library" });
         setPracticeResult(result);
-        triggerPushPermissionRequest(); // Aproveitamos para pedir permissão
+        triggerPushPermissionRequest();
       }}
       onClose={() => {
         setPlayerData({
@@ -8387,8 +8437,6 @@ const AppContent = () => {
           repetitions: 1,
           audioType: "library",
         });
-        // CORREÇÃO APLICADA AQUI:
-        // Só executa a conclusão da tarefa se a música fazia parte de uma jornada ativa.
         if (
           activeJourneyTask &&
           activeJourneyTask.dayInfo.type === "mantra"
